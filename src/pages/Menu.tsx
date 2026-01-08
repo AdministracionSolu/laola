@@ -2,13 +2,27 @@ import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, ExternalLink } from "lucide-react";
+import { Download, ExternalLink, Scale } from "lucide-react";
 
 const branches = [
   { id: "del-valle", name: "Del Valle", pdfUrl: "/menus/menu-del-valle.pdf" },
   { id: "insurgentes", name: "Insurgentes", pdfUrl: "/menus/menu-insurgentes.pdf" },
   { id: "solares", name: "Solares", pdfUrl: "/menus/menu-solares.pdf" },
   { id: "las-brisas", name: "Las Brisas", pdfUrl: "/menus/menu-las-brisas.pdf" },
+];
+
+const menuKilos = [
+  { name: "Marlín en estofado", precio500g: 95, precioKg: 190 },
+  { name: "Paté de camarón", precio500g: 195, precioKg: 360 },
+  { name: "Ceviche de pescado", precio500g: 95, precioKg: 190 },
+  { name: "Ceviche de camarón", precio500g: 195, precioKg: 360 },
+  { name: "Ceviche especial La Ola", precio500g: 195, precioKg: 390 },
+  { name: "Ceviche de camarón seco", precio500g: 195, precioKg: 390 },
+  { name: "Ceviche Mexcalteca", precio500g: 195, precioKg: 360 },
+  { name: "Ceviche negro de atún", precio500g: 195, precioKg: 390 },
+  { name: "Aguachile de camarón", precio500g: 195, precioKg: 360 },
+  { name: "Aguachile Mexcalteca", precio500g: 195, precioKg: 390 },
+  { name: "Aguachile especial La Ola", precio500g: 195, precioKg: 390 },
 ];
 
 const menuHighlights = [
@@ -69,6 +83,32 @@ export default function Menu() {
         </div>
       </section>
 
+      {/* Menu por Kilos - Para Llevar */}
+      <section className="py-8 bg-accent/10 border-b border-border">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col md:flex-row items-center justify-center gap-4">
+            <div className="text-center md:text-left">
+              <h2 className="text-lg font-semibold text-foreground flex items-center justify-center md:justify-start gap-2">
+                <Scale className="w-5 h-5 text-accent" />
+                Menú por Kilos - Para Llevar
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Disponible en todas las sucursales
+              </p>
+            </div>
+            <Button
+              asChild
+              className="bg-accent hover:bg-coral-light text-accent-foreground"
+            >
+              <a href="/menus/menu-kilos.pdf" target="_blank" rel="noopener noreferrer">
+                <Download className="w-4 h-4 mr-2" />
+                Descargar Menú por Kilos
+              </a>
+            </Button>
+          </div>
+        </div>
+      </section>
+
       {/* Branch Selector & Download */}
       <section className="py-8 bg-secondary border-b border-border">
         <div className="container mx-auto px-4">
@@ -117,6 +157,12 @@ export default function Menu() {
                   {category.name}
                 </TabsTrigger>
               ))}
+              <TabsTrigger
+                value="kilos"
+                className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground px-6 py-2 rounded-full"
+              >
+                Para Llevar x Kilos
+              </TabsTrigger>
             </TabsList>
 
             {menuHighlights.map((category) => (
@@ -146,6 +192,46 @@ export default function Menu() {
                 </div>
               </TabsContent>
             ))}
+
+            {/* Tab Para Llevar x Kilos */}
+            <TabsContent value="kilos">
+              <div className="max-w-4xl mx-auto">
+                <div className="bg-accent/10 rounded-lg p-4 mb-6 text-center">
+                  <p className="text-foreground font-medium">
+                    Todos los pedidos incluyen: tostadas, limones y salsa
+                  </p>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    Disponible en todas las sucursales
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {menuKilos.map((item, index) => (
+                    <Card 
+                      key={index} 
+                      className="hover:shadow-md transition-shadow border-border animate-fade-in"
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                    >
+                      <CardContent className="p-6">
+                        <h3 className="font-semibold text-foreground text-lg mb-3">
+                          {item.name}
+                        </h3>
+                        <div className="flex justify-between items-center">
+                          <div className="text-center">
+                            <span className="text-muted-foreground text-sm block">500g</span>
+                            <span className="text-accent font-bold text-lg">${item.precio500g}</span>
+                          </div>
+                          <div className="h-8 w-px bg-border" />
+                          <div className="text-center">
+                            <span className="text-muted-foreground text-sm block">1 kg</span>
+                            <span className="text-accent font-bold text-lg">${item.precioKg}</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
           </Tabs>
 
           {/* Note */}
