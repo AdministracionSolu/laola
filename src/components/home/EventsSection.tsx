@@ -1,7 +1,7 @@
 import { Calendar, Music, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import restauranteBarra from "@/assets/restaurante-barra.jpeg";
+import zonaPrivada from "@/assets/zona-privada.jpeg";
 
 export function EventsSection() {
   return (
@@ -70,8 +70,8 @@ export function EventsSection() {
           <div className="relative">
             <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl">
               <img
-                src={restauranteBarra}
-                alt="Ambiente del restaurante La Ola con tablas de surf"
+                src={zonaPrivada}
+                alt="Zona privada y cervecería de La Ola con botellas premium"
                 className="w-full h-full object-cover"
               />
             </div>

@@ -1,33 +1,37 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Star } from "lucide-react";
+import tostadaSanBlas from "@/assets/tostada-san-blas.jpeg";
+import vasoLoco from "@/assets/vaso-loco.jpeg";
+import pateCamaron from "@/assets/pate-camaron.jpeg";
+import calloHacha from "@/assets/callo-hacha.jpeg";
 
 const dishes = [
   {
     id: 1,
     name: "Tostada Especial San Blas",
     description: "Nuestra tostada insignia con mariscos frescos del Pacífico",
-    image: "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?w=400&h=300&fit=crop",
+    image: tostadaSanBlas,
     featured: true,
   },
   {
     id: 2,
-    name: "Vaso Macho",
+    name: "Vaso Loco",
     description: "El clásico que nos identifica, preparado con receta tradicional",
-    image: "https://images.unsplash.com/photo-1582234372722-50d7ccc30ebd?w=400&h=300&fit=crop",
+    image: vasoLoco,
     featured: true,
   },
   {
     id: 3,
     name: "Tostada de Paté de Camarón",
     description: "Delicioso paté de camarón sobre tostada crujiente",
-    image: "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=400&h=300&fit=crop",
+    image: pateCamaron,
     featured: false,
   },
   {
     id: 4,
-    name: "Aguachile Verde",
-    description: "Camarones frescos en salsa de chile verde y limón",
-    image: "https://images.unsplash.com/photo-1535399831218-d5bd36d1a6b3?w=400&h=300&fit=crop",
+    name: "Callo de Hacha",
+    description: "Frescura del mar servida con limón y salsa especial",
+    image: calloHacha,
     featured: false,
   },
 ];
