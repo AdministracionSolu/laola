@@ -15,7 +15,7 @@ interface HistoricoTableProps {
 
 export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false }: HistoricoTableProps) {
   const exportarCSV = () => {
-    const headers = ["Fecha", "Hora", "Sucursal", "Tipo", "Corte X", "Tarjetas", "Efectivo", "Cobradas", "Por Cobrar", "Total"];
+    const headers = ["Fecha", "Hora", "Sucursal", "Tipo", "Corte X", "Tarjetas", "Efectivo", "Cobradas", "Por Cobrar", "Total", "Pago Proveedores", "Salarios", "Propinas", "Compras", "Pago Servicios"];
     const rows = cortes.map((corte) => [
       format(parseISO(corte.created_at), "yyyy-MM-dd"),
       format(parseISO(corte.created_at), "HH:mm"),
@@ -27,6 +27,11 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false }: Hi
       corte.cobradas,
       corte.por_cobrar,
       corte.total,
+      corte.pago_proveedores || 0,
+      corte.salarios || 0,
+      corte.propinas || 0,
+      corte.compras || 0,
+      corte.pago_servicios || 0,
     ]);
     
     const csv = [headers, ...rows].map((row) => row.join(",")).join("\n");
@@ -78,6 +83,11 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false }: Hi
                   <TableHead className="text-right">Cobradas</TableHead>
                   <TableHead className="text-right">Por Cobrar</TableHead>
                   <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right">Proveedores</TableHead>
+                  <TableHead className="text-right">Salarios</TableHead>
+                  <TableHead className="text-right">Propinas</TableHead>
+                  <TableHead className="text-right">Compras</TableHead>
+                  <TableHead className="text-right">Servicios</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -116,6 +126,21 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false }: Hi
                     </TableCell>
                     <TableCell className="text-right font-semibold">
                       {formatMoney(Number(corte.total))}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {formatMoney(Number(corte.pago_proveedores || 0))}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {formatMoney(Number(corte.salarios || 0))}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {formatMoney(Number(corte.propinas || 0))}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {formatMoney(Number(corte.compras || 0))}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {formatMoney(Number(corte.pago_servicios || 0))}
                     </TableCell>
                   </TableRow>
                 ))}

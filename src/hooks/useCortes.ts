@@ -24,6 +24,12 @@ export interface Corte {
   sucursales: {
     nombre: string;
   };
+  // Campos opcionales para cierre
+  pago_proveedores?: number;
+  salarios?: number;
+  propinas?: number;
+  compras?: number;
+  pago_servicios?: number;
 }
 
 export interface Totales {

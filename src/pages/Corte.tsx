@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, Send, Store } from "lucide-react";
+import { CheckCircle2, Send, Store, AlertCircle } from "lucide-react";
 import { z } from "zod";
 
 // Logo de La Ola
@@ -28,7 +28,15 @@ const corteSchema = z.object({
   cobradas: z.number().min(0, "Debe ser mayor o igual a 0").max(9999999999, "Número muy grande"),
   por_cobrar: z.number().min(0, "Debe ser mayor o igual a 0").max(9999999999, "Número muy grande"),
   total: z.number().min(0, "Debe ser mayor o igual a 0").max(9999999999, "Número muy grande"),
+  // Campos opcionales para cierre
+  pago_proveedores: z.number().min(0).max(9999999999).optional(),
+  salarios: z.number().min(0).max(9999999999).optional(),
+  propinas: z.number().min(0).max(9999999999).optional(),
+  compras: z.number().min(0).max(9999999999).optional(),
+  pago_servicios: z.number().min(0).max(9999999999).optional(),
 });
+
+const TOLERANCIA_MXN = 50;
 
 export default function Corte() {
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
@@ -40,13 +48,48 @@ export default function Corte() {
   const [cobradas, setCobradas] = useState("");
   const [porCobrar, setPorCobrar] = useState("");
   const [total, setTotal] = useState("");
+  
+  // Campos opcionales para cierre
+  const [pagoProveedores, setPagoProveedores] = useState("");
+  const [salarios, setSalarios] = useState("");
+  const [propinas, setPropinas] = useState("");
+  const [compras, setCompras] = useState("");
+  const [pagoServicios, setPagoServicios] = useState("");
+  
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [errorValidacion, setErrorValidacion] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
     fetchSucursales();
   }, []);
+
+  // Calcular total automáticamente
+  useEffect(() => {
+    const tarjetasNum = parseFloat(tarjetas) || 0;
+    const efectivoNum = parseFloat(efectivo) || 0;
+    const cobradasNum = parseFloat(cobradas) || 0;
+    const porCobrarNum = parseFloat(porCobrar) || 0;
+    
+    const totalCalculado = tarjetasNum + efectivoNum + cobradasNum + porCobrarNum;
+    setTotal(totalCalculado.toFixed(2));
+  }, [tarjetas, efectivo, cobradas, porCobrar]);
+
+  // Validar diferencia con Corte X
+  useEffect(() => {
+    const corteXNum = parseFloat(corteX) || 0;
+    const totalNum = parseFloat(total) || 0;
+    const diferencia = Math.abs(totalNum - corteXNum);
+    
+    if (corteXNum > 0 && totalNum > 0 && diferencia > TOLERANCIA_MXN) {
+      setErrorValidacion(
+        `El Total ($${totalNum.toLocaleString("es-MX", { minimumFractionDigits: 2 })}) difiere del Corte X ($${corteXNum.toLocaleString("es-MX", { minimumFractionDigits: 2 })}) por $${diferencia.toLocaleString("es-MX", { minimumFractionDigits: 2 })}. La diferencia máxima permitida es de $${TOLERANCIA_MXN} MXN.`
+      );
+    } else {
+      setErrorValidacion("");
+    }
+  }, [corteX, total]);
 
   const fetchSucursales = async () => {
     const { data, error } = await supabase
@@ -68,6 +111,17 @@ export default function Corte() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Verificar tolerancia antes de enviar
+    if (errorValidacion) {
+      toast({
+        title: "No se puede enviar",
+        description: errorValidacion,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsLoading(true);
 
     // Validar datos
@@ -80,6 +134,11 @@ export default function Corte() {
       cobradas: parseFloat(cobradas) || 0,
       por_cobrar: parseFloat(porCobrar) || 0,
       total: parseFloat(total) || 0,
+      pago_proveedores: pagoProveedores ? parseFloat(pagoProveedores) : undefined,
+      salarios: salarios ? parseFloat(salarios) : undefined,
+      propinas: propinas ? parseFloat(propinas) : undefined,
+      compras: compras ? parseFloat(compras) : undefined,
+      pago_servicios: pagoServicios ? parseFloat(pagoServicios) : undefined,
     });
 
     if (!result.success) {
@@ -92,16 +151,23 @@ export default function Corte() {
       return;
     }
 
-    const { error } = await supabase.from("cortes_caja").insert({
+    const insertData = {
       sucursal_id: sucursalId,
-      tipo_corte: tipoCorte,
+      tipo_corte: tipoCorte as "momento" | "cierre",
       corte_x: parseFloat(corteX) || 0,
       tarjetas: parseFloat(tarjetas) || 0,
       efectivo: parseFloat(efectivo) || 0,
       cobradas: parseFloat(cobradas) || 0,
       por_cobrar: parseFloat(porCobrar) || 0,
       total: parseFloat(total) || 0,
-    });
+      pago_proveedores: tipoCorte === "cierre" ? (parseFloat(pagoProveedores) || 0) : 0,
+      salarios: tipoCorte === "cierre" ? (parseFloat(salarios) || 0) : 0,
+      propinas: tipoCorte === "cierre" ? (parseFloat(propinas) || 0) : 0,
+      compras: tipoCorte === "cierre" ? (parseFloat(compras) || 0) : 0,
+      pago_servicios: tipoCorte === "cierre" ? (parseFloat(pagoServicios) || 0) : 0,
+    };
+
+    const { error } = await supabase.from("cortes_caja").insert(insertData);
 
     setIsLoading(false);
 
@@ -131,6 +197,12 @@ export default function Corte() {
     setCobradas("");
     setPorCobrar("");
     setTotal("");
+    setPagoProveedores("");
+    setSalarios("");
+    setPropinas("");
+    setCompras("");
+    setPagoServicios("");
+    setErrorValidacion("");
   };
 
   if (isSuccess) {
@@ -211,7 +283,7 @@ export default function Corte() {
               </RadioGroup>
             </div>
 
-            {/* Campos numéricos */}
+            {/* Campos numéricos principales */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="corte_x">Corte X</Label>
@@ -279,7 +351,7 @@ export default function Corte() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="total">Total</Label>
+                <Label htmlFor="total">Total (calculado)</Label>
                 <Input
                   id="total"
                   type="number"
@@ -287,16 +359,93 @@ export default function Corte() {
                   min="0"
                   placeholder="0.00"
                   value={total}
-                  onChange={(e) => setTotal(e.target.value)}
-                  required
+                  readOnly
+                  className="bg-muted"
                 />
               </div>
             </div>
 
+            {/* Error de validación de tolerancia */}
+            {errorValidacion && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <span>{errorValidacion}</span>
+              </div>
+            )}
+
+            {/* Campos opcionales para Cierre */}
+            {tipoCorte === "cierre" && (
+              <div className="space-y-4 pt-4 border-t">
+                <Label className="text-base font-semibold">Gastos del día (opcionales)</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="pago_proveedores">Pago a proveedores</Label>
+                    <Input
+                      id="pago_proveedores"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={pagoProveedores}
+                      onChange={(e) => setPagoProveedores(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="salarios">Salarios</Label>
+                    <Input
+                      id="salarios"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={salarios}
+                      onChange={(e) => setSalarios(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="propinas">Propinas</Label>
+                    <Input
+                      id="propinas"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={propinas}
+                      onChange={(e) => setPropinas(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="compras">Compras</Label>
+                    <Input
+                      id="compras"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={compras}
+                      onChange={(e) => setCompras(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label htmlFor="pago_servicios">Pago de servicios</Label>
+                    <Input
+                      id="pago_servicios"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={pagoServicios}
+                      onChange={(e) => setPagoServicios(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading || !sucursalId}
+              disabled={isLoading || !sucursalId || !!errorValidacion}
             >
               {isLoading ? (
                 "Enviando..."

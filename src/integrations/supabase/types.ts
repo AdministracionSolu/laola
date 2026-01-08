@@ -17,11 +17,16 @@ export type Database = {
       cortes_caja: {
         Row: {
           cobradas: number
+          compras: number | null
           corte_x: number
           created_at: string
           efectivo: number
           id: string
+          pago_proveedores: number | null
+          pago_servicios: number | null
           por_cobrar: number
+          propinas: number | null
+          salarios: number | null
           sucursal_id: string
           tarjetas: number
           tipo_corte: Database["public"]["Enums"]["tipo_corte"]
@@ -29,11 +34,16 @@ export type Database = {
         }
         Insert: {
           cobradas?: number
+          compras?: number | null
           corte_x?: number
           created_at?: string
           efectivo?: number
           id?: string
+          pago_proveedores?: number | null
+          pago_servicios?: number | null
           por_cobrar?: number
+          propinas?: number | null
+          salarios?: number | null
           sucursal_id: string
           tarjetas?: number
           tipo_corte: Database["public"]["Enums"]["tipo_corte"]
@@ -41,11 +51,16 @@ export type Database = {
         }
         Update: {
           cobradas?: number
+          compras?: number | null
           corte_x?: number
           created_at?: string
           efectivo?: number
           id?: string
+          pago_proveedores?: number | null
+          pago_servicios?: number | null
           por_cobrar?: number
+          propinas?: number | null
+          salarios?: number | null
           sucursal_id?: string
           tarjetas?: number
           tipo_corte?: Database["public"]["Enums"]["tipo_corte"]
