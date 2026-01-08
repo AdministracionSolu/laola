@@ -47,8 +47,8 @@ export function Footer() {
             <ul className="space-y-3 text-sm">
               <li className="flex items-center gap-2 text-primary-foreground/80">
                 <Phone className="w-4 h-4 text-accent" />
-                <a href="tel:+525555555555" className="hover:text-accent transition-colors">
-                  55 5555 5555
+                <a href="tel:+523111330891" className="hover:text-accent transition-colors">
+                  311 133 0891
                 </a>
               </li>
               <li className="flex items-center gap-2 text-primary-foreground/80">
@@ -59,7 +59,7 @@ export function Footer() {
               </li>
               <li className="flex items-start gap-2 text-primary-foreground/80">
                 <MapPin className="w-4 h-4 text-accent mt-0.5" />
-                <span>4 sucursales en CDMX y Cuernavaca</span>
+                <span>4 sucursales en Tepic, Nayarit y Zapopan, Jalisco</span>
               </li>
             </ul>
           </div>
@@ -69,7 +69,7 @@ export function Footer() {
             <h4 className="font-semibold mb-4">Síguenos</h4>
             <div className="flex gap-4">
               <a
-                href="https://facebook.com/laola"
+                href="https://www.facebook.com/Laolaseafood/?locale=es_LA"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full bg-primary-foreground/10 flex items-center justify-center hover:bg-accent transition-colors"
@@ -78,7 +78,7 @@ export function Footer() {
                 <Facebook className="w-5 h-5" />
               </a>
               <a
-                href="https://instagram.com/laola"
+                href="https://www.instagram.com/laola.seafood/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full bg-primary-foreground/10 flex items-center justify-center hover:bg-accent transition-colors"

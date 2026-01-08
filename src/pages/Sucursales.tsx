@@ -11,8 +11,9 @@ const locations = [
     city: "Tepic, Nayarit",
     phone: "+52 311 133 0891",
     hours: "10:00 A.M - 23:59 P.M",
-    facebook: "https://facebook.com/laoladelvalle",
+    facebook: "https://www.facebook.com/Laolaseafood/?locale=es_LA",
     mapUrl: "https://maps.google.com/?q=Av+del+Valle+161+Tepic+Nayarit",
+    embedMap: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3724.5!2d-104.8937!3d21.5051!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMjHCsDMwJzE4LjQiTiAxMDTCsDUzJzM3LjMiVw!5e0!3m2!1ses!2smx!4v1700000000000",
     features: ["Privado disponible", "Música en vivo fines de semana"],
     menuPdf: "/menus/menu-del-valle.pdf",
   },
@@ -23,8 +24,9 @@ const locations = [
     city: "Tepic, Nayarit",
     phone: "+52 311 169 3323",
     hours: "Dom-Mié: 11:00 A.M - 23:59 P.M / Jue-Sáb: 11:00 A.M - 2:00 A.M",
-    facebook: "https://facebook.com/laolainsurgentes",
+    facebook: "https://www.facebook.com/Laolaseafood/?locale=es_LA",
     mapUrl: "https://maps.google.com/?q=De+Los+Insurgentes+Pte+233+Versalles+Tepic+Nayarit",
+    embedMap: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3724.5!2d-104.9001!3d21.5055!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMjHCsDMwJzE5LjgiTiAxMDTCsDU0JzAwLjQiVw!5e0!3m2!1ses!2smx!4v1700000000000",
     features: ["Estacionamiento", "Cervecería"],
     menuPdf: "/menus/menu-insurgentes.pdf",
   },
@@ -35,8 +37,9 @@ const locations = [
     city: "Zapopan, Jalisco",
     phone: "+52 33 1789 3505",
     hours: "11:00 A.M - 20:00 P.M",
-    facebook: "https://facebook.com/laolasolares",
+    facebook: "https://www.facebook.com/Laolaseafood/?locale=es_LA",
     mapUrl: "https://maps.google.com/?q=Paseo+Solares+1639+Zapopan+Jalisco",
+    embedMap: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3724.5!2d-103.4428!3d20.7139!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMjDCsDQyJzUwLjAiTiAxMDPCsDI2JzM0LjEiVw!5e0!3m2!1ses!2smx!4v1700000000000",
     features: ["Terraza", "Música en vivo sábados"],
     menuPdf: "/menus/menu-solares.pdf",
   },
@@ -47,8 +50,9 @@ const locations = [
     city: "Tepic, Nayarit",
     phone: "+52 311 217 1395",
     hours: "10:00 A.M - 18:00 P.M",
-    facebook: "https://facebook.com/laolabrisas",
+    facebook: "https://www.facebook.com/Laolaseafood/?locale=es_LA",
     mapUrl: "https://maps.google.com/?q=De+Los+Insurgentes+Pte+959+Tepic+Nayarit",
+    embedMap: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3724.5!2d-104.9156!3d21.4989!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMjHCsDI5JzU2LjAiTiAxMDTCsDU0JzU2LjIiVw!5e0!3m2!1ses!2smx!4v1700000000000",
     features: ["Vista al lago", "Área para niños"],
     menuPdf: "/menus/menu-las-brisas.pdf",
   },
@@ -80,19 +84,19 @@ export default function Sucursales() {
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <CardContent className="p-0">
-                  {/* Map placeholder */}
-                  <div className="h-48 bg-secondary relative overflow-hidden">
-                    <div className="absolute inset-0 flex items-center justify-center bg-primary/5">
-                      <MapPin className="w-12 h-12 text-primary/30" />
-                    </div>
-                    <a
-                      href={location.mapUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="absolute inset-0 flex items-center justify-center bg-primary/0 hover:bg-primary/10 transition-colors"
-                    >
-                      <span className="sr-only">Ver en Google Maps</span>
-                    </a>
+                  {/* Embedded Google Map */}
+                  <div className="h-48 relative overflow-hidden">
+                    <iframe
+                      src={location.embedMap}
+                      width="100%"
+                      height="100%"
+                      style={{ border: 0 }}
+                      allowFullScreen
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      title={`Mapa de ${location.name}`}
+                      className="absolute inset-0"
+                    />
                   </div>
 
                   {/* Content */}
