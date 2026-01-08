@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, Send, Store, AlertCircle } from "lucide-react";
+import { CheckCircle2, Send, Store } from "lucide-react";
 import { z } from "zod";
 
 // Logo de La Ola
@@ -36,7 +36,7 @@ const corteSchema = z.object({
   pago_servicios: z.number().min(0).max(9999999999).optional(),
 });
 
-const TOLERANCIA_MXN = 50;
+
 
 export default function Corte() {
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
@@ -58,38 +58,22 @@ export default function Corte() {
   
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [errorValidacion, setErrorValidacion] = useState("");
+  
   const { toast } = useToast();
 
   useEffect(() => {
     fetchSucursales();
   }, []);
 
-  // Calcular total automáticamente
+  // Calcular total automáticamente: tarjetas + efectivo + por_cobrar
   useEffect(() => {
     const tarjetasNum = parseFloat(tarjetas) || 0;
     const efectivoNum = parseFloat(efectivo) || 0;
-    const cobradasNum = parseFloat(cobradas) || 0;
     const porCobrarNum = parseFloat(porCobrar) || 0;
     
-    const totalCalculado = tarjetasNum + efectivoNum + cobradasNum + porCobrarNum;
+    const totalCalculado = tarjetasNum + efectivoNum + porCobrarNum;
     setTotal(totalCalculado.toFixed(2));
-  }, [tarjetas, efectivo, cobradas, porCobrar]);
-
-  // Validar diferencia con Corte X
-  useEffect(() => {
-    const corteXNum = parseFloat(corteX) || 0;
-    const totalNum = parseFloat(total) || 0;
-    const diferencia = Math.abs(totalNum - corteXNum);
-    
-    if (corteXNum > 0 && totalNum > 0 && diferencia > TOLERANCIA_MXN) {
-      setErrorValidacion(
-        `El Total ($${totalNum.toLocaleString("es-MX", { minimumFractionDigits: 2 })}) difiere del Corte X ($${corteXNum.toLocaleString("es-MX", { minimumFractionDigits: 2 })}) por $${diferencia.toLocaleString("es-MX", { minimumFractionDigits: 2 })}. La diferencia máxima permitida es de $${TOLERANCIA_MXN} MXN.`
-      );
-    } else {
-      setErrorValidacion("");
-    }
-  }, [corteX, total]);
+  }, [tarjetas, efectivo, porCobrar]);
 
   const fetchSucursales = async () => {
     const { data, error } = await supabase
@@ -111,17 +95,6 @@ export default function Corte() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Verificar tolerancia antes de enviar
-    if (errorValidacion) {
-      toast({
-        title: "No se puede enviar",
-        description: errorValidacion,
-        variant: "destructive",
-      });
-      return;
-    }
-    
     setIsLoading(true);
 
     // Validar datos
@@ -202,7 +175,6 @@ export default function Corte() {
     setPropinas("");
     setCompras("");
     setPagoServicios("");
-    setErrorValidacion("");
   };
 
   if (isSuccess) {
@@ -365,13 +337,6 @@ export default function Corte() {
               </div>
             </div>
 
-            {/* Error de validación de tolerancia */}
-            {errorValidacion && (
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <span>{errorValidacion}</span>
-              </div>
-            )}
 
             {/* Campos opcionales para Cierre */}
             {tipoCorte === "cierre" && (
@@ -445,7 +410,7 @@ export default function Corte() {
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading || !sucursalId || !!errorValidacion}
+              disabled={isLoading || !sucursalId}
             >
               {isLoading ? (
                 "Enviando..."
