@@ -16,30 +16,36 @@ export type Database = {
     Tables: {
       cortes_caja: {
         Row: {
+          cobradas: number
           corte_x: number
           created_at: string
           efectivo: number
           id: string
+          por_cobrar: number
           sucursal_id: string
           tarjetas: number
           tipo_corte: Database["public"]["Enums"]["tipo_corte"]
           total: number
         }
         Insert: {
+          cobradas?: number
           corte_x?: number
           created_at?: string
           efectivo?: number
           id?: string
+          por_cobrar?: number
           sucursal_id: string
           tarjetas?: number
           tipo_corte: Database["public"]["Enums"]["tipo_corte"]
           total?: number
         }
         Update: {
+          cobradas?: number
           corte_x?: number
           created_at?: string
           efectivo?: number
           id?: string
+          por_cobrar?: number
           sucursal_id?: string
           tarjetas?: number
           tipo_corte?: Database["public"]["Enums"]["tipo_corte"]

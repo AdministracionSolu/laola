@@ -15,7 +15,7 @@ interface HistoricoTableProps {
 
 export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false }: HistoricoTableProps) {
   const exportarCSV = () => {
-    const headers = ["Fecha", "Hora", "Sucursal", "Tipo", "Corte X", "Tarjetas", "Efectivo", "Total"];
+    const headers = ["Fecha", "Hora", "Sucursal", "Tipo", "Corte X", "Tarjetas", "Efectivo", "Cobradas", "Por Cobrar", "Total"];
     const rows = cortes.map((corte) => [
       format(parseISO(corte.created_at), "yyyy-MM-dd"),
       format(parseISO(corte.created_at), "HH:mm"),
@@ -24,6 +24,8 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false }: Hi
       corte.corte_x,
       corte.tarjetas,
       corte.efectivo,
+      corte.cobradas,
+      corte.por_cobrar,
       corte.total,
     ]);
     
@@ -73,6 +75,8 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false }: Hi
                   <TableHead className="text-right">Corte X</TableHead>
                   <TableHead className="text-right">Tarjetas</TableHead>
                   <TableHead className="text-right">Efectivo</TableHead>
+                  <TableHead className="text-right">Cobradas</TableHead>
+                  <TableHead className="text-right">Por Cobrar</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                 </TableRow>
               </TableHeader>
@@ -103,6 +107,12 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false }: Hi
                     </TableCell>
                     <TableCell className="text-right">
                       {formatMoney(Number(corte.efectivo))}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatMoney(Number(corte.cobradas))}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatMoney(Number(corte.por_cobrar))}
                     </TableCell>
                     <TableCell className="text-right font-semibold">
                       {formatMoney(Number(corte.total))}
