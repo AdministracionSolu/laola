@@ -4,7 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, ExternalLink } from "lucide-react";
 
-const menuCategories = [
+const branches = [
+  { id: "del-valle", name: "Del Valle", pdfUrl: "/menus/menu-del-valle.pdf" },
+  { id: "insurgentes", name: "Insurgentes", pdfUrl: "/menus/menu-insurgentes.pdf" },
+  { id: "solares", name: "Solares", pdfUrl: "/menus/menu-solares.pdf" },
+  { id: "las-brisas", name: "Las Brisas", pdfUrl: "/menus/menu-las-brisas.pdf" },
+];
+
+const menuHighlights = [
   {
     id: "tostadas",
     name: "Tostadas",
@@ -62,21 +69,46 @@ export default function Menu() {
         </div>
       </section>
 
-      {/* Menu Content */}
+      {/* Branch Selector & Download */}
+      <section className="py-8 bg-secondary border-b border-border">
+        <div className="container mx-auto px-4">
+          <h2 className="text-center text-lg font-semibold text-foreground mb-4">
+            Descarga el menú de tu sucursal
+          </h2>
+          <div className="flex flex-wrap justify-center gap-3">
+            {branches.map((branch) => (
+              <Button
+                key={branch.id}
+                asChild
+                variant="outline"
+                className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+              >
+                <a href={branch.pdfUrl} target="_blank" rel="noopener noreferrer">
+                  <Download className="w-4 h-4 mr-2" />
+                  {branch.name}
+                </a>
+              </Button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Menu Highlights */}
       <section className="py-12 md:py-16 bg-background">
         <div className="container mx-auto px-4">
-          {/* Download Button */}
-          <div className="flex justify-center mb-8">
-            <Button variant="outline" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground">
-              <Download className="w-4 h-4 mr-2" />
-              Descargar Menú Completo (PDF)
-            </Button>
+          <div className="text-center mb-8">
+            <h2 className="text-2xl md:text-3xl font-display font-bold text-foreground">
+              Platillos Destacados
+            </h2>
+            <p className="text-muted-foreground mt-2">
+              Algunos de nuestros favoritos
+            </p>
           </div>
 
           {/* Menu Tabs */}
           <Tabs defaultValue="tostadas" className="w-full">
             <TabsList className="w-full flex flex-wrap justify-center gap-2 bg-transparent h-auto mb-8">
-              {menuCategories.map((category) => (
+              {menuHighlights.map((category) => (
                 <TabsTrigger
                   key={category.id}
                   value={category.id}
@@ -87,7 +119,7 @@ export default function Menu() {
               ))}
             </TabsList>
 
-            {menuCategories.map((category) => (
+            {menuHighlights.map((category) => (
               <TabsContent key={category.id} value={category.id}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
                   {category.items.map((item, index) => (
