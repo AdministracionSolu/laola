@@ -1,125 +1,71 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { LogOut, RefreshCw, Store, Calendar, TrendingUp, CreditCard, Banknote, DollarSign } from "lucide-react";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { LogOut, RefreshCw, Store, TrendingUp, CreditCard, Banknote, DollarSign, LayoutDashboard, History } from "lucide-react";
+import { useEffect } from "react";
 
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 
-interface Sucursal {
-  id: string;
-  nombre: string;
-}
-
-interface Corte {
-  id: string;
-  sucursal_id: string;
-  tipo_corte: "momento" | "cierre";
-  corte_x: number;
-  tarjetas: number;
-  efectivo: number;
-  total: number;
-  created_at: string;
-  sucursales: {
-    nombre: string;
-  };
-}
+import { usePeriodo } from "@/hooks/usePeriodo";
+import { useCortes } from "@/hooks/useCortes";
+import { PeriodSelector } from "@/components/admin/PeriodSelector";
+import { TrendChart } from "@/components/admin/TrendChart";
+import { ComparativoCard } from "@/components/admin/ComparativoCard";
+import { SucursalStatus } from "@/components/admin/SucursalStatus";
+import { HistoricoTable } from "@/components/admin/HistoricoTable";
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
 
 export default function AdminDashboard() {
-  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
-  const [cortes, setCortes] = useState<Corte[]>([]);
   const [filtroSucursal, setFiltroSucursal] = useState<string>("todas");
-  const [filtroFecha, setFiltroFecha] = useState<string>(format(new Date(), "yyyy-MM-dd"));
   const [filtroTipo, setFiltroTipo] = useState<string>("todos");
-  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  const {
+    tipoPeriodo,
+    setTipoPeriodo,
+    rangoPersonalizado,
+    setRangoPersonalizado,
+    rangoActual,
+    rangoAnterior,
+    etiquetaPeriodo,
+    formatoFechaRango,
+  } = usePeriodo();
+
+  const {
+    sucursales,
+    cortes,
+    isLoading,
+    totales,
+    totalesAnterior,
+    datosTendencia,
+    dataPorSucursal,
+    estadoSucursales,
+    refetch,
+  } = useCortes({
+    rango: rangoActual,
+    rangoAnterior,
+    filtroSucursal,
+    filtroTipo,
+  });
 
   useEffect(() => {
     checkAuth();
   }, []);
 
-  useEffect(() => {
-    if (sucursales.length > 0) {
-      fetchCortes();
-    }
-  }, [filtroSucursal, filtroFecha, filtroTipo, sucursales]);
-
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       navigate("/admin/login");
-      return;
     }
-    fetchSucursales();
-  };
-
-  const fetchSucursales = async () => {
-    const { data, error } = await supabase
-      .from("sucursales")
-      .select("id, nombre")
-      .order("nombre");
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar las sucursales",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setSucursales(data || []);
-    setIsLoading(false);
-  };
-
-  const fetchCortes = async () => {
-    let query = supabase
-      .from("cortes_caja")
-      .select("*, sucursales(nombre)")
-      .order("created_at", { ascending: false });
-
-    // Filtro por sucursal
-    if (filtroSucursal !== "todas") {
-      query = query.eq("sucursal_id", filtroSucursal);
-    }
-
-    // Filtro por fecha
-    if (filtroFecha) {
-      const startOfDay = `${filtroFecha}T00:00:00`;
-      const endOfDay = `${filtroFecha}T23:59:59`;
-      query = query.gte("created_at", startOfDay).lte("created_at", endOfDay);
-    }
-
-    // Filtro por tipo
-    if (filtroTipo !== "todos") {
-      query = query.eq("tipo_corte", filtroTipo as "momento" | "cierre");
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los cortes",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setCortes(data as Corte[] || []);
   };
 
   const handleLogout = async () => {
@@ -128,39 +74,12 @@ export default function AdminDashboard() {
   };
 
   const handleRefresh = () => {
-    fetchCortes();
+    refetch();
     toast({
       title: "Actualizado",
       description: "Los datos se han actualizado",
     });
   };
-
-  // Calcular totales
-  const totales = cortes.reduce(
-    (acc, corte) => ({
-      corte_x: acc.corte_x + Number(corte.corte_x),
-      tarjetas: acc.tarjetas + Number(corte.tarjetas),
-      efectivo: acc.efectivo + Number(corte.efectivo),
-      total: acc.total + Number(corte.total),
-    }),
-    { corte_x: 0, tarjetas: 0, efectivo: 0, total: 0 }
-  );
-
-  // Datos para gráfica de barras por sucursal
-  const dataPorSucursal = sucursales.map((sucursal) => {
-    const cortesDeEsta = cortes.filter((c) => c.sucursal_id === sucursal.id);
-    const totalSucursal = cortesDeEsta.reduce((acc, c) => acc + Number(c.total), 0);
-    return {
-      nombre: sucursal.nombre,
-      total: totalSucursal,
-    };
-  });
-
-  // Datos para gráfica de pie (tarjetas vs efectivo)
-  const dataPie = [
-    { name: "Tarjetas", value: totales.tarjetas },
-    { name: "Efectivo", value: totales.efectivo },
-  ];
 
   const formatMoney = (value: number) => {
     return new Intl.NumberFormat("es-MX", {
@@ -168,6 +87,14 @@ export default function AdminDashboard() {
       currency: "MXN",
     }).format(value);
   };
+
+  // Datos para gráfica de pie (tarjetas vs efectivo)
+  const dataPie = [
+    { name: "Tarjetas", value: totales.tarjetas },
+    { name: "Efectivo", value: totales.efectivo },
+  ];
+
+  const esDiaUnico = tipoPeriodo === "hoy" || tipoPeriodo === "ayer";
 
   if (isLoading) {
     return (
@@ -202,13 +129,26 @@ export default function AdminDashboard() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        {/* Filtros */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="text-lg">Filtros</CardTitle>
+        {/* Selector de período */}
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Período</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <PeriodSelector
+              tipoPeriodo={tipoPeriodo}
+              onTipoPeriodoChange={setTipoPeriodo}
+              onRangoPersonalizadoChange={setRangoPersonalizado}
+              etiquetaPeriodo={etiquetaPeriodo}
+              formatoFechaRango={formatoFechaRango}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Filtros adicionales */}
+        <Card className="mb-6">
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <Store className="w-4 h-4" />
@@ -229,17 +169,6 @@ export default function AdminDashboard() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  Fecha
-                </Label>
-                <Input
-                  type="date"
-                  value={filtroFecha}
-                  onChange={(e) => setFiltroFecha(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
                 <Label>Tipo de Corte</Label>
                 <Select value={filtroTipo} onValueChange={setFiltroTipo}>
                   <SelectTrigger>
@@ -256,170 +185,131 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Tarjetas de resumen */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Corte X</p>
-                  <p className="text-2xl font-bold">{formatMoney(totales.corte_x)}</p>
-                </div>
-                <DollarSign className="w-10 h-10 text-muted-foreground/30" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Tarjetas</p>
-                  <p className="text-2xl font-bold">{formatMoney(totales.tarjetas)}</p>
-                </div>
-                <CreditCard className="w-10 h-10 text-blue-500/30" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Efectivo</p>
-                  <p className="text-2xl font-bold">{formatMoney(totales.efectivo)}</p>
-                </div>
-                <Banknote className="w-10 h-10 text-green-500/30" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-primary text-primary-foreground">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm opacity-80">Total General</p>
-                  <p className="text-2xl font-bold">{formatMoney(totales.total)}</p>
-                </div>
-                <TrendingUp className="w-10 h-10 opacity-30" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Estado de sucursales (solo para día único) */}
+        {esDiaUnico && (
+          <div className="mb-6">
+            <SucursalStatus estados={estadoSucursales} mostrarSoloDia={esDiaUnico} />
+          </div>
+        )}
 
-        {/* Gráficas */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Ventas por Sucursal</CardTitle>
-              <CardDescription>Total del día por cada sucursal</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dataPorSucursal}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="nombre" />
-                    <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-                    <Tooltip formatter={(value: number) => formatMoney(value)} />
-                    <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+        <Tabs defaultValue="resumen" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="resumen" className="gap-2">
+              <LayoutDashboard className="w-4 h-4" />
+              Resumen
+            </TabsTrigger>
+            <TabsTrigger value="historico" className="gap-2">
+              <History className="w-4 h-4" />
+              Histórico
+            </TabsTrigger>
+          </TabsList>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Distribución de Pagos</CardTitle>
-              <CardDescription>Tarjetas vs Efectivo</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={dataPie}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={100}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {dataPie.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: number) => formatMoney(value)} />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+          <TabsContent value="resumen" className="space-y-6">
+            {/* Tarjetas de resumen con comparativos */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <ComparativoCard
+                titulo="Corte X"
+                valor={totales.corte_x}
+                valorAnterior={totalesAnterior.corte_x}
+                formatMoney={formatMoney}
+                icon={DollarSign}
+              />
+              <ComparativoCard
+                titulo="Tarjetas"
+                valor={totales.tarjetas}
+                valorAnterior={totalesAnterior.tarjetas}
+                formatMoney={formatMoney}
+                icon={CreditCard}
+                iconColor="text-blue-500/30"
+              />
+              <ComparativoCard
+                titulo="Efectivo"
+                valor={totales.efectivo}
+                valorAnterior={totalesAnterior.efectivo}
+                formatMoney={formatMoney}
+                icon={Banknote}
+                iconColor="text-green-500/30"
+              />
+              <ComparativoCard
+                titulo="Total General"
+                valor={totales.total}
+                valorAnterior={totalesAnterior.total}
+                formatMoney={formatMoney}
+                icon={TrendingUp}
+                destacado
+              />
+            </div>
 
-        {/* Tabla de cortes */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Historial de Cortes</CardTitle>
-            <CardDescription>
-              {cortes.length} cortes encontrados
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {cortes.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Store className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                <p>No hay cortes para esta fecha</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Hora</TableHead>
-                      <TableHead>Sucursal</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead className="text-right">Corte X</TableHead>
-                      <TableHead className="text-right">Tarjetas</TableHead>
-                      <TableHead className="text-right">Efectivo</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {cortes.map((corte) => (
-                      <TableRow key={corte.id}>
-                        <TableCell>
-                          {format(new Date(corte.created_at), "HH:mm", { locale: es })}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {corte.sucursales?.nombre}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={corte.tipo_corte === "cierre" ? "default" : "secondary"}>
-                            {corte.tipo_corte === "cierre" ? "Cierre" : "Momento"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatMoney(Number(corte.corte_x))}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatMoney(Number(corte.tarjetas))}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatMoney(Number(corte.efectivo))}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold">
-                          {formatMoney(Number(corte.total))}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            {/* Gráfica de tendencia (solo para rangos mayores a un día) */}
+            <TrendChart
+              datos={datosTendencia}
+              tipoPeriodo={tipoPeriodo}
+              formatMoney={formatMoney}
+            />
+
+            {/* Gráficas */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Ventas por Sucursal</CardTitle>
+                  <CardDescription>Total del período por cada sucursal</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={dataPorSucursal}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis dataKey="nombre" tick={{ fontSize: 12 }} />
+                        <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                        <Tooltip formatter={(value: number) => formatMoney(value)} />
+                        <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Distribución de Pagos</CardTitle>
+                  <CardDescription>Tarjetas vs Efectivo</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={dataPie}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={100}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {dataPie.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: number) => formatMoney(value)} />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="historico">
+            <HistoricoTable
+              cortes={cortes}
+              formatMoney={formatMoney}
+              mostrarFecha={!esDiaUnico}
+            />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
