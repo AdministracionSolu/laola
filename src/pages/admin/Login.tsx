@@ -56,37 +56,47 @@ export default function AdminLogin() {
     });
 
     if (signInError) {
-      // Si el usuario no existe, crearlo
+      // Si el usuario no existe, crearlo usando Edge Function
       if (signInError.message.includes("Invalid login credentials")) {
-        const { error: signUpError } = await supabase.auth.signUp({
-          email: ADMIN_EMAIL,
-          password: ADMIN_PASSWORD,
-          options: {
-            emailRedirectTo: `${window.location.origin}/admin/dashboard`,
-          },
-        });
+        try {
+          // Llamar a la Edge Function para crear el usuario admin
+          const { error: setupError } = await supabase.functions.invoke('setup-admin');
+          
+          if (setupError) {
+            console.error("Setup error:", setupError);
+            toast({
+              title: "Error de configuración",
+              description: "No se pudo crear la cuenta de administrador",
+              variant: "destructive",
+            });
+            setIsLoading(false);
+            setPin("");
+            return;
+          }
 
-        if (signUpError) {
-          toast({
-            title: "Error de configuración",
-            description: "No se pudo crear la cuenta de administrador",
-            variant: "destructive",
+          // Intentar login de nuevo después de crear
+          const { error: retryError } = await supabase.auth.signInWithPassword({
+            email: ADMIN_EMAIL,
+            password: ADMIN_PASSWORD,
           });
-          setIsLoading(false);
-          setPin("");
-          return;
-        }
 
-        // Intentar login de nuevo después de crear
-        const { error: retryError } = await supabase.auth.signInWithPassword({
-          email: ADMIN_EMAIL,
-          password: ADMIN_PASSWORD,
-        });
-
-        if (retryError) {
+          if (retryError) {
+            console.error("Retry login error:", retryError);
+            toast({
+              title: "Error de acceso",
+              description: "Intenta ingresar el PIN nuevamente",
+              variant: "destructive",
+            });
+            setIsLoading(false);
+            setPin("");
+            return;
+          }
+        } catch (err) {
+          console.error("Unexpected error:", err);
           toast({
-            title: "Cuenta creada",
-            description: "Intenta ingresar el PIN nuevamente",
+            title: "Error inesperado",
+            description: "Intenta de nuevo en unos segundos",
+            variant: "destructive",
           });
           setIsLoading(false);
           setPin("");
