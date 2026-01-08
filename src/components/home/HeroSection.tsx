@@ -1,18 +1,19 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ChevronRight } from "lucide-react";
+import islaMexcaltitan from "@/assets/isla-mexcaltitan.jpg";
 
 export function HeroSection() {
   return (
     <section className="relative min-h-[80vh] flex items-center overflow-hidden">
-      {/* Background with gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/90 via-ocean-dark/85 to-primary/90">
-        <div 
-          className="absolute inset-0 opacity-20"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }}
+      {/* Background image with gradient overlay */}
+      <div className="absolute inset-0">
+        <img 
+          src={islaMexcaltitan} 
+          alt="Isla de Mexcaltitán" 
+          className="w-full h-full object-cover"
         />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/85 via-ocean-dark/80 to-primary/85" />
       </div>
 
       {/* Wave decoration at bottom */}
