@@ -1,7 +1,7 @@
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, Phone, Clock, ExternalLink, Facebook } from "lucide-react";
+import { MapPin, Phone, Clock, ExternalLink, Facebook, Download } from "lucide-react";
 
 const locations = [
   {
@@ -18,6 +18,7 @@ const locations = [
     facebook: "https://facebook.com/laoladelvalle",
     mapUrl: "https://maps.google.com/?q=Calle+San+Borja+1076+Del+Valle+CDMX",
     features: ["Privado disponible", "Música en vivo fines de semana"],
+    menuPdf: "/menus/menu-del-valle.pdf",
   },
   {
     id: 2,
@@ -33,6 +34,7 @@ const locations = [
     facebook: "https://facebook.com/laolainsurgentes",
     mapUrl: "https://maps.google.com/?q=Insurgentes+Sur+1809+Guadalupe+Inn+CDMX",
     features: ["Estacionamiento", "Cervecería"],
+    menuPdf: "/menus/menu-insurgentes.pdf",
   },
   {
     id: 3,
@@ -48,6 +50,7 @@ const locations = [
     facebook: "https://facebook.com/laolasolares",
     mapUrl: "https://maps.google.com/?q=Himno+Nacional+69+Cuernavaca",
     features: ["Terraza", "Música en vivo sábados"],
+    menuPdf: "/menus/menu-solares.pdf",
   },
   {
     id: 4,
@@ -63,6 +66,7 @@ const locations = [
     facebook: "https://facebook.com/laolabrisas",
     mapUrl: "https://maps.google.com/?q=Del+Lago+57+Las+Brisas+Cuernavaca",
     features: ["Vista al lago", "Área para niños"],
+    menuPdf: "/menus/menu-las-brisas.pdf",
   },
 ];
 
@@ -165,6 +169,12 @@ export default function Sucursales() {
                         </a>
                       </Button>
                       <Button asChild size="sm" variant="outline" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground">
+                        <a href={location.menuPdf} target="_blank" rel="noopener noreferrer">
+                          <Download className="w-4 h-4 mr-1" />
+                          Menú
+                        </a>
+                      </Button>
+                      <Button asChild size="sm" variant="ghost" className="text-muted-foreground hover:text-primary">
                         <a href={location.facebook} target="_blank" rel="noopener noreferrer">
                           <Facebook className="w-4 h-4 mr-1" />
                           Facebook
