@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Facebook, Instagram, MapPin, Phone, Mail } from "lucide-react";
+import { Facebook, Instagram, Phone } from "lucide-react";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 
 export function Footer() {
@@ -48,22 +48,34 @@ export function Footer() {
           {/* Contact */}
           <div>
             <h4 className="font-semibold mb-4">Contacto</h4>
-            <ul className="space-y-3 text-sm">
+            <ul className="space-y-2 text-sm">
               <li className="flex items-center gap-2 text-primary-foreground/80">
-                <Phone className="w-4 h-4 text-accent" />
+                <Phone className="w-4 h-4 text-accent flex-shrink-0" />
+                <span>Del Valle:</span>
                 <a href="tel:+523111330891" className="hover:text-accent transition-colors">
                   311 133 0891
                 </a>
               </li>
               <li className="flex items-center gap-2 text-primary-foreground/80">
-                <Mail className="w-4 h-4 text-accent" />
-                <a href="mailto:info@laola.mx" className="hover:text-accent transition-colors">
-                  info@laola.mx
+                <Phone className="w-4 h-4 text-accent flex-shrink-0" />
+                <span>Insurgentes:</span>
+                <a href="tel:+523111693323" className="hover:text-accent transition-colors">
+                  311 169 3323
                 </a>
               </li>
-              <li className="flex items-start gap-2 text-primary-foreground/80">
-                <MapPin className="w-4 h-4 text-accent mt-0.5" />
-                <span>4 sucursales en Tepic, Nayarit y Zapopan, Jalisco</span>
+              <li className="flex items-center gap-2 text-primary-foreground/80">
+                <Phone className="w-4 h-4 text-accent flex-shrink-0" />
+                <span>Solares:</span>
+                <a href="tel:+523317893505" className="hover:text-accent transition-colors">
+                  33 1789 3505
+                </a>
+              </li>
+              <li className="flex items-center gap-2 text-primary-foreground/80">
+                <Phone className="w-4 h-4 text-accent flex-shrink-0" />
+                <span>Las Brisas:</span>
+                <a href="tel:+523112171395" className="hover:text-accent transition-colors">
+                  311 217 1395
+                </a>
               </li>
             </ul>
           </div>
