@@ -25,6 +25,8 @@ const corteSchema = z.object({
   corte_x: z.number().min(0, "Debe ser mayor o igual a 0").max(9999999999, "Número muy grande"),
   tarjetas: z.number().min(0, "Debe ser mayor o igual a 0").max(9999999999, "Número muy grande"),
   efectivo: z.number().min(0, "Debe ser mayor o igual a 0").max(9999999999, "Número muy grande"),
+  cobradas: z.number().min(0, "Debe ser mayor o igual a 0").max(9999999999, "Número muy grande"),
+  por_cobrar: z.number().min(0, "Debe ser mayor o igual a 0").max(9999999999, "Número muy grande"),
   total: z.number().min(0, "Debe ser mayor o igual a 0").max(9999999999, "Número muy grande"),
 });
 
@@ -35,6 +37,8 @@ export default function Corte() {
   const [corteX, setCorteX] = useState("");
   const [tarjetas, setTarjetas] = useState("");
   const [efectivo, setEfectivo] = useState("");
+  const [cobradas, setCobradas] = useState("");
+  const [porCobrar, setPorCobrar] = useState("");
   const [total, setTotal] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -73,6 +77,8 @@ export default function Corte() {
       corte_x: parseFloat(corteX) || 0,
       tarjetas: parseFloat(tarjetas) || 0,
       efectivo: parseFloat(efectivo) || 0,
+      cobradas: parseFloat(cobradas) || 0,
+      por_cobrar: parseFloat(porCobrar) || 0,
       total: parseFloat(total) || 0,
     });
 
@@ -92,6 +98,8 @@ export default function Corte() {
       corte_x: parseFloat(corteX) || 0,
       tarjetas: parseFloat(tarjetas) || 0,
       efectivo: parseFloat(efectivo) || 0,
+      cobradas: parseFloat(cobradas) || 0,
+      por_cobrar: parseFloat(porCobrar) || 0,
       total: parseFloat(total) || 0,
     });
 
@@ -120,6 +128,8 @@ export default function Corte() {
     setCorteX("");
     setTarjetas("");
     setEfectivo("");
+    setCobradas("");
+    setPorCobrar("");
     setTotal("");
   };
 
@@ -217,7 +227,7 @@ export default function Corte() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="tarjetas">Tarjetas</Label>
+                <Label htmlFor="tarjetas">Cobrado con tarjeta</Label>
                 <Input
                   id="tarjetas"
                   type="number"
@@ -230,7 +240,7 @@ export default function Corte() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="efectivo">Efectivo</Label>
+                <Label htmlFor="efectivo">Cobrado con efectivo</Label>
                 <Input
                   id="efectivo"
                   type="number"
@@ -239,6 +249,32 @@ export default function Corte() {
                   placeholder="0.00"
                   value={efectivo}
                   onChange={(e) => setEfectivo(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cobradas">Cobradas</Label>
+                <Input
+                  id="cobradas"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={cobradas}
+                  onChange={(e) => setCobradas(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="por_cobrar">Por cobrar</Label>
+                <Input
+                  id="por_cobrar"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={porCobrar}
+                  onChange={(e) => setPorCobrar(e.target.value)}
                   required
                 />
               </div>

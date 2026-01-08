@@ -17,6 +17,8 @@ export interface Corte {
   corte_x: number;
   tarjetas: number;
   efectivo: number;
+  cobradas: number;
+  por_cobrar: number;
   total: number;
   created_at: string;
   sucursales: {
@@ -28,6 +30,8 @@ export interface Totales {
   corte_x: number;
   tarjetas: number;
   efectivo: number;
+  cobradas: number;
+  por_cobrar: number;
   total: number;
 }
 
@@ -143,9 +147,11 @@ export function useCortes(options: UseCortesOptions): UseCortesReturn {
         corte_x: acc.corte_x + Number(corte.corte_x),
         tarjetas: acc.tarjetas + Number(corte.tarjetas),
         efectivo: acc.efectivo + Number(corte.efectivo),
+        cobradas: acc.cobradas + Number(corte.cobradas),
+        por_cobrar: acc.por_cobrar + Number(corte.por_cobrar),
         total: acc.total + Number(corte.total),
       }),
-      { corte_x: 0, tarjetas: 0, efectivo: 0, total: 0 }
+      { corte_x: 0, tarjetas: 0, efectivo: 0, cobradas: 0, por_cobrar: 0, total: 0 }
     );
   };
 
