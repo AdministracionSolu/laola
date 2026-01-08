@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Facebook, Instagram, MapPin, Phone, Mail } from "lucide-react";
+import logoLaOla from "@/assets/logo-la-ola.jpeg";
 
 export function Footer() {
   return (
@@ -8,7 +9,10 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="md:col-span-1">
-            <h3 className="text-2xl font-display font-bold mb-4">La Ola</h3>
+            <div className="flex items-center gap-3 mb-4">
+              <img src={logoLaOla} alt="La Ola" className="h-12 w-12 rounded-full" />
+              <h3 className="text-2xl font-display font-bold">La Ola</h3>
+            </div>
             <p className="text-primary-foreground/80 text-sm leading-relaxed">
               Nuestra cocina nace del origen. Tradición de mariscos desde Mexcaltitán, Nayarit.
             </p>

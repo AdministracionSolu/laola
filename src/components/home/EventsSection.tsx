@@ -1,6 +1,7 @@
 import { Calendar, Music, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import restauranteBarra from "@/assets/restaurante-barra.jpeg";
 
 export function EventsSection() {
   return (
@@ -69,8 +70,8 @@ export function EventsSection() {
           <div className="relative">
             <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl">
               <img
-                src="https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800&h=600&fit=crop"
-                alt="Ambiente del restaurante con música en vivo"
+                src={restauranteBarra}
+                alt="Ambiente del restaurante La Ola con tablas de surf"
                 className="w-full h-full object-cover"
               />
             </div>
