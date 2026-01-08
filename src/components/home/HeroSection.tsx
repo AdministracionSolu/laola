@@ -59,8 +59,7 @@ export function HeroSection() {
             <Button 
               asChild 
               size="lg" 
-              variant="outline" 
-              className="border-white text-white hover:bg-white hover:text-primary text-base"
+              className="bg-white text-primary hover:bg-white/90 text-base"
             >
               <Link to="/sucursales">
                 Nuestras Sucursales
