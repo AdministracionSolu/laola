@@ -7,26 +7,26 @@ const locations = [
   {
     id: 1,
     name: "Del Valle",
-    address: "Calle San Borja #1076, Col Del Valle Centro",
-    city: "CDMX",
+    address: "Av del Valle 161, Cd del Valle, 63157",
+    city: "Tepic, Nayarit",
   },
   {
     id: 2,
     name: "Insurgentes",
-    address: "Av. Insurgentes Sur 1809, Guadalupe Inn",
-    city: "CDMX",
+    address: "De Los Insurgentes Pte. 233, Versalles, 63000",
+    city: "Tepic, Nayarit",
   },
   {
     id: 3,
     name: "Solares",
-    address: "Av. Himno Nacional 69",
-    city: "Cuernavaca",
+    address: "P.° Solares 1639-int: #11 & #12, Solares Residencial, 45019",
+    city: "Zapopan, Jalisco",
   },
   {
     id: 4,
     name: "Las Brisas",
-    address: "Av. Del Lago 57, Col Las Brisas",
-    city: "Cuernavaca",
+    address: "De Los Insurgentes Pte. 959, Las Brisas Rodeo de la Punta, 63110",
+    city: "Tepic, Nayarit",
   },
 ];
 
@@ -42,7 +42,7 @@ export function LocationsPreview() {
             Nuestras Sucursales
           </h2>
           <p className="text-muted-foreground mt-4 max-w-2xl mx-auto">
-            4 ubicaciones para llevarte el sabor de Mexcaltitán más cerca de ti
+            4 ubicaciones en Tepic, Nayarit y Zapopan, Jalisco para llevarte el sabor de Mexcaltitán
           </p>
         </div>
 

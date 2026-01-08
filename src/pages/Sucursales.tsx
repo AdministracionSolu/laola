@@ -7,64 +7,48 @@ const locations = [
   {
     id: 1,
     name: "La Ola Del Valle",
-    address: "Calle San Borja #1076, Col Del Valle Centro",
-    city: "Ciudad de México",
-    phone: "55 5524 6403",
-    hours: {
-      weekdays: "12:00 PM - 7:00 PM",
-      saturday: "12:00 PM - 7:00 PM",
-      sunday: "12:00 PM - 6:00 PM",
-    },
+    address: "Av del Valle 161, Cd del Valle, 63157",
+    city: "Tepic, Nayarit",
+    phone: "+52 311 133 0891",
+    hours: "10:00 A.M - 23:59 P.M",
     facebook: "https://facebook.com/laoladelvalle",
-    mapUrl: "https://maps.google.com/?q=Calle+San+Borja+1076+Del+Valle+CDMX",
+    mapUrl: "https://maps.google.com/?q=Av+del+Valle+161+Tepic+Nayarit",
     features: ["Privado disponible", "Música en vivo fines de semana"],
     menuPdf: "/menus/menu-del-valle.pdf",
   },
   {
     id: 2,
     name: "La Ola Insurgentes",
-    address: "Av. Insurgentes Sur 1809, Guadalupe Inn",
-    city: "Ciudad de México",
-    phone: "55 5662 4567",
-    hours: {
-      weekdays: "12:00 PM - 7:00 PM",
-      saturday: "12:00 PM - 7:00 PM",
-      sunday: "12:00 PM - 6:00 PM",
-    },
+    address: "De Los Insurgentes Pte. 233, Versalles, 63000",
+    city: "Tepic, Nayarit",
+    phone: "+52 311 169 3323",
+    hours: "Dom-Mié: 11:00 A.M - 23:59 P.M / Jue-Sáb: 11:00 A.M - 2:00 A.M",
     facebook: "https://facebook.com/laolainsurgentes",
-    mapUrl: "https://maps.google.com/?q=Insurgentes+Sur+1809+Guadalupe+Inn+CDMX",
+    mapUrl: "https://maps.google.com/?q=De+Los+Insurgentes+Pte+233+Versalles+Tepic+Nayarit",
     features: ["Estacionamiento", "Cervecería"],
     menuPdf: "/menus/menu-insurgentes.pdf",
   },
   {
     id: 3,
     name: "La Ola Solares",
-    address: "Av. Himno Nacional 69",
-    city: "Cuernavaca, Morelos",
-    phone: "777 318 3456",
-    hours: {
-      weekdays: "11:00 AM - 8:00 PM",
-      saturday: "11:00 AM - 8:00 PM",
-      sunday: "11:00 AM - 7:00 PM",
-    },
+    address: "P.° Solares 1639-int: #11 & #12, Solares Residencial, 45019",
+    city: "Zapopan, Jalisco",
+    phone: "+52 33 1789 3505",
+    hours: "11:00 A.M - 20:00 P.M",
     facebook: "https://facebook.com/laolasolares",
-    mapUrl: "https://maps.google.com/?q=Himno+Nacional+69+Cuernavaca",
+    mapUrl: "https://maps.google.com/?q=Paseo+Solares+1639+Zapopan+Jalisco",
     features: ["Terraza", "Música en vivo sábados"],
     menuPdf: "/menus/menu-solares.pdf",
   },
   {
     id: 4,
     name: "La Ola Las Brisas",
-    address: "Av. Del Lago 57, Col Las Brisas",
-    city: "Cuernavaca, Morelos",
-    phone: "777 362 7890",
-    hours: {
-      weekdays: "11:00 AM - 8:00 PM",
-      saturday: "11:00 AM - 9:00 PM",
-      sunday: "11:00 AM - 7:00 PM",
-    },
+    address: "De Los Insurgentes Pte. 959, Las Brisas Rodeo de la Punta, 63110",
+    city: "Tepic, Nayarit",
+    phone: "+52 311 217 1395",
+    hours: "10:00 A.M - 18:00 P.M",
     facebook: "https://facebook.com/laolabrisas",
-    mapUrl: "https://maps.google.com/?q=Del+Lago+57+Las+Brisas+Cuernavaca",
+    mapUrl: "https://maps.google.com/?q=De+Los+Insurgentes+Pte+959+Tepic+Nayarit",
     features: ["Vista al lago", "Área para niños"],
     menuPdf: "/menus/menu-las-brisas.pdf",
   },
@@ -80,7 +64,7 @@ export default function Sucursales() {
             Nuestras Sucursales
           </h1>
           <p className="text-white/90 text-lg max-w-2xl mx-auto">
-            4 ubicaciones en la Ciudad de México y Cuernavaca para disfrutar de nuestros mariscos
+            4 ubicaciones en Tepic, Nayarit y Zapopan, Jalisco para disfrutar de nuestros mariscos
           </p>
         </div>
       </section>
@@ -140,11 +124,9 @@ export default function Sucursales() {
 
                       <div className="flex items-start gap-3">
                         <Clock className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                        <div className="text-sm text-muted-foreground">
-                          <p>Lun-Vie: {location.hours.weekdays}</p>
-                          <p>Sáb: {location.hours.saturday}</p>
-                          <p>Dom: {location.hours.sunday}</p>
-                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {location.hours}
+                        </p>
                       </div>
                     </div>
 
