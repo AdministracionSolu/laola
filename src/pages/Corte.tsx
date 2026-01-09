@@ -140,7 +140,7 @@ export default function Corte() {
       pago_servicios: tipoCorte === "cierre" ? (parseFloat(pagoServicios) || 0) : 0,
     };
 
-    const { error } = await supabase.from("cortes_caja").insert(insertData);
+    const { error } = await supabase.from("cortes_caja").insert(insertData as any);
 
     setIsLoading(false);
 

@@ -21,6 +21,7 @@ export interface Corte {
   por_cobrar: number;
   total: number;
   created_at: string;
+  fecha_venta: string;
   sucursales: {
     nombre: string;
   };
@@ -97,11 +98,16 @@ export function useCortes(options: UseCortesOptions): UseCortesReturn {
   }, [toast]);
 
   const fetchCortes = useCallback(async (rangoFechas: RangoFechas, isAnterior = false) => {
+    // Usar fecha_venta para filtrar (día de negocio real, no hora de registro)
+    const fechaInicio = format(rangoFechas.inicio, "yyyy-MM-dd");
+    const fechaFin = format(rangoFechas.fin, "yyyy-MM-dd");
+    
     let query = supabase
       .from("cortes_caja")
       .select("*, sucursales(nombre)")
-      .gte("created_at", rangoFechas.inicio.toISOString())
-      .lte("created_at", rangoFechas.fin.toISOString())
+      .gte("fecha_venta", fechaInicio)
+      .lte("fecha_venta", fechaFin)
+      .order("fecha_venta", { ascending: false })
       .order("created_at", { ascending: false });
 
     if (filtroSucursal !== "todas") {
@@ -194,9 +200,9 @@ export function useCortes(options: UseCortesOptions): UseCortesReturn {
     
     return dias.map((dia) => {
       const fechaStr = format(dia, "yyyy-MM-dd");
+      // Usar fecha_venta para agrupar (día de negocio real)
       const cortesDelDia = cortes.filter((c) => {
-        const fechaCorte = format(parseISO(c.created_at), "yyyy-MM-dd");
-        return fechaCorte === fechaStr;
+        return c.fecha_venta === fechaStr;
       });
       
       const totalesDia = calcularTotales(cortesDelDia);

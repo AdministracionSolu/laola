@@ -38,10 +38,10 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
     setCorteAEliminar(null);
   };
   const exportarCSV = () => {
-    const headers = ["Fecha", "Hora", "Sucursal", "Tipo", "Corte X", "Tarjetas", "Efectivo", "Cobradas", "Por Cobrar", "Total", "Pago Proveedores", "Salarios", "Propinas", "Compras", "Pago Servicios"];
+    const headers = ["Fecha Venta", "Registrado", "Sucursal", "Tipo", "Corte X", "Tarjetas", "Efectivo", "Cobradas", "Por Cobrar", "Total", "Pago Proveedores", "Salarios", "Propinas", "Compras", "Pago Servicios"];
     const rows = cortes.map((corte) => [
-      format(parseISO(corte.created_at), "yyyy-MM-dd"),
-      format(parseISO(corte.created_at), "HH:mm"),
+      corte.fecha_venta,
+      format(parseISO(corte.created_at), "yyyy-MM-dd HH:mm"),
       corte.sucursales?.nombre || "",
       corte.tipo_corte,
       corte.corte_x,
@@ -96,8 +96,8 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
             <Table>
               <TableHeader>
                 <TableRow>
-                  {mostrarFecha && <TableHead>Fecha</TableHead>}
-                  <TableHead>Hora</TableHead>
+                  {mostrarFecha && <TableHead>Fecha Venta</TableHead>}
+                  <TableHead>Registrado</TableHead>
                   <TableHead>Sucursal</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead className="text-right">Corte X</TableHead>
@@ -119,11 +119,11 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
                   <TableRow key={corte.id}>
                     {mostrarFecha && (
                       <TableCell className="whitespace-nowrap">
-                        {format(parseISO(corte.created_at), "d MMM", { locale: es })}
+                        {format(parseISO(corte.fecha_venta), "d MMM", { locale: es })}
                       </TableCell>
                     )}
-                    <TableCell>
-                      {format(parseISO(corte.created_at), "HH:mm", { locale: es })}
+                    <TableCell className="text-muted-foreground text-sm">
+                      {format(parseISO(corte.created_at), "d MMM HH:mm", { locale: es })}
                     </TableCell>
                     <TableCell className="font-medium">
                       {corte.sucursales?.nombre}

@@ -21,6 +21,7 @@ export type Database = {
           corte_x: number
           created_at: string
           efectivo: number
+          fecha_venta: string
           id: string
           pago_proveedores: number | null
           pago_servicios: number | null
@@ -38,6 +39,7 @@ export type Database = {
           corte_x?: number
           created_at?: string
           efectivo?: number
+          fecha_venta: string
           id?: string
           pago_proveedores?: number | null
           pago_servicios?: number | null
@@ -55,6 +57,7 @@ export type Database = {
           corte_x?: number
           created_at?: string
           efectivo?: number
+          fecha_venta?: string
           id?: string
           pago_proveedores?: number | null
           pago_servicios?: number | null
