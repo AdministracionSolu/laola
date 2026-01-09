@@ -1,19 +1,42 @@
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Store, FileDown } from "lucide-react";
+import { Store, FileDown, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Corte } from "@/hooks/useCortes";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface HistoricoTableProps {
   cortes: Corte[];
   formatMoney: (value: number) => string;
   mostrarFecha?: boolean;
+  onDelete?: (corteId: string) => Promise<boolean>;
 }
 
-export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false }: HistoricoTableProps) {
+export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDelete }: HistoricoTableProps) {
+  const [corteAEliminar, setCorteAEliminar] = useState<Corte | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!corteAEliminar || !onDelete) return;
+    
+    setIsDeleting(true);
+    await onDelete(corteAEliminar.id);
+    setIsDeleting(false);
+    setCorteAEliminar(null);
+  };
   const exportarCSV = () => {
     const headers = ["Fecha", "Hora", "Sucursal", "Tipo", "Corte X", "Tarjetas", "Efectivo", "Cobradas", "Por Cobrar", "Total", "Pago Proveedores", "Salarios", "Propinas", "Compras", "Pago Servicios"];
     const rows = cortes.map((corte) => [
@@ -88,6 +111,7 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false }: Hi
                   <TableHead className="text-right">Propinas</TableHead>
                   <TableHead className="text-right">Compras</TableHead>
                   <TableHead className="text-right">Servicios</TableHead>
+                  {onDelete && <TableHead className="w-12"></TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -142,6 +166,18 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false }: Hi
                     <TableCell className="text-right text-muted-foreground">
                       {formatMoney(Number(corte.pago_servicios || 0))}
                     </TableCell>
+                    {onDelete && (
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={() => setCorteAEliminar(corte)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -149,6 +185,35 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false }: Hi
           </div>
         )}
       </CardContent>
+
+      {/* Diálogo de confirmación */}
+      <AlertDialog open={!!corteAEliminar} onOpenChange={() => setCorteAEliminar(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar este corte?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {corteAEliminar && (
+                <>
+                  Estás por eliminar el corte de <strong>{corteAEliminar.sucursales?.nombre}</strong> del{" "}
+                  <strong>{format(parseISO(corteAEliminar.created_at), "d 'de' MMMM 'a las' HH:mm", { locale: es })}</strong>.
+                  <br /><br />
+                  Esta acción no se puede deshacer.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete} 
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Eliminando..." : "Eliminar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
