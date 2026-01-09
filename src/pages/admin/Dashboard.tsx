@@ -2,13 +2,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { LogOut, RefreshCw, Store, TrendingUp, CreditCard, Banknote, DollarSign, LayoutDashboard, History } from "lucide-react";
+import { LogOut, RefreshCw, Store, Camera, BarChart3, History } from "lucide-react";
 import { useEffect } from "react";
 
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
@@ -16,16 +15,15 @@ import logoLaOla from "@/assets/logo-la-ola.jpeg";
 import { usePeriodo } from "@/hooks/usePeriodo";
 import { useCortes } from "@/hooks/useCortes";
 import { PeriodSelector } from "@/components/admin/PeriodSelector";
-import { TrendChart } from "@/components/admin/TrendChart";
-import { ComparativoCard } from "@/components/admin/ComparativoCard";
 import { SucursalStatus } from "@/components/admin/SucursalStatus";
 import { HistoricoTable } from "@/components/admin/HistoricoTable";
-
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
+import { EstadoActualView } from "@/components/admin/EstadoActualView";
+import { AnalisisVentas } from "@/components/admin/AnalisisVentas";
 
 export default function AdminDashboard() {
   const [filtroSucursal, setFiltroSucursal] = useState<string>("todas");
   const [filtroTipo, setFiltroTipo] = useState<string>("todos");
+  const [vistaActiva, setVistaActiva] = useState<string>("estado");
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -43,6 +41,8 @@ export default function AdminDashboard() {
   const {
     sucursales,
     cortes,
+    cortesCierre,
+    ultimosCortesHoy,
     isLoading,
     totales,
     totalesAnterior,
@@ -89,12 +89,6 @@ export default function AdminDashboard() {
     }).format(value);
   };
 
-  // Datos para gráfica de pie (tarjetas vs efectivo)
-  const dataPie = [
-    { name: "Tarjetas", value: totales.tarjetas },
-    { name: "Efectivo", value: totales.efectivo },
-  ];
-
   const esDiaUnico = tipoPeriodo === "hoy" || tipoPeriodo === "ayer";
 
   if (isLoading) {
@@ -130,186 +124,171 @@ export default function AdminDashboard() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        {/* Selector de período */}
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Período</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <PeriodSelector
-              tipoPeriodo={tipoPeriodo}
-              onTipoPeriodoChange={setTipoPeriodo}
-              onRangoPersonalizadoChange={setRangoPersonalizado}
-              etiquetaPeriodo={etiquetaPeriodo}
-              formatoFechaRango={formatoFechaRango}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Filtros adicionales */}
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Store className="w-4 h-4" />
-                  Sucursal
-                </Label>
-                <Select value={filtroSucursal} onValueChange={setFiltroSucursal}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todas las sucursales" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todas">Todas las sucursales</SelectItem>
-                    {sucursales.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.nombre}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Tipo de Corte</Label>
-                <Select value={filtroTipo} onValueChange={setFiltroTipo}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos los tipos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos</SelectItem>
-                    <SelectItem value="momento">Del Momento</SelectItem>
-                    <SelectItem value="cierre">De Cierre</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Estado de sucursales (solo para día único) */}
-        {esDiaUnico && (
-          <div className="mb-6">
-            <SucursalStatus estados={estadoSucursales} mostrarSoloDia={esDiaUnico} />
-          </div>
-        )}
-
-        <Tabs defaultValue="resumen" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="resumen" className="gap-2">
-              <LayoutDashboard className="w-4 h-4" />
-              Resumen
+        {/* Tabs principales: Estado Actual vs Análisis */}
+        <Tabs value={vistaActiva} onValueChange={setVistaActiva} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:inline-grid">
+            <TabsTrigger value="estado" className="gap-2">
+              <Camera className="w-4 h-4" />
+              Estado Actual
             </TabsTrigger>
-            <TabsTrigger value="historico" className="gap-2">
-              <History className="w-4 h-4" />
-              Histórico
+            <TabsTrigger value="analisis" className="gap-2">
+              <BarChart3 className="w-4 h-4" />
+              Análisis de Ventas
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="resumen" className="space-y-6">
-            {/* Tarjetas de resumen con comparativos */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <ComparativoCard
-                titulo="Corte X"
-                valor={totales.corte_x}
-                valorAnterior={totalesAnterior.corte_x}
-                formatMoney={formatMoney}
-                icon={DollarSign}
-              />
-              <ComparativoCard
-                titulo="Tarjetas"
-                valor={totales.tarjetas}
-                valorAnterior={totalesAnterior.tarjetas}
-                formatMoney={formatMoney}
-                icon={CreditCard}
-                iconColor="text-blue-500/30"
-              />
-              <ComparativoCard
-                titulo="Efectivo"
-                valor={totales.efectivo}
-                valorAnterior={totalesAnterior.efectivo}
-                formatMoney={formatMoney}
-                icon={Banknote}
-                iconColor="text-green-500/30"
-              />
-              <ComparativoCard
-                titulo="Total General"
-                valor={totales.total}
-                valorAnterior={totalesAnterior.total}
-                formatMoney={formatMoney}
-                icon={TrendingUp}
-                destacado
-              />
-            </div>
+          {/* Vista: Estado Actual */}
+          <TabsContent value="estado" className="space-y-6">
+            <Card className="mb-6">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Período</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PeriodSelector
+                  tipoPeriodo={tipoPeriodo}
+                  onTipoPeriodoChange={setTipoPeriodo}
+                  onRangoPersonalizadoChange={setRangoPersonalizado}
+                  etiquetaPeriodo={etiquetaPeriodo}
+                  formatoFechaRango={formatoFechaRango}
+                />
+              </CardContent>
+            </Card>
 
-            {/* Gráfica de tendencia (solo para rangos mayores a un día) */}
-            <TrendChart
-              datos={datosTendencia}
-              tipoPeriodo={tipoPeriodo}
+            {/* Filtro de sucursal para Estado Actual */}
+            <Card className="mb-6">
+              <CardContent className="pt-6">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Store className="w-4 h-4" />
+                    Filtrar por Sucursal
+                  </Label>
+                  <Select value={filtroSucursal} onValueChange={setFiltroSucursal}>
+                    <SelectTrigger className="max-w-xs">
+                      <SelectValue placeholder="Todas las sucursales" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todas">Todas las sucursales</SelectItem>
+                      {sucursales.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.nombre}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            <EstadoActualView
+              sucursales={filtroSucursal === "todas" ? sucursales : sucursales.filter(s => s.id === filtroSucursal)}
+              ultimosCortes={ultimosCortesHoy}
               formatMoney={formatMoney}
             />
-
-            {/* Gráficas */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Ventas por Sucursal</CardTitle>
-                  <CardDescription>Total del período por cada sucursal</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={dataPorSucursal}>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                        <XAxis dataKey="nombre" tick={{ fontSize: 12 }} />
-                        <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-                        <Tooltip formatter={(value: number) => formatMoney(value)} />
-                        <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Distribución de Pagos</CardTitle>
-                  <CardDescription>Tarjetas vs Efectivo</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={dataPie}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                          outerRadius={100}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {dataPie.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(value: number) => formatMoney(value)} />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
           </TabsContent>
 
-          <TabsContent value="historico">
-            <HistoricoTable
-              cortes={cortes}
-              formatMoney={formatMoney}
-              mostrarFecha={!esDiaUnico}
-              onDelete={deleteCorte}
-            />
+          {/* Vista: Análisis de Ventas */}
+          <TabsContent value="analisis" className="space-y-6">
+            {/* Selector de período */}
+            <Card className="mb-6">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Período</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PeriodSelector
+                  tipoPeriodo={tipoPeriodo}
+                  onTipoPeriodoChange={setTipoPeriodo}
+                  onRangoPersonalizadoChange={setRangoPersonalizado}
+                  etiquetaPeriodo={etiquetaPeriodo}
+                  formatoFechaRango={formatoFechaRango}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Filtros adicionales */}
+            <Card className="mb-6">
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Store className="w-4 h-4" />
+                      Sucursal
+                    </Label>
+                    <Select value={filtroSucursal} onValueChange={setFiltroSucursal}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Todas las sucursales" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todas">Todas las sucursales</SelectItem>
+                        {sucursales.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.nombre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tipo de Corte (histórico)</Label>
+                    <Select value={filtroTipo} onValueChange={setFiltroTipo}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Todos los tipos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos</SelectItem>
+                        <SelectItem value="momento">Del Momento</SelectItem>
+                        <SelectItem value="cierre">De Cierre</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Estado de sucursales (solo para día único) */}
+            {esDiaUnico && (
+              <div className="mb-6">
+                <SucursalStatus estados={estadoSucursales} mostrarSoloDia={esDiaUnico} />
+              </div>
+            )}
+
+            {/* Subtabs: Resumen e Histórico */}
+            <Tabs defaultValue="resumen" className="space-y-6">
+              <TabsList>
+                <TabsTrigger value="resumen" className="gap-2">
+                  <BarChart3 className="w-4 h-4" />
+                  Resumen
+                </TabsTrigger>
+                <TabsTrigger value="historico" className="gap-2">
+                  <History className="w-4 h-4" />
+                  Histórico
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="resumen">
+                <div className="mb-4 p-3 rounded-lg bg-muted/50 border border-dashed">
+                  <p className="text-sm text-muted-foreground">
+                    📊 Los totales y gráficas muestran únicamente cortes de <strong>cierre</strong> (ventas finales del día).
+                  </p>
+                </div>
+                <AnalisisVentas
+                  totales={totales}
+                  totalesAnterior={totalesAnterior}
+                  datosTendencia={datosTendencia}
+                  dataPorSucursal={dataPorSucursal}
+                  tipoPeriodo={tipoPeriodo}
+                  formatMoney={formatMoney}
+                />
+              </TabsContent>
+
+              <TabsContent value="historico">
+                <HistoricoTable
+                  cortes={cortes}
+                  formatMoney={formatMoney}
+                  mostrarFecha={!esDiaUnico}
+                  onDelete={deleteCorte}
+                />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
         </Tabs>
       </main>
