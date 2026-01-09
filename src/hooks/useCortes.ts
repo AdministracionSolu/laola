@@ -60,6 +60,7 @@ export interface UseCortesReturn {
   dataPorSucursal: { nombre: string; total: number }[];
   estadoSucursales: { nombre: string; cerrado: boolean; ultimoCorte: string | null }[];
   refetch: () => void;
+  deleteCorte: (corteId: string) => Promise<boolean>;
 }
 
 interface UseCortesOptions {
@@ -136,6 +137,30 @@ export function useCortes(options: UseCortesOptions): UseCortesReturn {
       fetchCortes(rangoAnterior, true),
     ]).finally(() => setIsLoading(false));
   }, [fetchCortes, rango, rangoAnterior]);
+
+  const deleteCorte = useCallback(async (corteId: string): Promise<boolean> => {
+    const { error } = await supabase
+      .from("cortes_caja")
+      .delete()
+      .eq("id", corteId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el corte",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    toast({
+      title: "Eliminado",
+      description: "El corte ha sido eliminado correctamente",
+    });
+    
+    refetch();
+    return true;
+  }, [toast, refetch]);
 
   useEffect(() => {
     fetchSucursales().then(() => setIsLoading(false));
@@ -219,5 +244,6 @@ export function useCortes(options: UseCortesOptions): UseCortesReturn {
     dataPorSucursal,
     estadoSucursales,
     refetch,
+    deleteCorte,
   };
 }

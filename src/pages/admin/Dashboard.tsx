@@ -50,6 +50,7 @@ export default function AdminDashboard() {
     dataPorSucursal,
     estadoSucursales,
     refetch,
+    deleteCorte,
   } = useCortes({
     rango: rangoActual,
     rangoAnterior,
@@ -307,6 +308,7 @@ export default function AdminDashboard() {
               cortes={cortes}
               formatMoney={formatMoney}
               mostrarFecha={!esDiaUnico}
+              onDelete={deleteCorte}
             />
           </TabsContent>
         </Tabs>
