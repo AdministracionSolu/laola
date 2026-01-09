@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { RangoFechas } from "./usePeriodo";
-import { format, eachDayOfInterval, parseISO } from "date-fns";
+import { format, eachDayOfInterval, parseISO, startOfDay, endOfDay } from "date-fns";
 import { es } from "date-fns/locale";
 
 export interface Sucursal {
@@ -53,7 +53,10 @@ export interface DatosDiarios {
 export interface UseCortesReturn {
   sucursales: Sucursal[];
   cortes: Corte[];
+  cortesCierre: Corte[];
   cortesAnterior: Corte[];
+  cortesAnteriorCierre: Corte[];
+  ultimosCortesHoy: Map<string, Corte>;
   isLoading: boolean;
   totales: Totales;
   totalesAnterior: Totales;
@@ -102,6 +105,7 @@ export function useCortes(options: UseCortesOptions): UseCortesReturn {
     const fechaInicio = format(rangoFechas.inicio, "yyyy-MM-dd");
     const fechaFin = format(rangoFechas.fin, "yyyy-MM-dd");
     
+    // Traemos TODOS los cortes (sin filtro de tipo) para poder calcular estado actual
     let query = supabase
       .from("cortes_caja")
       .select("*, sucursales(nombre)")
@@ -114,9 +118,7 @@ export function useCortes(options: UseCortesOptions): UseCortesReturn {
       query = query.eq("sucursal_id", filtroSucursal);
     }
 
-    if (filtroTipo !== "todos") {
-      query = query.eq("tipo_corte", filtroTipo as "momento" | "cierre");
-    }
+    // NO aplicamos filtro de tipo aquí - lo aplicamos después para tener ambos conjuntos
 
     const { data, error } = await query;
 
@@ -134,7 +136,7 @@ export function useCortes(options: UseCortesOptions): UseCortesReturn {
     } else {
       setCortes(data as Corte[] || []);
     }
-  }, [filtroSucursal, filtroTipo, toast]);
+  }, [filtroSucursal, toast]);
 
   const refetch = useCallback(() => {
     setIsLoading(true);
@@ -176,7 +178,37 @@ export function useCortes(options: UseCortesOptions): UseCortesReturn {
     if (sucursales.length > 0) {
       refetch();
     }
-  }, [sucursales.length, rango, rangoAnterior, filtroSucursal, filtroTipo]);
+  }, [sucursales.length, rango, rangoAnterior, filtroSucursal]);
+
+  // Filtrar cortes según el tipo seleccionado (para mostrar en histórico)
+  const cortesFiltrados = useMemo(() => {
+    if (filtroTipo === "todos") return cortes;
+    return cortes.filter(c => c.tipo_corte === filtroTipo);
+  }, [cortes, filtroTipo]);
+
+  // Solo cortes de CIERRE para análisis/totales
+  const cortesCierre = useMemo(() => {
+    return cortes.filter(c => c.tipo_corte === "cierre");
+  }, [cortes]);
+
+  const cortesAnteriorCierre = useMemo(() => {
+    return cortesAnterior.filter(c => c.tipo_corte === "cierre");
+  }, [cortesAnterior]);
+
+  // Último corte de cada sucursal (para Estado Actual)
+  const ultimosCortesHoy = useMemo(() => {
+    const map = new Map<string, Corte>();
+    
+    // Los cortes ya vienen ordenados por fecha_venta desc, created_at desc
+    // Así que el primero de cada sucursal es el más reciente
+    for (const corte of cortes) {
+      if (!map.has(corte.sucursal_id)) {
+        map.set(corte.sucursal_id, corte);
+      }
+    }
+    
+    return map;
+  }, [cortes]);
 
   const calcularTotales = (cortesArray: Corte[]): Totales => {
     return cortesArray.reduce(
@@ -192,16 +224,18 @@ export function useCortes(options: UseCortesOptions): UseCortesReturn {
     );
   };
 
-  const totales = calcularTotales(cortes);
-  const totalesAnterior = calcularTotales(cortesAnterior);
+  // IMPORTANTE: Los totales ahora solo usan cortes de CIERRE
+  const totales = calcularTotales(cortesCierre);
+  const totalesAnterior = calcularTotales(cortesAnteriorCierre);
 
-  const datosTendencia: DatosDiarios[] = (() => {
+  // Datos de tendencia también solo con cierres
+  const datosTendencia: DatosDiarios[] = useMemo(() => {
     const dias = eachDayOfInterval({ start: rango.inicio, end: rango.fin });
     
     return dias.map((dia) => {
       const fechaStr = format(dia, "yyyy-MM-dd");
-      // Usar fecha_venta para agrupar (día de negocio real)
-      const cortesDelDia = cortes.filter((c) => {
+      // Usar solo cortes de cierre para tendencia
+      const cortesDelDia = cortesCierre.filter((c) => {
         return c.fecha_venta === fechaStr;
       });
       
@@ -215,34 +249,42 @@ export function useCortes(options: UseCortesOptions): UseCortesReturn {
         efectivo: totalesDia.efectivo,
       };
     });
-  })();
+  }, [rango, cortesCierre]);
 
-  const dataPorSucursal = sucursales.map((sucursal) => {
-    const cortesDeEsta = cortes.filter((c) => c.sucursal_id === sucursal.id);
-    const totalSucursal = cortesDeEsta.reduce((acc, c) => acc + Number(c.total), 0);
-    return {
-      nombre: sucursal.nombre,
-      total: totalSucursal,
-    };
-  });
+  // Ventas por sucursal también solo con cierres
+  const dataPorSucursal = useMemo(() => {
+    return sucursales.map((sucursal) => {
+      const cortesDeEsta = cortesCierre.filter((c) => c.sucursal_id === sucursal.id);
+      const totalSucursal = cortesDeEsta.reduce((acc, c) => acc + Number(c.total), 0);
+      return {
+        nombre: sucursal.nombre,
+        total: totalSucursal,
+      };
+    });
+  }, [sucursales, cortesCierre]);
 
-  const estadoSucursales = sucursales.map((sucursal) => {
-    const cortesHoy = cortes.filter((c) => c.sucursal_id === sucursal.id);
-    const corteCierre = cortesHoy.find((c) => c.tipo_corte === "cierre");
-    
-    return {
-      nombre: sucursal.nombre,
-      cerrado: !!corteCierre,
-      ultimoCorte: cortesHoy.length > 0 
-        ? format(parseISO(cortesHoy[0].created_at), "HH:mm")
-        : null,
-    };
-  });
+  const estadoSucursales = useMemo(() => {
+    return sucursales.map((sucursal) => {
+      const cortesHoy = cortes.filter((c) => c.sucursal_id === sucursal.id);
+      const corteCierre = cortesHoy.find((c) => c.tipo_corte === "cierre");
+      
+      return {
+        nombre: sucursal.nombre,
+        cerrado: !!corteCierre,
+        ultimoCorte: cortesHoy.length > 0 
+          ? format(parseISO(cortesHoy[0].created_at), "HH:mm")
+          : null,
+      };
+    });
+  }, [sucursales, cortes]);
 
   return {
     sucursales,
-    cortes,
+    cortes: cortesFiltrados,
+    cortesCierre,
     cortesAnterior,
+    cortesAnteriorCierre,
+    ultimosCortesHoy,
     isLoading,
     totales,
     totalesAnterior,
