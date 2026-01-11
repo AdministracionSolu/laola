@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CreditCard, Banknote, Clock, Store, Receipt } from "lucide-react";
+import { CreditCard, Banknote, Clock, Store, Receipt, DollarSign } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -15,6 +15,9 @@ interface EstadoSucursal {
   total: number;
   created_at: string;
   fecha_venta: string;
+  tarjetas_banregio?: number;
+  tarjetas_mercadopago?: number;
+  tarjetas_haycash?: number;
 }
 
 interface EstadoActualCardProps {
@@ -66,13 +69,34 @@ export function EstadoActualCard({ estado, formatMoney }: EstadoActualCardProps)
           </div>
         </div>
         
-        <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50">
-          <Receipt className="w-4 h-4 text-muted-foreground" />
-          <div>
-            <p className="text-xs text-muted-foreground">Por Cobrar</p>
-            <p className="font-semibold text-sm">{formatMoney(estado.por_cobrar)}</p>
+        {esCierre ? (
+          /* Para CIERRE: mostrar Corte X en lugar de Por Cobrar */
+          <div className="flex items-center gap-2 p-2 rounded-md bg-primary/10">
+            <DollarSign className="w-4 h-4 text-primary" />
+            <div>
+              <p className="text-xs text-muted-foreground">Corte X</p>
+              <p className="font-semibold text-sm">{formatMoney(estado.corte_x)}</p>
+            </div>
           </div>
-        </div>
+        ) : (
+          /* Para MOMENTO: mostrar ambos Por Cobrar y Corte X */
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50">
+              <Receipt className="w-4 h-4 text-muted-foreground" />
+              <div>
+                <p className="text-xs text-muted-foreground">Por Cobrar</p>
+                <p className="font-semibold text-sm">{formatMoney(estado.por_cobrar)}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 p-2 rounded-md bg-primary/10">
+              <DollarSign className="w-4 h-4 text-primary" />
+              <div>
+                <p className="text-xs text-muted-foreground">Corte X</p>
+                <p className="font-semibold text-sm">{formatMoney(estado.corte_x)}</p>
+              </div>
+            </div>
+          </div>
+        )}
         
         <div className="pt-2 border-t">
           <div className="flex items-center justify-between">

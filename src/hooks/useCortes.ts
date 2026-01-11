@@ -31,6 +31,10 @@ export interface Corte {
   propinas?: number;
   compras?: number;
   pago_servicios?: number;
+  // Desglose de tarjetas
+  tarjetas_banregio?: number;
+  tarjetas_mercadopago?: number;
+  tarjetas_haycash?: number;
 }
 
 export interface Totales {

@@ -30,6 +30,9 @@ export type Database = {
           salarios: number | null
           sucursal_id: string
           tarjetas: number
+          tarjetas_banregio: number | null
+          tarjetas_haycash: number | null
+          tarjetas_mercadopago: number | null
           tipo_corte: Database["public"]["Enums"]["tipo_corte"]
           total: number
         }
@@ -48,6 +51,9 @@ export type Database = {
           salarios?: number | null
           sucursal_id: string
           tarjetas?: number
+          tarjetas_banregio?: number | null
+          tarjetas_haycash?: number | null
+          tarjetas_mercadopago?: number | null
           tipo_corte: Database["public"]["Enums"]["tipo_corte"]
           total?: number
         }
@@ -66,6 +72,9 @@ export type Database = {
           salarios?: number | null
           sucursal_id?: string
           tarjetas?: number
+          tarjetas_banregio?: number | null
+          tarjetas_haycash?: number | null
+          tarjetas_mercadopago?: number | null
           tipo_corte?: Database["public"]["Enums"]["tipo_corte"]
           total?: number
         }
