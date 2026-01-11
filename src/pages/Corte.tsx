@@ -49,6 +49,11 @@ export default function Corte() {
   const [porCobrar, setPorCobrar] = useState("");
   const [total, setTotal] = useState("");
   
+  // Desglose de tarjetas para cierre
+  const [tarjetasBanregio, setTarjetasBanregio] = useState("");
+  const [tarjetasMercadopago, setTarjetasMercadopago] = useState("");
+  const [tarjetasHaycash, setTarjetasHaycash] = useState("");
+  
   // Campos opcionales para cierre
   const [pagoProveedores, setPagoProveedores] = useState("");
   const [salarios, setSalarios] = useState("");
@@ -64,6 +69,17 @@ export default function Corte() {
   useEffect(() => {
     fetchSucursales();
   }, []);
+
+  // Calcular tarjetas automáticamente para cierre (suma de terminales)
+  useEffect(() => {
+    if (tipoCorte === "cierre") {
+      const banregio = parseFloat(tarjetasBanregio) || 0;
+      const mercadopago = parseFloat(tarjetasMercadopago) || 0;
+      const haycash = parseFloat(tarjetasHaycash) || 0;
+      const totalTarjetas = banregio + mercadopago + haycash;
+      setTarjetas(totalTarjetas.toFixed(2));
+    }
+  }, [tipoCorte, tarjetasBanregio, tarjetasMercadopago, tarjetasHaycash]);
 
   // Calcular total automáticamente: tarjetas + efectivo + por_cobrar
   useEffect(() => {
@@ -138,6 +154,10 @@ export default function Corte() {
       propinas: tipoCorte === "cierre" ? (parseFloat(propinas) || 0) : 0,
       compras: tipoCorte === "cierre" ? (parseFloat(compras) || 0) : 0,
       pago_servicios: tipoCorte === "cierre" ? (parseFloat(pagoServicios) || 0) : 0,
+      // Desglose de tarjetas (solo para cierre)
+      tarjetas_banregio: tipoCorte === "cierre" ? (parseFloat(tarjetasBanregio) || 0) : 0,
+      tarjetas_mercadopago: tipoCorte === "cierre" ? (parseFloat(tarjetasMercadopago) || 0) : 0,
+      tarjetas_haycash: tipoCorte === "cierre" ? (parseFloat(tarjetasHaycash) || 0) : 0,
     };
 
     const { error } = await supabase.from("cortes_caja").insert(insertData as any);
@@ -175,6 +195,10 @@ export default function Corte() {
     setPropinas("");
     setCompras("");
     setPagoServicios("");
+    // Reset desglose tarjetas
+    setTarjetasBanregio("");
+    setTarjetasMercadopago("");
+    setTarjetasHaycash("");
   };
 
   if (isSuccess) {
@@ -271,19 +295,6 @@ export default function Corte() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="tarjetas">Cobrado con tarjeta</Label>
-                <Input
-                  id="tarjetas"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={tarjetas}
-                  onChange={(e) => setTarjetas(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="efectivo">Cobrado con efectivo</Label>
                 <Input
                   id="efectivo"
@@ -296,6 +307,86 @@ export default function Corte() {
                   required
                 />
               </div>
+            </div>
+
+            {/* Desglose de tarjetas - solo para cierre */}
+            {tipoCorte === "cierre" ? (
+              <div className="space-y-4 pt-4 border-t">
+                <Label className="text-base font-semibold">Desglose de Tarjetas</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="tarjetas_banregio">Banregio</Label>
+                    <Input
+                      id="tarjetas_banregio"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={tarjetasBanregio}
+                      onChange={(e) => setTarjetasBanregio(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tarjetas_mercadopago">MercadoPago</Label>
+                    <Input
+                      id="tarjetas_mercadopago"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={tarjetasMercadopago}
+                      onChange={(e) => setTarjetasMercadopago(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tarjetas_haycash">HayCash</Label>
+                    <Input
+                      id="tarjetas_haycash"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={tarjetasHaycash}
+                      onChange={(e) => setTarjetasHaycash(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tarjetas">Total Tarjetas (auto)</Label>
+                    <Input
+                      id="tarjetas"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={tarjetas}
+                      readOnly
+                      className="bg-muted"
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Para momento: campo único de tarjetas */
+              <div className="space-y-2">
+                <Label htmlFor="tarjetas">Cobrado con tarjeta</Label>
+                <Input
+                  id="tarjetas"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={tarjetas}
+                  onChange={(e) => setTarjetas(e.target.value)}
+                  required
+                />
+              </div>
+            )}
+
+            {/* Cobradas y Por cobrar */}
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="cobradas">Cobradas</Label>
                 <Input
@@ -322,19 +413,21 @@ export default function Corte() {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="total">Total (calculado)</Label>
-                <Input
-                  id="total"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={total}
-                  readOnly
-                  className="bg-muted"
-                />
-              </div>
+            </div>
+
+            {/* Total */}
+            <div className="space-y-2">
+              <Label htmlFor="total">Total Vendido (calculado)</Label>
+              <Input
+                id="total"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={total}
+                readOnly
+                className="bg-muted font-semibold text-lg"
+              />
             </div>
 
 
