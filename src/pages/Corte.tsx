@@ -54,6 +54,10 @@ export default function Corte() {
   const [tarjetasMercadopago, setTarjetasMercadopago] = useState("");
   const [tarjetasHaycash, setTarjetasHaycash] = useState("");
   
+  // Apps de delivery (solo Solares)
+  const [rappi, setRappi] = useState("");
+  const [uber, setUber] = useState("");
+  
   // Campos opcionales para cierre
   const [pagoProveedores, setPagoProveedores] = useState("");
   const [salarios, setSalarios] = useState("");
@@ -61,6 +65,9 @@ export default function Corte() {
   const [compras, setCompras] = useState("");
   const [pagoServicios, setPagoServicios] = useState("");
   
+  // ID de Solares para mostrar campos de delivery
+  const SOLARES_ID = "757d25e0-ce84-4d6f-a68a-d4639d3e409f";
+  const esSolares = sucursalId === SOLARES_ID;
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   
@@ -81,15 +88,17 @@ export default function Corte() {
     }
   }, [tipoCorte, tarjetasBanregio, tarjetasMercadopago, tarjetasHaycash]);
 
-  // Calcular total automáticamente: tarjetas + efectivo + por_cobrar
+  // Calcular total automáticamente: tarjetas + efectivo + por_cobrar + rappi + uber
   useEffect(() => {
     const tarjetasNum = parseFloat(tarjetas) || 0;
     const efectivoNum = parseFloat(efectivo) || 0;
     const porCobrarNum = parseFloat(porCobrar) || 0;
+    const rappiNum = esSolares ? (parseFloat(rappi) || 0) : 0;
+    const uberNum = esSolares ? (parseFloat(uber) || 0) : 0;
     
-    const totalCalculado = tarjetasNum + efectivoNum + porCobrarNum;
+    const totalCalculado = tarjetasNum + efectivoNum + porCobrarNum + rappiNum + uberNum;
     setTotal(totalCalculado.toFixed(2));
-  }, [tarjetas, efectivo, porCobrar]);
+  }, [tarjetas, efectivo, porCobrar, rappi, uber, esSolares]);
 
   const fetchSucursales = async () => {
     const { data, error } = await supabase
@@ -158,6 +167,9 @@ export default function Corte() {
       tarjetas_banregio: tipoCorte === "cierre" ? (parseFloat(tarjetasBanregio) || 0) : 0,
       tarjetas_mercadopago: tipoCorte === "cierre" ? (parseFloat(tarjetasMercadopago) || 0) : 0,
       tarjetas_haycash: tipoCorte === "cierre" ? (parseFloat(tarjetasHaycash) || 0) : 0,
+      // Apps de delivery (solo Solares)
+      rappi: esSolares ? (parseFloat(rappi) || 0) : 0,
+      uber: esSolares ? (parseFloat(uber) || 0) : 0,
     };
 
     const { error } = await supabase.from("cortes_caja").insert(insertData as any);
@@ -199,6 +211,9 @@ export default function Corte() {
     setTarjetasBanregio("");
     setTarjetasMercadopago("");
     setTarjetasHaycash("");
+    // Reset apps delivery
+    setRappi("");
+    setUber("");
   };
 
   if (isSuccess) {
@@ -285,12 +300,16 @@ export default function Corte() {
                 <Label htmlFor="corte_x">Corte X</Label>
                 <Input
                   id="corte_x"
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   placeholder="0.00"
                   value={corteX}
-                  onChange={(e) => setCorteX(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(",", ".");
+                    if (/^[0-9]*\.?[0-9]*$/.test(value) || value === "") {
+                      setCorteX(value);
+                    }
+                  }}
                   required
                 />
               </div>
@@ -298,12 +317,16 @@ export default function Corte() {
                 <Label htmlFor="efectivo">Cobrado con efectivo</Label>
                 <Input
                   id="efectivo"
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   placeholder="0.00"
                   value={efectivo}
-                  onChange={(e) => setEfectivo(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(",", ".");
+                    if (/^[0-9]*\.?[0-9]*$/.test(value) || value === "") {
+                      setEfectivo(value);
+                    }
+                  }}
                   required
                 />
               </div>
@@ -318,12 +341,16 @@ export default function Corte() {
                     <Label htmlFor="tarjetas_banregio">Banregio</Label>
                     <Input
                       id="tarjetas_banregio"
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
                       placeholder="0.00"
                       value={tarjetasBanregio}
-                      onChange={(e) => setTarjetasBanregio(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(",", ".");
+                        if (/^[0-9]*\.?[0-9]*$/.test(value) || value === "") {
+                          setTarjetasBanregio(value);
+                        }
+                      }}
                       required
                     />
                   </div>
@@ -331,12 +358,16 @@ export default function Corte() {
                     <Label htmlFor="tarjetas_mercadopago">MercadoPago</Label>
                     <Input
                       id="tarjetas_mercadopago"
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
                       placeholder="0.00"
                       value={tarjetasMercadopago}
-                      onChange={(e) => setTarjetasMercadopago(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(",", ".");
+                        if (/^[0-9]*\.?[0-9]*$/.test(value) || value === "") {
+                          setTarjetasMercadopago(value);
+                        }
+                      }}
                       required
                     />
                   </div>
@@ -344,12 +375,16 @@ export default function Corte() {
                     <Label htmlFor="tarjetas_haycash">HayCash</Label>
                     <Input
                       id="tarjetas_haycash"
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
                       placeholder="0.00"
                       value={tarjetasHaycash}
-                      onChange={(e) => setTarjetasHaycash(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(",", ".");
+                        if (/^[0-9]*\.?[0-9]*$/.test(value) || value === "") {
+                          setTarjetasHaycash(value);
+                        }
+                      }}
                       required
                     />
                   </div>
@@ -357,9 +392,8 @@ export default function Corte() {
                     <Label htmlFor="tarjetas">Total Tarjetas (auto)</Label>
                     <Input
                       id="tarjetas"
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
                       placeholder="0.00"
                       value={tarjetas}
                       readOnly
@@ -374,14 +408,59 @@ export default function Corte() {
                 <Label htmlFor="tarjetas">Cobrado con tarjeta</Label>
                 <Input
                   id="tarjetas"
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   placeholder="0.00"
                   value={tarjetas}
-                  onChange={(e) => setTarjetas(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(",", ".");
+                    if (/^[0-9]*\.?[0-9]*$/.test(value) || value === "") {
+                      setTarjetas(value);
+                    }
+                  }}
                   required
                 />
+              </div>
+            )}
+
+            {/* Apps de delivery - solo para Solares */}
+            {esSolares && (
+              <div className="space-y-4 pt-4 border-t">
+                <Label className="text-base font-semibold">Apps de Delivery</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="rappi">Rappi</Label>
+                    <Input
+                      id="rappi"
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      value={rappi}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(",", ".");
+                        if (/^[0-9]*\.?[0-9]*$/.test(value) || value === "") {
+                          setRappi(value);
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="uber">Uber</Label>
+                    <Input
+                      id="uber"
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      value={uber}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(",", ".");
+                        if (/^[0-9]*\.?[0-9]*$/.test(value) || value === "") {
+                          setUber(value);
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
             )}
 
@@ -391,12 +470,16 @@ export default function Corte() {
                 <Label htmlFor="cobradas">Cobradas</Label>
                 <Input
                   id="cobradas"
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   placeholder="0.00"
                   value={cobradas}
-                  onChange={(e) => setCobradas(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(",", ".");
+                    if (/^[0-9]*\.?[0-9]*$/.test(value) || value === "") {
+                      setCobradas(value);
+                    }
+                  }}
                   required
                 />
               </div>
@@ -404,12 +487,16 @@ export default function Corte() {
                 <Label htmlFor="por_cobrar">Por cobrar</Label>
                 <Input
                   id="por_cobrar"
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   placeholder="0.00"
                   value={porCobrar}
-                  onChange={(e) => setPorCobrar(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(",", ".");
+                    if (/^[0-9]*\.?[0-9]*$/.test(value) || value === "") {
+                      setPorCobrar(value);
+                    }
+                  }}
                   required
                 />
               </div>
@@ -420,9 +507,8 @@ export default function Corte() {
               <Label htmlFor="total">Total Vendido (calculado)</Label>
               <Input
                 id="total"
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
+                inputMode="decimal"
                 placeholder="0.00"
                 value={total}
                 readOnly
@@ -440,60 +526,80 @@ export default function Corte() {
                     <Label htmlFor="pago_proveedores">Pago a proveedores</Label>
                     <Input
                       id="pago_proveedores"
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
                       placeholder="0.00"
                       value={pagoProveedores}
-                      onChange={(e) => setPagoProveedores(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(",", ".");
+                        if (/^[0-9]*\.?[0-9]*$/.test(value) || value === "") {
+                          setPagoProveedores(value);
+                        }
+                      }}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="salarios">Salarios</Label>
                     <Input
                       id="salarios"
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
                       placeholder="0.00"
                       value={salarios}
-                      onChange={(e) => setSalarios(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(",", ".");
+                        if (/^[0-9]*\.?[0-9]*$/.test(value) || value === "") {
+                          setSalarios(value);
+                        }
+                      }}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="propinas">Propinas</Label>
                     <Input
                       id="propinas"
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
                       placeholder="0.00"
                       value={propinas}
-                      onChange={(e) => setPropinas(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(",", ".");
+                        if (/^[0-9]*\.?[0-9]*$/.test(value) || value === "") {
+                          setPropinas(value);
+                        }
+                      }}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="compras">Compras</Label>
                     <Input
                       id="compras"
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
                       placeholder="0.00"
                       value={compras}
-                      onChange={(e) => setCompras(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(",", ".");
+                        if (/^[0-9]*\.?[0-9]*$/.test(value) || value === "") {
+                          setCompras(value);
+                        }
+                      }}
                     />
                   </div>
                   <div className="space-y-2 col-span-2">
                     <Label htmlFor="pago_servicios">Pago de servicios</Label>
                     <Input
                       id="pago_servicios"
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
                       placeholder="0.00"
                       value={pagoServicios}
-                      onChange={(e) => setPagoServicios(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(",", ".");
+                        if (/^[0-9]*\.?[0-9]*$/.test(value) || value === "") {
+                          setPagoServicios(value);
+                        }
+                      }}
                     />
                   </div>
                 </div>

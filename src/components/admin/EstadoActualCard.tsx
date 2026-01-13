@@ -18,6 +18,8 @@ interface EstadoSucursal {
   tarjetas_banregio?: number;
   tarjetas_mercadopago?: number;
   tarjetas_haycash?: number;
+  rappi?: number;
+  uber?: number;
 }
 
 interface EstadoActualCardProps {
@@ -68,6 +70,30 @@ export function EstadoActualCard({ estado, formatMoney }: EstadoActualCardProps)
             </div>
           </div>
         </div>
+
+        {/* Mostrar Rappi/Uber si tienen valor (solo Solares) */}
+        {((estado.rappi && estado.rappi > 0) || (estado.uber && estado.uber > 0)) && (
+          <div className="grid grid-cols-2 gap-3">
+            {estado.rappi && estado.rappi > 0 && (
+              <div className="flex items-center gap-2 p-2 rounded-md bg-orange-500/10">
+                <Store className="w-4 h-4 text-orange-500" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Rappi</p>
+                  <p className="font-semibold text-sm">{formatMoney(estado.rappi)}</p>
+                </div>
+              </div>
+            )}
+            {estado.uber && estado.uber > 0 && (
+              <div className="flex items-center gap-2 p-2 rounded-md bg-black/10">
+                <Store className="w-4 h-4 text-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Uber</p>
+                  <p className="font-semibold text-sm">{formatMoney(estado.uber)}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         
         {esCierre ? (
           /* Para CIERRE: mostrar Corte X en lugar de Por Cobrar */
