@@ -65,9 +65,10 @@ export default function Corte() {
   const [compras, setCompras] = useState("");
   const [pagoServicios, setPagoServicios] = useState("");
   
-  // ID de Solares para mostrar campos de delivery
+  // IDs de sucursales con plataformas de delivery
   const SOLARES_ID = "757d25e0-ce84-4d6f-a68a-d4639d3e409f";
-  const esSolares = sucursalId === SOLARES_ID;
+  const CERVECERIA_ID = "79324e7b-c8ef-4355-b2b1-6965346a0ab1";
+  const esConPlataformas = sucursalId === SOLARES_ID || sucursalId === CERVECERIA_ID;
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   
@@ -93,12 +94,12 @@ export default function Corte() {
     const tarjetasNum = parseFloat(tarjetas) || 0;
     const efectivoNum = parseFloat(efectivo) || 0;
     const porCobrarNum = parseFloat(porCobrar) || 0;
-    const rappiNum = esSolares ? (parseFloat(rappi) || 0) : 0;
-    const uberNum = esSolares ? (parseFloat(uber) || 0) : 0;
+    const rappiNum = esConPlataformas ? (parseFloat(rappi) || 0) : 0;
+    const uberNum = esConPlataformas ? (parseFloat(uber) || 0) : 0;
     
     const totalCalculado = tarjetasNum + efectivoNum + porCobrarNum + rappiNum + uberNum;
     setTotal(totalCalculado.toFixed(2));
-  }, [tarjetas, efectivo, porCobrar, rappi, uber, esSolares]);
+  }, [tarjetas, efectivo, porCobrar, rappi, uber, esConPlataformas]);
 
   const fetchSucursales = async () => {
     const { data, error } = await supabase
@@ -167,9 +168,9 @@ export default function Corte() {
       tarjetas_banregio: tipoCorte === "cierre" ? (parseFloat(tarjetasBanregio) || 0) : 0,
       tarjetas_mercadopago: tipoCorte === "cierre" ? (parseFloat(tarjetasMercadopago) || 0) : 0,
       tarjetas_haycash: tipoCorte === "cierre" ? (parseFloat(tarjetasHaycash) || 0) : 0,
-      // Apps de delivery (solo Solares)
-      rappi: esSolares ? (parseFloat(rappi) || 0) : 0,
-      uber: esSolares ? (parseFloat(uber) || 0) : 0,
+      // Apps de delivery (Solares y Cervecería)
+      rappi: esConPlataformas ? (parseFloat(rappi) || 0) : 0,
+      uber: esConPlataformas ? (parseFloat(uber) || 0) : 0,
     };
 
     const { error } = await supabase.from("cortes_caja").insert(insertData as any);
@@ -423,8 +424,8 @@ export default function Corte() {
               </div>
             )}
 
-            {/* Apps de delivery - solo para Solares */}
-            {esSolares && (
+            {/* Apps de delivery - Solares y Cervecería */}
+            {esConPlataformas && (
               <div className="space-y-4 pt-4 border-t">
                 <Label className="text-base font-semibold">Apps de Delivery</Label>
                 <div className="grid grid-cols-2 gap-4">
@@ -476,8 +477,8 @@ export default function Corte() {
               </div>
             )}
 
-            {/* Cobradas y Por cobrar - NO para Solares */}
-            {!esSolares && (
+            {/* Cobradas y Por cobrar - NO para sucursales con plataformas */}
+            {!esConPlataformas && (
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="cobradas">Cobradas</Label>
