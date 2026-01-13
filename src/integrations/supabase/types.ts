@@ -27,6 +27,7 @@ export type Database = {
           pago_servicios: number | null
           por_cobrar: number
           propinas: number | null
+          rappi: number | null
           salarios: number | null
           sucursal_id: string
           tarjetas: number
@@ -35,6 +36,7 @@ export type Database = {
           tarjetas_mercadopago: number | null
           tipo_corte: Database["public"]["Enums"]["tipo_corte"]
           total: number
+          uber: number | null
         }
         Insert: {
           cobradas?: number
@@ -48,6 +50,7 @@ export type Database = {
           pago_servicios?: number | null
           por_cobrar?: number
           propinas?: number | null
+          rappi?: number | null
           salarios?: number | null
           sucursal_id: string
           tarjetas?: number
@@ -56,6 +59,7 @@ export type Database = {
           tarjetas_mercadopago?: number | null
           tipo_corte: Database["public"]["Enums"]["tipo_corte"]
           total?: number
+          uber?: number | null
         }
         Update: {
           cobradas?: number
@@ -69,6 +73,7 @@ export type Database = {
           pago_servicios?: number | null
           por_cobrar?: number
           propinas?: number | null
+          rappi?: number | null
           salarios?: number | null
           sucursal_id?: string
           tarjetas?: number
@@ -77,6 +82,7 @@ export type Database = {
           tarjetas_mercadopago?: number | null
           tipo_corte?: Database["public"]["Enums"]["tipo_corte"]
           total?: number
+          uber?: number | null
         }
         Relationships: [
           {

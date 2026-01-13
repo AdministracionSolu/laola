@@ -35,6 +35,9 @@ export interface Corte {
   tarjetas_banregio?: number;
   tarjetas_mercadopago?: number;
   tarjetas_haycash?: number;
+  // Apps de delivery (solo Solares)
+  rappi?: number;
+  uber?: number;
 }
 
 export interface Totales {
