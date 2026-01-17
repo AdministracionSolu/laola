@@ -72,6 +72,7 @@ export interface UseCortesReturn {
   estadoSucursales: { nombre: string; cerrado: boolean; ultimoCorte: string | null }[];
   refetch: () => void;
   deleteCorte: (corteId: string) => Promise<boolean>;
+  cambiarTipoCorte: (corteId: string, nuevoTipo: "momento" | "cierre") => Promise<boolean>;
 }
 
 interface UseCortesOptions {
@@ -171,6 +172,30 @@ export function useCortes(options: UseCortesOptions): UseCortesReturn {
     toast({
       title: "Eliminado",
       description: "El corte ha sido eliminado correctamente",
+    });
+    
+    refetch();
+    return true;
+  }, [toast, refetch]);
+
+  const cambiarTipoCorte = useCallback(async (corteId: string, nuevoTipo: "momento" | "cierre"): Promise<boolean> => {
+    const { error } = await supabase
+      .from("cortes_caja")
+      .update({ tipo_corte: nuevoTipo })
+      .eq("id", corteId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo cambiar el tipo de corte",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    toast({
+      title: "Actualizado",
+      description: `El corte se cambió a "${nuevoTipo === "cierre" ? "Cierre" : "Del Momento"}"`,
     });
     
     refetch();
@@ -300,5 +325,6 @@ export function useCortes(options: UseCortesOptions): UseCortesReturn {
     estadoSucursales,
     refetch,
     deleteCorte,
+    cambiarTipoCorte,
   };
 }

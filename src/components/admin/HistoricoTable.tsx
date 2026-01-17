@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Store, FileDown, Trash2 } from "lucide-react";
+import { Store, FileDown, Trash2, ArrowRightLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Corte } from "@/hooks/useCortes";
 import { format, parseISO } from "date-fns";
@@ -17,17 +17,26 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface HistoricoTableProps {
   cortes: Corte[];
   formatMoney: (value: number) => string;
   mostrarFecha?: boolean;
   onDelete?: (corteId: string) => Promise<boolean>;
+  onCambiarTipo?: (corteId: string, nuevoTipo: "momento" | "cierre") => Promise<boolean>;
 }
 
-export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDelete }: HistoricoTableProps) {
+export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDelete, onCambiarTipo }: HistoricoTableProps) {
   const [corteAEliminar, setCorteAEliminar] = useState<Corte | null>(null);
+  const [corteACambiar, setCorteACambiar] = useState<{ corte: Corte; nuevoTipo: "momento" | "cierre" } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isCambiando, setIsCambiando] = useState(false);
 
   const handleDelete = async () => {
     if (!corteAEliminar || !onDelete) return;
@@ -36,6 +45,15 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
     await onDelete(corteAEliminar.id);
     setIsDeleting(false);
     setCorteAEliminar(null);
+  };
+
+  const handleCambiarTipo = async () => {
+    if (!corteACambiar || !onCambiarTipo) return;
+    
+    setIsCambiando(true);
+    await onCambiarTipo(corteACambiar.corte.id, corteACambiar.nuevoTipo);
+    setIsCambiando(false);
+    setCorteACambiar(null);
   };
   const exportarCSV = () => {
     const headers = ["Fecha Venta", "Registrado", "Sucursal", "Tipo", "Corte X", "Tarjetas", "Efectivo", "Cobradas", "Por Cobrar", "Total", "Pago Proveedores", "Salarios", "Propinas", "Compras", "Pago Servicios"];
@@ -129,9 +147,30 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
                       {corte.sucursales?.nombre}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={corte.tipo_corte === "cierre" ? "default" : "secondary"}>
-                        {corte.tipo_corte === "cierre" ? "Cierre" : "Momento"}
-                      </Badge>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Badge 
+                            variant={corte.tipo_corte === "cierre" ? "default" : "secondary"}
+                            className="cursor-pointer hover:opacity-80"
+                          >
+                            {corte.tipo_corte === "cierre" ? "Cierre" : "Momento"}
+                          </Badge>
+                        </DropdownMenuTrigger>
+                        {onCambiarTipo && (
+                          <DropdownMenuContent align="start">
+                            <DropdownMenuItem
+                              onClick={() => setCorteACambiar({ 
+                                corte, 
+                                nuevoTipo: corte.tipo_corte === "cierre" ? "momento" : "cierre" 
+                              })}
+                              className="gap-2"
+                            >
+                              <ArrowRightLeft className="w-4 h-4" />
+                              Cambiar a {corte.tipo_corte === "cierre" ? "Momento" : "Cierre"}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        )}
+                      </DropdownMenu>
                     </TableCell>
                     <TableCell className="text-right">
                       {formatMoney(Number(corte.corte_x))}
@@ -186,7 +225,7 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
         )}
       </CardContent>
 
-      {/* Diálogo de confirmación */}
+      {/* Diálogo de confirmación para eliminar */}
       <AlertDialog open={!!corteAEliminar} onOpenChange={() => setCorteAEliminar(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -210,6 +249,35 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeleting ? "Eliminando..." : "Eliminar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Diálogo de confirmación para cambiar tipo */}
+      <AlertDialog open={!!corteACambiar} onOpenChange={() => setCorteACambiar(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Cambiar tipo de corte?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {corteACambiar && (
+                <>
+                  Estás por cambiar el corte de <strong>{corteACambiar.corte.sucursales?.nombre}</strong> del{" "}
+                  <strong>{format(parseISO(corteACambiar.corte.created_at), "d 'de' MMMM 'a las' HH:mm", { locale: es })}</strong>
+                  <br /><br />
+                  de <strong>"{corteACambiar.corte.tipo_corte === "cierre" ? "Cierre" : "Del Momento"}"</strong> a{" "}
+                  <strong>"{corteACambiar.nuevoTipo === "cierre" ? "Cierre" : "Del Momento"}"</strong>.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isCambiando}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleCambiarTipo} 
+              disabled={isCambiando}
+            >
+              {isCambiando ? "Cambiando..." : "Cambiar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
