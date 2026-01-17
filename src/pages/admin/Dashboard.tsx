@@ -19,6 +19,7 @@ import { SucursalStatus } from "@/components/admin/SucursalStatus";
 import { HistoricoTable } from "@/components/admin/HistoricoTable";
 import { EstadoActualView } from "@/components/admin/EstadoActualView";
 import { AnalisisVentas } from "@/components/admin/AnalisisVentas";
+import { DesgloseTerminales } from "@/components/admin/DesgloseTerminales";
 
 export default function AdminDashboard() {
   const [filtroSucursal, setFiltroSucursal] = useState<string>("todas");
@@ -264,8 +265,8 @@ export default function AdminDashboard() {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="resumen">
-                <div className="mb-4 p-3 rounded-lg bg-muted/50 border border-dashed">
+              <TabsContent value="resumen" className="space-y-6">
+                <div className="p-3 rounded-lg bg-muted/50 border border-dashed">
                   <p className="text-sm text-muted-foreground">
                     📊 Los totales y gráficas muestran únicamente cortes de <strong>cierre</strong> (ventas finales del día).
                   </p>
@@ -276,6 +277,12 @@ export default function AdminDashboard() {
                   datosTendencia={datosTendencia}
                   dataPorSucursal={dataPorSucursal}
                   tipoPeriodo={tipoPeriodo}
+                  formatMoney={formatMoney}
+                />
+                {/* Desglose de tarjetas por terminal */}
+                <DesgloseTerminales
+                  cortesCierre={cortesCierre}
+                  sucursales={sucursales}
                   formatMoney={formatMoney}
                 />
               </TabsContent>
