@@ -280,17 +280,31 @@ export default function Corte() {
                 onValueChange={(value) => setTipoCorte(value as "momento" | "cierre")}
                 className="grid grid-cols-2 gap-4"
               >
-                <div className="flex items-center space-x-2 border rounded-lg p-3 cursor-pointer hover:bg-accent transition-colors">
-                  <RadioGroupItem value="momento" id="momento" />
-                  <Label htmlFor="momento" className="cursor-pointer font-normal">
-                    Del Momento
-                  </Label>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2 border rounded-lg p-3 cursor-pointer hover:bg-accent transition-colors">
+                    <RadioGroupItem value="momento" id="momento" />
+                    <Label htmlFor="momento" className="cursor-pointer font-normal">
+                      Del Momento
+                    </Label>
+                  </div>
+                  {tipoCorte === "momento" && (
+                    <p className="text-xs text-muted-foreground px-1">
+                      📸 Reporte parcial durante el turno. Usa este si aún no terminas el día.
+                    </p>
+                  )}
                 </div>
-                <div className="flex items-center space-x-2 border rounded-lg p-3 cursor-pointer hover:bg-accent transition-colors">
-                  <RadioGroupItem value="cierre" id="cierre" />
-                  <Label htmlFor="cierre" className="cursor-pointer font-normal">
-                    De Cierre
-                  </Label>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2 border rounded-lg p-3 cursor-pointer hover:bg-accent transition-colors">
+                    <RadioGroupItem value="cierre" id="cierre" />
+                    <Label htmlFor="cierre" className="cursor-pointer font-normal">
+                      De Cierre
+                    </Label>
+                  </div>
+                  {tipoCorte === "cierre" && (
+                    <p className="text-xs text-muted-foreground px-1">
+                      🔒 Reporte final del día. Solo usa este al cerrar la sucursal.
+                    </p>
+                  )}
                 </div>
               </RadioGroup>
             </div>
