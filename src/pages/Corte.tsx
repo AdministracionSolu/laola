@@ -477,45 +477,43 @@ export default function Corte() {
               </div>
             )}
 
-            {/* Cobradas y Por cobrar - NO para sucursales con plataformas */}
-            {!esConPlataformas && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cobradas">Cobradas</Label>
-                  <Input
-                    id="cobradas"
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    value={cobradas}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(",", ".");
-                      if (/^[0-9]*\.?[0-9]*$/.test(value) || value === "") {
-                        setCobradas(value);
-                      }
-                    }}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="por_cobrar">Por cobrar</Label>
-                  <Input
-                    id="por_cobrar"
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    value={porCobrar}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(",", ".");
-                      if (/^[0-9]*\.?[0-9]*$/.test(value) || value === "") {
-                        setPorCobrar(value);
-                      }
-                    }}
-                    required
-                  />
-                </div>
+            {/* Cobradas y Por cobrar - para todas las sucursales */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="cobradas">Cobradas</Label>
+                <Input
+                  id="cobradas"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  value={cobradas}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(",", ".");
+                    if (/^[0-9]*\.?[0-9]*$/.test(value) || value === "") {
+                      setCobradas(value);
+                    }
+                  }}
+                  required
+                />
               </div>
-            )}
+              <div className="space-y-2">
+                <Label htmlFor="por_cobrar">Por cobrar</Label>
+                <Input
+                  id="por_cobrar"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  value={porCobrar}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(",", ".");
+                    if (/^[0-9]*\.?[0-9]*$/.test(value) || value === "") {
+                      setPorCobrar(value);
+                    }
+                  }}
+                  required
+                />
+              </div>
+            </div>
 
             {/* Total */}
             <div className="space-y-2">
