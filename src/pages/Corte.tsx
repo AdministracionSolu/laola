@@ -89,17 +89,16 @@ export default function Corte() {
     }
   }, [tipoCorte, tarjetasBanregio, tarjetasMercadopago, tarjetasHaycash]);
 
-  // Calcular total automáticamente: tarjetas + efectivo + por_cobrar + rappi + uber
+  // Calcular total automáticamente: tarjetas + efectivo + por_cobrar
+  // Nota: Rappi y Uber son solo informativos, ya vienen incluidos en efectivo
   useEffect(() => {
     const tarjetasNum = parseFloat(tarjetas) || 0;
     const efectivoNum = parseFloat(efectivo) || 0;
     const porCobrarNum = parseFloat(porCobrar) || 0;
-    const rappiNum = esConPlataformas ? (parseFloat(rappi) || 0) : 0;
-    const uberNum = esConPlataformas ? (parseFloat(uber) || 0) : 0;
     
-    const totalCalculado = tarjetasNum + efectivoNum + porCobrarNum + rappiNum + uberNum;
+    const totalCalculado = tarjetasNum + efectivoNum + porCobrarNum;
     setTotal(totalCalculado.toFixed(2));
-  }, [tarjetas, efectivo, porCobrar, rappi, uber, esConPlataformas]);
+  }, [tarjetas, efectivo, porCobrar]);
 
   const fetchSucursales = async () => {
     const { data, error } = await supabase
@@ -441,8 +440,13 @@ export default function Corte() {
             {/* Apps de delivery - Solares y Cervecería */}
             {esConPlataformas && (
               <div className="space-y-4 pt-4 border-t">
+              <div className="space-y-1">
                 <Label className="text-base font-semibold">Apps de Delivery</Label>
-                <div className="grid grid-cols-2 gap-4">
+                <p className="text-xs text-muted-foreground">
+                  ℹ️ Solo informativo. Las ventas de apps ya están incluidas en efectivo.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="rappi">Rappi</Label>
                     <Input
