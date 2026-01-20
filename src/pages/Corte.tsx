@@ -7,11 +7,15 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, Send, Store } from "lucide-react";
+import { CheckCircle2, Send, Store, ArrowLeft } from "lucide-react";
 import { z } from "zod";
 
 // Logo de La Ola
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
+
+interface Props {
+  onBack?: () => void;
+}
 
 interface Sucursal {
   id: string;
@@ -38,7 +42,7 @@ const corteSchema = z.object({
 
 
 
-export default function Corte() {
+export default function Corte({ onBack }: Props) {
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [sucursalId, setSucursalId] = useState("");
   const [tipoCorte, setTipoCorte] = useState<"momento" | "cierre">("momento");
@@ -240,7 +244,12 @@ export default function Corte() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/10 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
+        <CardHeader className="text-center relative">
+          {onBack && (
+            <Button variant="ghost" size="icon" className="absolute left-4 top-4" onClick={onBack}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+          )}
           <div className="mx-auto mb-4 w-16 h-16 rounded-full overflow-hidden">
             <img src={logoLaOla} alt="La Ola" className="w-full h-full object-cover" />
           </div>

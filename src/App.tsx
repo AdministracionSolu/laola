@@ -7,7 +7,7 @@ import Index from "./pages/Index";
 import Menu from "./pages/Menu";
 import Sucursales from "./pages/Sucursales";
 import Contacto from "./pages/Contacto";
-import Corte from "./pages/Corte";
+import ModuloSelector from "./pages/ModuloSelector";
 import AdminLogin from "./pages/admin/Login";
 import AdminDashboard from "./pages/admin/Dashboard";
 import NotFound from "./pages/NotFound";
@@ -25,7 +25,7 @@ const App = () => (
           <Route path="/menu" element={<Menu />} />
           <Route path="/sucursales" element={<Sucursales />} />
           <Route path="/contacto" element={<Contacto />} />
-          <Route path="/corte" element={<Corte />} />
+          <Route path="/corte" element={<ModuloSelector />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
