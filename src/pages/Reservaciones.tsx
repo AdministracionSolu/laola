@@ -6,10 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, Users, Clock, Phone, Calendar, MapPin, Trash2, RefreshCw, Bell } from "lucide-react";
+import { ArrowLeft, Plus, Users, Clock, Phone, MapPin, Trash2, RefreshCw } from "lucide-react";
 import { format, parseISO, isToday, isTomorrow, addDays } from "date-fns";
 import { es } from "date-fns/locale";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
@@ -279,13 +278,13 @@ export default function Reservaciones({ onBack }: Props) {
   const getEstadoBadge = (estado: string) => {
     switch (estado) {
       case "confirmada":
-        return <Badge className="bg-green-500">Confirmada</Badge>;
+        return <Badge className="bg-primary text-primary-foreground text-[10px] sm:text-xs">Confirmada</Badge>;
       case "cancelada":
-        return <Badge variant="destructive">Cancelada</Badge>;
+        return <Badge variant="destructive" className="text-[10px] sm:text-xs">Cancelada</Badge>;
       case "completada":
-        return <Badge variant="secondary">Completada</Badge>;
+        return <Badge variant="secondary" className="text-[10px] sm:text-xs">Completada</Badge>;
       default:
-        return <Badge>{estado}</Badge>;
+        return <Badge className="text-[10px] sm:text-xs">{estado}</Badge>;
     }
   };
 
@@ -293,154 +292,159 @@ export default function Reservaciones({ onBack }: Props) {
     const date = parseISO(fecha);
     if (isToday(date)) return "Hoy";
     if (isTomorrow(date)) return "Mañana";
-    return format(date, "EEEE d 'de' MMMM", { locale: es });
+    return format(date, "EEE d MMM", { locale: es });
   };
 
   const sucursalActual = sucursales.find((s) => s.id === sucursalSeleccionada);
   const zonasActuales = getZonasBySucursal(sucursalSeleccionada);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/10 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/10 px-3 py-3 sm:p-4">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => onBack ? onBack() : navigate("/centro-de-operaciones")}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full overflow-hidden">
-                <img src={logoLaOla} alt="La Ola" className="w-full h-full object-cover" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold">Centro de Reservaciones</h1>
-                <p className="text-sm text-muted-foreground">
-                  Consulta y registra reservas de todas las sucursales
-                </p>
-              </div>
+        {/* Header - Mobile First */}
+        <div className="flex items-center gap-2 mb-3 sm:mb-4">
+          <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8 sm:h-9 sm:w-9" onClick={() => onBack ? onBack() : navigate("/centro-de-operaciones")}>
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+          </Button>
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-full overflow-hidden shrink-0">
+              <img src={logoLaOla} alt="La Ola" className="w-full h-full object-cover" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-xl font-bold truncate">Reservaciones</h1>
+              <p className="text-[10px] sm:text-sm text-muted-foreground truncate">
+                Todas las sucursales
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={fetchReservaciones}>
-              <RefreshCw className="w-4 h-4" />
+          <div className="flex items-center gap-1 shrink-0">
+            <Button variant="outline" size="icon" className="h-7 w-7 sm:h-9 sm:w-9" onClick={fetchReservaciones}>
+              <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </Button>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nueva Reserva
+                <Button size="sm" className="h-7 sm:h-9 px-2 sm:px-4 text-xs sm:text-sm">
+                  <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Nueva</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-md">
+              <DialogContent className="w-[calc(100vw-24px)] sm:max-w-md max-h-[85vh] overflow-y-auto rounded-lg">
                 <DialogHeader>
-                  <DialogTitle>Nueva Reservación</DialogTitle>
-                  <DialogDescription>
-                    Registra una nueva reserva para cualquier sucursal
+                  <DialogTitle className="text-base sm:text-lg">Nueva Reservación</DialogTitle>
+                  <DialogDescription className="text-xs sm:text-sm">
+                    Registra una reserva para cualquier sucursal
                   </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Sucursal *</Label>
+                <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs sm:text-sm">Sucursal *</Label>
                       <Select value={formSucursal} onValueChange={(v) => { setFormSucursal(v); setFormZona(""); }}>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
                           <SelectValue placeholder="Seleccionar" />
                         </SelectTrigger>
                         <SelectContent>
                           {sucursales.map((s) => (
-                            <SelectItem key={s.id} value={s.id}>{s.nombre}</SelectItem>
+                            <SelectItem key={s.id} value={s.id} className="text-xs sm:text-sm">{s.nombre}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Zona *</Label>
+                    <div className="space-y-1">
+                      <Label className="text-xs sm:text-sm">Zona *</Label>
                       <Select value={formZona} onValueChange={setFormZona} disabled={!formSucursal}>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
                           <SelectValue placeholder="Seleccionar" />
                         </SelectTrigger>
                         <SelectContent>
                           {getZonasBySucursal(formSucursal).map((z) => (
-                            <SelectItem key={z.id} value={z.id}>{z.nombre}</SelectItem>
+                            <SelectItem key={z.id} value={z.id} className="text-xs sm:text-sm">{z.nombre}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Nombre del cliente *</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs sm:text-sm">Nombre del cliente *</Label>
                     <Input
                       value={formNombre}
                       onChange={(e) => setFormNombre(e.target.value)}
                       placeholder="Nombre completo"
                       required
+                      className="h-8 sm:h-9 text-sm"
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Teléfono</Label>
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs sm:text-sm">Teléfono</Label>
                       <Input
                         value={formTelefono}
                         onChange={(e) => setFormTelefono(e.target.value)}
                         placeholder="Opcional"
+                        className="h-8 sm:h-9 text-sm"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Personas *</Label>
+                    <div className="space-y-1">
+                      <Label className="text-xs sm:text-sm">Personas *</Label>
                       <Input
                         type="number"
                         min="1"
                         max="50"
                         value={formPersonas}
                         onChange={(e) => setFormPersonas(e.target.value)}
+                        className="h-8 sm:h-9 text-sm"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Fecha *</Label>
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs sm:text-sm">Fecha *</Label>
                       <Input
                         type="date"
                         value={formFecha}
                         onChange={(e) => setFormFecha(e.target.value)}
                         min={format(new Date(), "yyyy-MM-dd")}
                         required
+                        className="h-8 sm:h-9 text-sm"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Hora *</Label>
+                    <div className="space-y-1">
+                      <Label className="text-xs sm:text-sm">Hora *</Label>
                       <Input
                         type="time"
                         value={formHora}
                         onChange={(e) => setFormHora(e.target.value)}
                         required
+                        className="h-8 sm:h-9 text-sm"
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Notas</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs sm:text-sm">Notas</Label>
                     <Textarea
                       value={formNotas}
                       onChange={(e) => setFormNotas(e.target.value)}
                       placeholder="Ej: Cumpleaños, mesa especial..."
                       rows={2}
+                      className="text-sm"
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Registrado por</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs sm:text-sm">Registrado por</Label>
                     <Input
                       value={formRegistradoPor}
                       onChange={(e) => setFormRegistradoPor(e.target.value)}
                       placeholder="Tu nombre"
+                      className="h-8 sm:h-9 text-sm"
                     />
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button type="submit" className="w-full h-9 sm:h-10" disabled={isLoading}>
                     {isLoading ? "Guardando..." : "Crear Reservación"}
                   </Button>
                 </form>
@@ -449,58 +453,67 @@ export default function Reservaciones({ onBack }: Props) {
           </div>
         </div>
 
-        {/* Filtros */}
-        <div className="flex flex-wrap gap-4 mb-6">
-          <div className="flex-1 min-w-[200px]">
-            <Label className="text-xs text-muted-foreground mb-1 block">Sucursal</Label>
-            <Tabs value={sucursalSeleccionada} onValueChange={setSucursalSeleccionada}>
-              <TabsList className="w-full flex-wrap h-auto">
-                {sucursales.map((s) => (
-                  <TabsTrigger key={s.id} value={s.id} className="flex-1 min-w-[80px]">
-                    {s.nombre.replace("La Ola ", "").replace("LO ", "")}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
+        {/* Filtros - Stacked on mobile */}
+        <div className="space-y-2 sm:space-y-3 mb-3 sm:mb-4">
+          {/* Sucursales */}
+          <div>
+            <Label className="text-[10px] sm:text-xs text-muted-foreground mb-1 block">Sucursal</Label>
+            <div className="flex flex-wrap gap-1">
+              {sucursales.map((s) => (
+                <Button
+                  key={s.id}
+                  variant={sucursalSeleccionada === s.id ? "default" : "outline"}
+                  size="sm"
+                  className="h-7 sm:h-8 px-2 sm:px-3 text-[11px] sm:text-sm"
+                  onClick={() => setSucursalSeleccionada(s.id)}
+                >
+                  {s.nombre.replace("La Ola ", "").replace("LO ", "")}
+                </Button>
+              ))}
+            </div>
           </div>
-          <div className="flex gap-2 items-end">
-            <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Fecha</Label>
-              <div className="flex gap-1">
-                <Button
-                  variant={isToday(parseISO(fechaFiltro)) ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setFechaFiltro(format(new Date(), "yyyy-MM-dd"))}
-                >
-                  Hoy
-                </Button>
-                <Button
-                  variant={isTomorrow(parseISO(fechaFiltro)) ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setFechaFiltro(format(addDays(new Date(), 1), "yyyy-MM-dd"))}
-                >
-                  Mañana
-                </Button>
-                <Input
-                  type="date"
-                  value={fechaFiltro}
-                  onChange={(e) => setFechaFiltro(e.target.value)}
-                  className="w-[140px]"
-                />
-              </div>
+
+          {/* Fecha */}
+          <div>
+            <Label className="text-[10px] sm:text-xs text-muted-foreground mb-1 block">Fecha</Label>
+            <div className="flex flex-wrap gap-1">
+              <Button
+                variant={isToday(parseISO(fechaFiltro)) ? "default" : "outline"}
+                size="sm"
+                className="h-7 sm:h-8 px-2 sm:px-3 text-[11px] sm:text-sm"
+                onClick={() => setFechaFiltro(format(new Date(), "yyyy-MM-dd"))}
+              >
+                Hoy
+              </Button>
+              <Button
+                variant={isTomorrow(parseISO(fechaFiltro)) ? "default" : "outline"}
+                size="sm"
+                className="h-7 sm:h-8 px-2 sm:px-3 text-[11px] sm:text-sm"
+                onClick={() => setFechaFiltro(format(addDays(new Date(), 1), "yyyy-MM-dd"))}
+              >
+                Mañana
+              </Button>
+              <Input
+                type="date"
+                value={fechaFiltro}
+                onChange={(e) => setFechaFiltro(e.target.value)}
+                className="h-7 sm:h-8 w-[115px] sm:w-[130px] text-[11px] sm:text-sm px-2"
+              />
             </div>
           </div>
         </div>
 
-        {/* Mapa de Zonas */}
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
-            <MapPin className="w-5 h-5" />
-            {sucursalActual?.nombre || "Selecciona una sucursal"} — {formatFechaLabel(fechaFiltro)}
+        {/* Título de la sección */}
+        <div className="mb-2 sm:mb-3">
+          <h2 className="text-xs sm:text-lg font-semibold flex items-center gap-1.5 sm:gap-2">
+            <MapPin className="w-3.5 h-3.5 sm:w-5 sm:h-5 shrink-0" />
+            <span className="truncate">{sucursalActual?.nombre || "Selecciona sucursal"}</span>
+            <span className="text-muted-foreground font-normal text-[10px] sm:text-base">— {formatFechaLabel(fechaFiltro)}</span>
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Grid de Zonas */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
           {zonasActuales.map((zona) => {
             const reservasZona = getReservacionesByZona(zona.id).filter((r) => r.estado !== "cancelada");
             const hayReservas = reservasZona.length > 0;
@@ -510,60 +523,60 @@ export default function Reservaciones({ onBack }: Props) {
                 key={zona.id}
                 className={`${hayReservas ? "border-primary/50 bg-primary/5" : ""}`}
               >
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-base">{zona.nombre}</CardTitle>
-                    <Badge variant={hayReservas ? "default" : "secondary"}>
+                <CardHeader className="p-3 sm:pb-2 sm:p-4">
+                  <div className="flex justify-between items-start gap-2">
+                    <CardTitle className="text-sm sm:text-base">{zona.nombre}</CardTitle>
+                    <Badge variant={hayReservas ? "default" : "secondary"} className="text-[10px] sm:text-xs shrink-0">
                       {reservasZona.length} reserva{reservasZona.length !== 1 ? "s" : ""}
                     </Badge>
                   </div>
-                  <CardDescription className="text-xs">
+                  <CardDescription className="text-[10px] sm:text-xs">
                     Capacidad: {zona.capacidad} personas
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0">
                   {reservasZona.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">
+                    <p className="text-[11px] sm:text-sm text-muted-foreground text-center py-3 sm:py-4">
                       Sin reservas para esta fecha
                     </p>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2 sm:space-y-3">
                       {reservasZona.map((reserva) => (
                         <div
                           key={reserva.id}
-                          className="p-3 rounded-lg bg-background border text-sm"
+                          className="p-2 sm:p-3 rounded-lg bg-background border text-xs sm:text-sm"
                         >
-                          <div className="flex justify-between items-start mb-2">
-                            <span className="font-medium">{reserva.nombre_cliente}</span>
+                          <div className="flex justify-between items-start mb-1.5 sm:mb-2 gap-2">
+                            <span className="font-medium truncate">{reserva.nombre_cliente}</span>
                             {getEstadoBadge(reserva.estado)}
                           </div>
-                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground text-xs">
+                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-muted-foreground text-[10px] sm:text-xs">
                             <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
+                              <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                               {reserva.hora.slice(0, 5)}
                             </span>
                             <span className="flex items-center gap-1">
-                              <Users className="w-3 h-3" />
+                              <Users className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                               {reserva.num_personas} pers.
                             </span>
                             {reserva.telefono && (
                               <span className="flex items-center gap-1">
-                                <Phone className="w-3 h-3" />
+                                <Phone className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                                 {reserva.telefono}
                               </span>
                             )}
                           </div>
                           {reserva.notas && (
-                            <p className="text-xs text-muted-foreground mt-2 italic">
+                            <p className="text-[10px] sm:text-xs text-muted-foreground mt-1.5 sm:mt-2 italic line-clamp-2">
                               {reserva.notas}
                             </p>
                           )}
-                          <div className="flex justify-end gap-1 mt-2">
+                          <div className="flex justify-end gap-1 mt-1.5 sm:mt-2">
                             {reserva.estado === "confirmada" && (
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 text-xs"
+                                className="h-6 sm:h-7 text-[10px] sm:text-xs px-2"
                                 onClick={() => handleCancelar(reserva.id)}
                               >
                                 Cancelar
@@ -571,20 +584,20 @@ export default function Reservaciones({ onBack }: Props) {
                             )}
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive">
-                                  <Trash2 className="w-3 h-3" />
+                                <Button variant="ghost" size="icon" className="h-6 w-6 sm:h-7 sm:w-7 text-destructive">
+                                  <Trash2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                                 </Button>
                               </AlertDialogTrigger>
-                              <AlertDialogContent>
+                              <AlertDialogContent className="w-[calc(100vw-32px)] sm:max-w-md rounded-lg">
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>¿Eliminar reservación?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Esta acción no se puede deshacer. Se eliminará permanentemente la reserva de {reserva.nombre_cliente}.
+                                  <AlertDialogTitle className="text-sm sm:text-base">¿Eliminar reservación?</AlertDialogTitle>
+                                  <AlertDialogDescription className="text-xs sm:text-sm">
+                                    Esta acción no se puede deshacer. Se eliminará la reserva de {reserva.nombre_cliente}.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>No, conservar</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleEliminar(reserva.id)}>
+                                <AlertDialogFooter className="gap-2 sm:gap-0">
+                                  <AlertDialogCancel className="h-8 sm:h-9 text-xs sm:text-sm">No, conservar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleEliminar(reserva.id)} className="h-8 sm:h-9 text-xs sm:text-sm">
                                     Sí, eliminar
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
@@ -602,10 +615,10 @@ export default function Reservaciones({ onBack }: Props) {
         </div>
 
         {zonasActuales.length === 0 && (
-          <Card className="text-center py-12">
+          <Card className="text-center py-8 sm:py-12">
             <CardContent>
-              <MapPin className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">
+              <MapPin className="w-8 h-8 sm:w-12 sm:h-12 mx-auto text-muted-foreground mb-3 sm:mb-4" />
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 Selecciona una sucursal para ver sus zonas
               </p>
             </CardContent>
