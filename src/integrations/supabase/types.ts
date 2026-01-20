@@ -94,6 +94,69 @@ export type Database = {
           },
         ]
       }
+      reservaciones: {
+        Row: {
+          created_at: string
+          estado: string
+          fecha: string
+          hora: string
+          id: string
+          nombre_cliente: string
+          notas: string | null
+          num_personas: number
+          registrado_por: string | null
+          sucursal_id: string
+          telefono: string | null
+          updated_at: string
+          zona_id: string
+        }
+        Insert: {
+          created_at?: string
+          estado?: string
+          fecha: string
+          hora: string
+          id?: string
+          nombre_cliente: string
+          notas?: string | null
+          num_personas?: number
+          registrado_por?: string | null
+          sucursal_id: string
+          telefono?: string | null
+          updated_at?: string
+          zona_id: string
+        }
+        Update: {
+          created_at?: string
+          estado?: string
+          fecha?: string
+          hora?: string
+          id?: string
+          nombre_cliente?: string
+          notas?: string | null
+          num_personas?: number
+          registrado_por?: string | null
+          sucursal_id?: string
+          telefono?: string | null
+          updated_at?: string
+          zona_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservaciones_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservaciones_zona_id_fkey"
+            columns: ["zona_id"]
+            isOneToOne: false
+            referencedRelation: "zonas_sucursal"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sucursales: {
         Row: {
           created_at: string
@@ -132,6 +195,38 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      zonas_sucursal: {
+        Row: {
+          capacidad: number | null
+          created_at: string
+          id: string
+          nombre: string
+          sucursal_id: string
+        }
+        Insert: {
+          capacidad?: number | null
+          created_at?: string
+          id?: string
+          nombre: string
+          sucursal_id: string
+        }
+        Update: {
+          capacidad?: number | null
+          created_at?: string
+          id?: string
+          nombre?: string
+          sucursal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zonas_sucursal_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
