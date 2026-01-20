@@ -7,7 +7,9 @@ import Index from "./pages/Index";
 import Menu from "./pages/Menu";
 import Sucursales from "./pages/Sucursales";
 import Contacto from "./pages/Contacto";
-import ModuloSelector from "./pages/ModuloSelector";
+import CentroOperaciones from "./pages/CentroOperaciones";
+import Corte from "./pages/Corte";
+import Reservaciones from "./pages/Reservaciones";
 import AdminLogin from "./pages/admin/Login";
 import AdminDashboard from "./pages/admin/Dashboard";
 import NotFound from "./pages/NotFound";
@@ -25,7 +27,11 @@ const App = () => (
           <Route path="/menu" element={<Menu />} />
           <Route path="/sucursales" element={<Sucursales />} />
           <Route path="/contacto" element={<Contacto />} />
-          <Route path="/corte" element={<ModuloSelector />} />
+          <Route path="/centro-de-operaciones" element={<CentroOperaciones />} />
+          <Route path="/centro-de-operaciones/cortes" element={<Corte />} />
+          <Route path="/centro-de-operaciones/reservaciones" element={<Reservaciones />} />
+          {/* Legacy route redirect */}
+          <Route path="/corte" element={<CentroOperaciones />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

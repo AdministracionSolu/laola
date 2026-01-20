@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +44,7 @@ const corteSchema = z.object({
 
 
 export default function Corte({ onBack }: Props) {
+  const navigate = useNavigate();
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [sucursalId, setSucursalId] = useState("");
   const [tipoCorte, setTipoCorte] = useState<"momento" | "cierre">("momento");
@@ -245,11 +247,9 @@ export default function Corte({ onBack }: Props) {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/10 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center relative">
-          {onBack && (
-            <Button variant="ghost" size="icon" className="absolute left-4 top-4" onClick={onBack}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-          )}
+          <Button variant="ghost" size="icon" className="absolute left-4 top-4" onClick={() => onBack ? onBack() : navigate("/centro-de-operaciones")}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
           <div className="mx-auto mb-4 w-16 h-16 rounded-full overflow-hidden">
             <img src={logoLaOla} alt="La Ola" className="w-full h-full object-cover" />
           </div>
