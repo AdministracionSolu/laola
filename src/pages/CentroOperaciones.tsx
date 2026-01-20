@@ -1,23 +1,11 @@
-import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calculator, CalendarDays } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
-import Corte from "./Corte";
-import Reservaciones from "./Reservaciones";
 
-type Modulo = "selector" | "corte" | "reservaciones";
-
-export default function ModuloSelector() {
-  const [moduloActivo, setModuloActivo] = useState<Modulo>("selector");
-
-  if (moduloActivo === "corte") {
-    return <Corte onBack={() => setModuloActivo("selector")} />;
-  }
-
-  if (moduloActivo === "reservaciones") {
-    return <Reservaciones onBack={() => setModuloActivo("selector")} />;
-  }
+export default function CentroOperaciones() {
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/10 flex items-center justify-center p-4">
@@ -35,7 +23,7 @@ export default function ModuloSelector() {
           <Button
             variant="outline"
             className="w-full h-24 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary transition-all"
-            onClick={() => setModuloActivo("corte")}
+            onClick={() => navigate("/centro-de-operaciones/cortes")}
           >
             <Calculator className="w-8 h-8 text-primary" />
             <span className="text-lg font-semibold">Cortes de Caja</span>
@@ -45,7 +33,7 @@ export default function ModuloSelector() {
           <Button
             variant="outline"
             className="w-full h-24 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary transition-all"
-            onClick={() => setModuloActivo("reservaciones")}
+            onClick={() => navigate("/centro-de-operaciones/reservaciones")}
           >
             <CalendarDays className="w-8 h-8 text-primary" />
             <span className="text-lg font-semibold">Reservaciones</span>

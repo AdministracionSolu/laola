@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,6 +66,7 @@ interface Props {
 }
 
 export default function Reservaciones({ onBack }: Props) {
+  const navigate = useNavigate();
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [zonas, setZonas] = useState<Zona[]>([]);
   const [reservaciones, setReservaciones] = useState<Reservacion[]>([]);
@@ -303,11 +305,9 @@ export default function Reservaciones({ onBack }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            {onBack && (
-              <Button variant="ghost" size="icon" onClick={onBack}>
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-            )}
+            <Button variant="ghost" size="icon" onClick={() => onBack ? onBack() : navigate("/centro-de-operaciones")}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full overflow-hidden">
                 <img src={logoLaOla} alt="La Ola" className="w-full h-full object-cover" />
