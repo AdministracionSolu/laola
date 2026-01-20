@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, Users, Clock, Phone, Calendar, MapPin, Trash2, RefreshCw } from "lucide-react";
+import { ArrowLeft, Plus, Users, Clock, Phone, Calendar, MapPin, Trash2, RefreshCw, Bell } from "lucide-react";
 import { format, parseISO, isToday, isTomorrow, addDays } from "date-fns";
 import { es } from "date-fns/locale";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
@@ -89,6 +89,50 @@ export default function Reservaciones({ onBack }: Props) {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Suscripción a nuevas reservaciones en tiempo real
+  useEffect(() => {
+    const channel = supabase
+      .channel('reservaciones-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'reservaciones',
+        },
+        async (payload) => {
+          const nuevaReserva = payload.new as Reservacion;
+          
+          // Obtener info de sucursal y zona para el mensaje
+          const [sucursalInfo, zonaInfo] = await Promise.all([
+            supabase.from("sucursales").select("nombre").eq("id", nuevaReserva.sucursal_id).single(),
+            supabase.from("zonas_sucursal").select("nombre").eq("id", nuevaReserva.zona_id).single(),
+          ]);
+
+          const sucursalNombre = sucursalInfo.data?.nombre || "Sucursal desconocida";
+          const zonaNombre = zonaInfo.data?.nombre || "Zona desconocida";
+          const fechaFormateada = format(parseISO(nuevaReserva.fecha), "d 'de' MMMM", { locale: es });
+
+          // Mostrar notificación toast
+          toast({
+            title: "🔔 Nueva Reservación",
+            description: `${nuevaReserva.nombre_cliente} en ${zonaNombre} - ${sucursalNombre}, ${fechaFormateada} a las ${nuevaReserva.hora.slice(0, 5)} (${nuevaReserva.num_personas} personas)`,
+            duration: 8000,
+          });
+
+          // Refrescar lista si estamos viendo la misma fecha
+          if (nuevaReserva.fecha === fechaFiltro) {
+            fetchReservaciones();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fechaFiltro, toast]);
 
   useEffect(() => {
     if (sucursalSeleccionada) {
