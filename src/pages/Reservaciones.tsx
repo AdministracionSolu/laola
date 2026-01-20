@@ -57,6 +57,7 @@ interface Reservacion {
   estado: string;
   registrado_por: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 interface Props {
@@ -68,6 +69,7 @@ export default function Reservaciones({ onBack }: Props) {
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [zonas, setZonas] = useState<Zona[]>([]);
   const [reservaciones, setReservaciones] = useState<Reservacion[]>([]);
+  const [ultimasReservas, setUltimasReservas] = useState<Reservacion[]>([]);
   const [sucursalFiltro, setSucursalFiltro] = useState<string>("todas");
   const [fechaFiltro, setFechaFiltro] = useState<string>(format(new Date(), "yyyy-MM-dd"));
   const [isLoading, setIsLoading] = useState(false);
@@ -89,6 +91,7 @@ export default function Reservaciones({ onBack }: Props) {
 
   useEffect(() => {
     fetchData();
+    fetchUltimasReservas();
   }, []);
 
   // Suscripción a nuevas reservaciones en tiempo real
@@ -123,6 +126,7 @@ export default function Reservaciones({ onBack }: Props) {
           if (nuevaReserva.fecha === fechaFiltro) {
             fetchReservaciones();
           }
+          fetchUltimasReservas();
         }
       )
       .subscribe();
@@ -163,6 +167,16 @@ export default function Reservaciones({ onBack }: Props) {
     }
 
     setReservaciones((data as Reservacion[]) || []);
+  };
+
+  const fetchUltimasReservas = async () => {
+    const { data } = await supabase
+      .from("reservaciones")
+      .select("*")
+      .order("updated_at", { ascending: false })
+      .limit(5);
+
+    setUltimasReservas((data as Reservacion[]) || []);
   };
 
   const getZonasBySucursal = (sucursalId: string) => {
@@ -263,6 +277,7 @@ export default function Reservaciones({ onBack }: Props) {
     setDialogOpen(false);
     setEditingReserva(null);
     fetchReservaciones();
+    fetchUltimasReservas();
   };
 
   const handleCancelar = async (id: string) => {
@@ -278,6 +293,7 @@ export default function Reservaciones({ onBack }: Props) {
 
     toast({ title: "Reservación cancelada" });
     fetchReservaciones();
+    fetchUltimasReservas();
   };
 
   const handleEliminar = async (id: string) => {
@@ -290,6 +306,7 @@ export default function Reservaciones({ onBack }: Props) {
 
     toast({ title: "Reservación eliminada" });
     fetchReservaciones();
+    fetchUltimasReservas();
   };
 
   const getEstadoBadge = (estado: string) => {
@@ -397,52 +414,96 @@ export default function Reservaciones({ onBack }: Props) {
           </Card>
         </div>
 
+        {/* Últimas Reservas Registradas */}
+        {ultimasReservas.length > 0 && (
+          <Card className="mb-4">
+            <CardHeader className="p-3 pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                Últimas Reservas Registradas
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <div className="space-y-1.5">
+                {ultimasReservas.map((reserva) => (
+                  <div
+                    key={reserva.id}
+                    className="flex items-center justify-between p-2 rounded bg-muted/50 text-xs cursor-pointer hover:bg-muted transition-colors"
+                    onClick={() => openEditReservaDialog(reserva)}
+                  >
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <span className="font-medium truncate">{reserva.nombre_cliente}</span>
+                      <span className="text-muted-foreground">·</span>
+                      <span className="text-muted-foreground truncate">{getZonaNombre(reserva.zona_id)}</span>
+                      <span className="text-muted-foreground">·</span>
+                      <span className="text-muted-foreground">{getSucursalNombre(reserva.sucursal_id).replace("La Ola ", "")}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 text-muted-foreground">
+                      <span>{format(parseISO(reserva.fecha), "d MMM", { locale: es })}</span>
+                      <span>{reserva.hora.slice(0, 5)}</span>
+                      {getEstadoBadge(reserva.estado)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Filtros */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          <div className="flex flex-wrap gap-1 flex-1">
-            <Button
-              variant={sucursalFiltro === "todas" ? "default" : "outline"}
-              size="sm"
-              className="h-7 px-2 text-[11px]"
-              onClick={() => setSucursalFiltro("todas")}
-            >
-              Todas
-            </Button>
-            {sucursales.map((s) => (
+        <div className="space-y-2 mb-4">
+          {/* Sucursales en una sola fila con scroll horizontal si es necesario */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground shrink-0">Sucursal:</span>
+            <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide">
               <Button
-                key={s.id}
-                variant={sucursalFiltro === s.id ? "default" : "outline"}
+                variant={sucursalFiltro === "todas" ? "default" : "outline"}
                 size="sm"
-                className="h-7 px-2 text-[11px]"
-                onClick={() => setSucursalFiltro(s.id)}
+                className="h-6 px-2 text-[10px] shrink-0"
+                onClick={() => setSucursalFiltro("todas")}
               >
-                {s.nombre.replace("La Ola ", "").replace("LO ", "")}
+                Todas
               </Button>
-            ))}
+              {sucursales.map((s) => (
+                <Button
+                  key={s.id}
+                  variant={sucursalFiltro === s.id ? "default" : "outline"}
+                  size="sm"
+                  className="h-6 px-2 text-[10px] shrink-0"
+                  onClick={() => setSucursalFiltro(s.id)}
+                >
+                  {s.nombre.replace("La Ola ", "").replace("LO ", "")}
+                </Button>
+              ))}
+            </div>
           </div>
-          <div className="flex gap-1">
-            <Button
-              variant={isToday(parseISO(fechaFiltro)) ? "default" : "outline"}
-              size="sm"
-              className="h-7 px-2 text-[11px]"
-              onClick={() => setFechaFiltro(format(new Date(), "yyyy-MM-dd"))}
-            >
-              Hoy
-            </Button>
-            <Button
-              variant={isTomorrow(parseISO(fechaFiltro)) ? "default" : "outline"}
-              size="sm"
-              className="h-7 px-2 text-[11px]"
-              onClick={() => setFechaFiltro(format(addDays(new Date(), 1), "yyyy-MM-dd"))}
-            >
-              Mañana
-            </Button>
-            <Input
-              type="date"
-              value={fechaFiltro}
-              onChange={(e) => setFechaFiltro(e.target.value)}
-              className="h-7 w-[110px] text-[11px] px-2"
-            />
+          {/* Fecha */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground shrink-0">Fecha:</span>
+            <div className="flex gap-1">
+              <Button
+                variant={isToday(parseISO(fechaFiltro)) ? "default" : "outline"}
+                size="sm"
+                className="h-6 px-2 text-[10px]"
+                onClick={() => setFechaFiltro(format(new Date(), "yyyy-MM-dd"))}
+              >
+                Hoy
+              </Button>
+              <Button
+                variant={isTomorrow(parseISO(fechaFiltro)) ? "default" : "outline"}
+                size="sm"
+                className="h-6 px-2 text-[10px]"
+                onClick={() => setFechaFiltro(format(addDays(new Date(), 1), "yyyy-MM-dd"))}
+              >
+                Mañana
+              </Button>
+              <Input
+                type="date"
+                value={fechaFiltro}
+                onChange={(e) => setFechaFiltro(e.target.value)}
+                className="h-6 w-[105px] text-[10px] px-1.5"
+              />
+            </div>
           </div>
         </div>
 
