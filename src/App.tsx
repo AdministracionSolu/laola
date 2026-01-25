@@ -10,8 +10,11 @@ import Contacto from "./pages/Contacto";
 import CentroOperaciones from "./pages/CentroOperaciones";
 import Corte from "./pages/Corte";
 import Reservaciones from "./pages/Reservaciones";
+import Pedidos from "./pages/Pedidos";
+import Recepciones from "./pages/Recepciones";
 import AdminLogin from "./pages/admin/Login";
 import AdminDashboard from "./pages/admin/Dashboard";
+import AdminPanelControl from "./pages/admin/PanelControl";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,10 +33,13 @@ const App = () => (
           <Route path="/centro-de-operaciones" element={<CentroOperaciones />} />
           <Route path="/centro-de-operaciones/cortes" element={<Corte />} />
           <Route path="/centro-de-operaciones/reservaciones" element={<Reservaciones />} />
+          <Route path="/centro-de-operaciones/pedidos" element={<Pedidos />} />
+          <Route path="/centro-de-operaciones/recepciones" element={<Recepciones />} />
           {/* Legacy route redirect */}
           <Route path="/corte" element={<CentroOperaciones />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/panel-control" element={<AdminPanelControl />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
