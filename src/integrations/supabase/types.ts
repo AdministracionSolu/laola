@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      categorias_insumos: {
+        Row: {
+          created_at: string
+          id: string
+          nombre: string
+          orden: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nombre: string
+          orden?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nombre?: string
+          orden?: number
+        }
+        Relationships: []
+      }
       cortes_caja: {
         Row: {
           cobradas: number
@@ -90,6 +111,211 @@ export type Database = {
             columns: ["sucursal_id"]
             isOneToOne: false
             referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insumos: {
+        Row: {
+          activo: boolean
+          categoria_id: string
+          created_at: string
+          id: string
+          nombre: string
+          unidad: string | null
+        }
+        Insert: {
+          activo?: boolean
+          categoria_id: string
+          created_at?: string
+          id?: string
+          nombre: string
+          unidad?: string | null
+        }
+        Update: {
+          activo?: boolean
+          categoria_id?: string
+          created_at?: string
+          id?: string
+          nombre?: string
+          unidad?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insumos_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "categorias_insumos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pedidos: {
+        Row: {
+          created_at: string
+          estado: string
+          fecha: string
+          id: string
+          notas: string | null
+          registrado_por: string | null
+          sucursal_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          estado?: string
+          fecha?: string
+          id?: string
+          notas?: string | null
+          registrado_por?: string | null
+          sucursal_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          estado?: string
+          fecha?: string
+          id?: string
+          notas?: string | null
+          registrado_por?: string | null
+          sucursal_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pedidos_detalle: {
+        Row: {
+          cantidad_pedida: number
+          created_at: string
+          existencia: number | null
+          id: string
+          insumo_id: string
+          pedido_id: string
+        }
+        Insert: {
+          cantidad_pedida?: number
+          created_at?: string
+          existencia?: number | null
+          id?: string
+          insumo_id: string
+          pedido_id: string
+        }
+        Update: {
+          cantidad_pedida?: number
+          created_at?: string
+          existencia?: number | null
+          id?: string
+          insumo_id?: string
+          pedido_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_detalle_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_detalle_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recepciones: {
+        Row: {
+          created_at: string
+          fecha: string
+          id: string
+          notas: string | null
+          proveedor: string
+          registrado_por: string | null
+          sucursal_id: string
+        }
+        Insert: {
+          created_at?: string
+          fecha?: string
+          id?: string
+          notas?: string | null
+          proveedor: string
+          registrado_por?: string | null
+          sucursal_id: string
+        }
+        Update: {
+          created_at?: string
+          fecha?: string
+          id?: string
+          notas?: string | null
+          proveedor?: string
+          registrado_por?: string | null
+          sucursal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recepciones_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recepciones_detalle: {
+        Row: {
+          cantidad_recibida: number
+          created_at: string
+          id: string
+          insumo_id: string
+          pedido_detalle_id: string | null
+          recepcion_id: string
+        }
+        Insert: {
+          cantidad_recibida?: number
+          created_at?: string
+          id?: string
+          insumo_id: string
+          pedido_detalle_id?: string | null
+          recepcion_id: string
+        }
+        Update: {
+          cantidad_recibida?: number
+          created_at?: string
+          id?: string
+          insumo_id?: string
+          pedido_detalle_id?: string | null
+          recepcion_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recepciones_detalle_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recepciones_detalle_pedido_detalle_id_fkey"
+            columns: ["pedido_detalle_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos_detalle"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recepciones_detalle_recepcion_id_fkey"
+            columns: ["recepcion_id"]
+            isOneToOne: false
+            referencedRelation: "recepciones"
             referencedColumns: ["id"]
           },
         ]
