@@ -94,6 +94,29 @@ export function AnalisisVentas({
                 </BarChart>
               </ResponsiveContainer>
             </div>
+            {/* Desglose porcentual por sucursal */}
+            {totales.total > 0 && (
+              <div className="mt-4 pt-4 border-t">
+                <p className="text-sm font-medium text-muted-foreground mb-2">Participación por sucursal</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {dataPorSucursal.map((sucursal, index) => {
+                    const porcentaje = (sucursal.total / totales.total) * 100;
+                    return (
+                      <div key={sucursal.nombre} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-3 h-3 rounded-full" 
+                            style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                          />
+                          <span>{sucursal.nombre}</span>
+                        </div>
+                        <span className="font-medium">{porcentaje.toFixed(1)}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
