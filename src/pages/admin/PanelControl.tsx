@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, RefreshCw, Package, Truck, CalendarDays, DollarSign, AlertTriangle, CheckCircle2, Users } from "lucide-react";
+import { ArrowLeft, RefreshCw, Package, Truck, CalendarDays, DollarSign, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AdminCorteDialog } from "@/components/admin/AdminCorteDialog";
 
 interface Sucursal {
   id: string;
@@ -194,6 +194,7 @@ export default function PanelControl() {
               Vista general del negocio
             </p>
           </div>
+          <AdminCorteDialog onSuccess={fetchData} />
           <Button variant="ghost" size="icon" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4" />
           </Button>
