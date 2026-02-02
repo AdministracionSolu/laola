@@ -2,12 +2,13 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { TrendingUp, CreditCard, Banknote, DollarSign, Smartphone } from "lucide-react";
+import { TrendingUp, CreditCard, Banknote, Smartphone } from "lucide-react";
 
 import { TrendChart } from "./TrendChart";
 import { ComparativoCard } from "./ComparativoCard";
 import { ConciliacionPlataformas } from "./ConciliacionPlataformas";
-import { Totales, DatosDiarios } from "@/hooks/useCortes";
+import { InsightsDiaSemana } from "./InsightsDiaSemana";
+import { Totales, DatosDiarios, Corte } from "@/hooks/useCortes";
 import { TipoPeriodo } from "@/hooks/usePeriodo";
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
@@ -22,6 +23,7 @@ interface AnalisisVentasProps {
   dataPorSucursal: { nombre: string; total: number; id?: string }[];
   tipoPeriodo: TipoPeriodo;
   formatMoney: (value: number) => string;
+  cortesCierre: Corte[];
 }
 
 export function AnalisisVentas({
@@ -31,6 +33,7 @@ export function AnalisisVentas({
   dataPorSucursal,
   tipoPeriodo,
   formatMoney,
+  cortesCierre,
 }: AnalisisVentasProps) {
   const [conciliacionSucursal, setConciliacionSucursal] = useState<{ id: string; nombre: string } | null>(null);
 
@@ -58,14 +61,7 @@ export function AnalisisVentas({
   return (
     <div className="space-y-6">
       {/* Tarjetas de resumen con comparativos */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <ComparativoCard
-          titulo="Corte X"
-          valor={totales.corte_x}
-          valorAnterior={totalesAnterior.corte_x}
-          formatMoney={formatMoney}
-          icon={DollarSign}
-        />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <ComparativoCard
           titulo="Tarjetas"
           valor={totales.tarjetas}
@@ -175,6 +171,12 @@ export function AnalisisVentas({
           </CardContent>
         </Card>
       </div>
+
+      {/* Insights por día de la semana */}
+      <InsightsDiaSemana 
+        cortesCierre={cortesCierre} 
+        formatMoney={formatMoney} 
+      />
 
       {/* Sección de Plataformas de Delivery */}
       {sucursalesConPlataformas.length > 0 && (
