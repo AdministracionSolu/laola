@@ -283,6 +283,7 @@ export default function AdminDashboard() {
                   dataPorSucursal={dataPorSucursal}
                   tipoPeriodo={tipoPeriodo}
                   formatMoney={formatMoney}
+                  cortesCierre={cortesCierre}
                 />
                 {/* Desglose de tarjetas por terminal */}
                 <DesgloseTerminales
