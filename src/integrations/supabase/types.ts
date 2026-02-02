@@ -431,6 +431,7 @@ export type Database = {
           fecha_fin: string
           fecha_inicio: string
           id: string
+          plataforma: string
           registrado_por: string | null
           sucursal_id: string
           tiene_discrepancia: boolean
@@ -443,6 +444,7 @@ export type Database = {
           fecha_fin: string
           fecha_inicio: string
           id?: string
+          plataforma?: string
           registrado_por?: string | null
           sucursal_id: string
           tiene_discrepancia?: boolean
@@ -455,6 +457,7 @@ export type Database = {
           fecha_fin?: string
           fecha_inicio?: string
           id?: string
+          plataforma?: string
           registrado_por?: string | null
           sucursal_id?: string
           tiene_discrepancia?: boolean

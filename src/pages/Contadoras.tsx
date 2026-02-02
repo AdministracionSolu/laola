@@ -6,10 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { CalendarIcon, ArrowLeft, CheckCircle2, AlertTriangle, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,9 @@ import logoLaOla from "@/assets/logo-la-ola.jpeg";
 import { DateRange } from "react-day-picker";
 
 const PIN_CONTADORAS = "8534";
+
+// Sucursales que tienen plataformas de delivery
+const SUCURSALES_CON_PLATAFORMAS = ["Solares", "Cervecería"];
 
 interface Sucursal {
   id: string;
@@ -31,7 +35,9 @@ export default function Contadoras() {
   
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [sucursalId, setSucursalId] = useState("");
+  const [sucursalNombre, setSucursalNombre] = useState("");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [plataforma, setPlataforma] = useState<"rappi" | "uber" | "total">("total");
   const [cantidadIngresada, setCantidadIngresada] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [resultado, setResultado] = useState<{
@@ -40,6 +46,8 @@ export default function Contadoras() {
     tieneDiscrepancia: boolean;
   } | null>(null);
 
+  const tienePlataformas = SUCURSALES_CON_PLATAFORMAS.includes(sucursalNombre);
+
   useEffect(() => {
     const fetchSucursales = async () => {
       const { data } = await supabase.from("sucursales").select("id, nombre").order("nombre");
@@ -47,6 +55,16 @@ export default function Contadoras() {
     };
     fetchSucursales();
   }, []);
+
+  const handleSucursalChange = (id: string) => {
+    setSucursalId(id);
+    const suc = sucursales.find(s => s.id === id);
+    setSucursalNombre(suc?.nombre || "");
+    // Resetear plataforma si no tiene plataformas
+    if (suc && !SUCURSALES_CON_PLATAFORMAS.includes(suc.nombre)) {
+      setPlataforma("total");
+    }
+  };
 
   const handlePinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +96,7 @@ export default function Contadoras() {
       // Obtener los cortes de cierre del período seleccionado para la sucursal
       const { data: cortes, error } = await supabase
         .from("cortes_caja")
-        .select("total")
+        .select("total, rappi, uber")
         .eq("sucursal_id", sucursalId)
         .eq("tipo_corte", "cierre")
         .gte("fecha_venta", format(dateRange.from, "yyyy-MM-dd"))
@@ -86,12 +104,22 @@ export default function Contadoras() {
 
       if (error) throw error;
 
-      // Sumar los totales
-      const cantidadSistema = cortes?.reduce((sum, corte) => sum + Number(corte.total), 0) || 0;
+      // Calcular según la plataforma seleccionada
+      let cantidadSistema = 0;
+      if (plataforma === "rappi") {
+        cantidadSistema = cortes?.reduce((sum, corte) => sum + Number(corte.rappi || 0), 0) || 0;
+      } else if (plataforma === "uber") {
+        cantidadSistema = cortes?.reduce((sum, corte) => sum + Number(corte.uber || 0), 0) || 0;
+      } else {
+        // Total: suma rappi + uber
+        cantidadSistema = cortes?.reduce((sum, corte) => 
+          sum + Number(corte.rappi || 0) + Number(corte.uber || 0), 0) || 0;
+      }
+
       const diferencia = cantidad - cantidadSistema;
       const tieneDiscrepancia = Math.abs(diferencia) > 100;
 
-      // Guardar el registro
+      // Guardar el registro con la plataforma
       await supabase.from("verificaciones_plataforma").insert({
         sucursal_id: sucursalId,
         fecha_inicio: format(dateRange.from, "yyyy-MM-dd"),
@@ -100,7 +128,8 @@ export default function Contadoras() {
         cantidad_sistema: cantidadSistema,
         diferencia: diferencia,
         tiene_discrepancia: tieneDiscrepancia,
-        registrado_por: "Contadora"
+        registrado_por: "Contadora",
+        plataforma: plataforma
       });
 
       setResultado({
@@ -133,6 +162,7 @@ export default function Contadoras() {
     setCantidadIngresada("");
     setDateRange(undefined);
     setResultado(null);
+    setPlataforma("total");
   };
 
   // Pantalla de PIN
@@ -216,7 +246,7 @@ export default function Contadoras() {
             {/* Sucursal */}
             <div className="space-y-2">
               <Label>Sucursal</Label>
-              <Select value={sucursalId} onValueChange={setSucursalId}>
+              <Select value={sucursalId} onValueChange={handleSucursalChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona sucursal" />
                 </SelectTrigger>
@@ -229,6 +259,31 @@ export default function Contadoras() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Plataforma (solo para sucursales con delivery) */}
+            {tienePlataformas && (
+              <div className="space-y-2">
+                <Label>Plataforma</Label>
+                <RadioGroup
+                  value={plataforma}
+                  onValueChange={(v) => setPlataforma(v as "rappi" | "uber" | "total")}
+                  className="flex gap-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="rappi" id="rappi" />
+                    <Label htmlFor="rappi" className="cursor-pointer">Rappi</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="uber" id="uber" />
+                    <Label htmlFor="uber" className="cursor-pointer">Uber Eats</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="total" id="total" />
+                    <Label htmlFor="total" className="cursor-pointer">Ambas</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
 
             {/* Período */}
             <div className="space-y-2">
