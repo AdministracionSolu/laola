@@ -12,6 +12,7 @@ import Corte from "./pages/Corte";
 import Reservaciones from "./pages/Reservaciones";
 import Pedidos from "./pages/Pedidos";
 import Recepciones from "./pages/Recepciones";
+import Contadoras from "./pages/Contadoras";
 import AdminLogin from "./pages/admin/Login";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminPanelControl from "./pages/admin/PanelControl";
@@ -35,6 +36,7 @@ const App = () => (
           <Route path="/centro-de-operaciones/reservaciones" element={<Reservaciones />} />
           <Route path="/centro-de-operaciones/pedidos" element={<Pedidos />} />
           <Route path="/centro-de-operaciones/recepciones" element={<Recepciones />} />
+          <Route path="/centro-de-operaciones/contadoras" element={<Contadoras />} />
           {/* Legacy route redirect */}
           <Route path="/corte" element={<CentroOperaciones />} />
           <Route path="/admin/login" element={<AdminLogin />} />
