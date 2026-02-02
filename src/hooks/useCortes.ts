@@ -68,7 +68,7 @@ export interface UseCortesReturn {
   totales: Totales;
   totalesAnterior: Totales;
   datosTendencia: DatosDiarios[];
-  dataPorSucursal: { nombre: string; total: number }[];
+  dataPorSucursal: { id: string; nombre: string; total: number }[];
   estadoSucursales: { nombre: string; cerrado: boolean; ultimoCorte: string | null }[];
   refetch: () => void;
   deleteCorte: (corteId: string) => Promise<boolean>;
@@ -289,6 +289,7 @@ export function useCortes(options: UseCortesOptions): UseCortesReturn {
       const cortesDeEsta = cortesCierre.filter((c) => c.sucursal_id === sucursal.id);
       const totalSucursal = cortesDeEsta.reduce((acc, c) => acc + Number(c.total), 0);
       return {
+        id: sucursal.id,
         nombre: sucursal.nombre,
         total: totalSucursal,
       };

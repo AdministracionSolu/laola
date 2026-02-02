@@ -1,19 +1,25 @@
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { TrendingUp, CreditCard, Banknote, DollarSign } from "lucide-react";
+import { TrendingUp, CreditCard, Banknote, DollarSign, Smartphone } from "lucide-react";
 
 import { TrendChart } from "./TrendChart";
 import { ComparativoCard } from "./ComparativoCard";
+import { ConciliacionPlataformas } from "./ConciliacionPlataformas";
 import { Totales, DatosDiarios } from "@/hooks/useCortes";
 import { TipoPeriodo } from "@/hooks/usePeriodo";
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
 
+// Sucursales que tienen plataformas de delivery
+const SUCURSALES_CON_PLATAFORMAS = ["Solares", "Cervecería"];
+
 interface AnalisisVentasProps {
   totales: Totales;
   totalesAnterior: Totales;
   datosTendencia: DatosDiarios[];
-  dataPorSucursal: { nombre: string; total: number }[];
+  dataPorSucursal: { nombre: string; total: number; id?: string }[];
   tipoPeriodo: TipoPeriodo;
   formatMoney: (value: number) => string;
 }
@@ -26,10 +32,28 @@ export function AnalisisVentas({
   tipoPeriodo,
   formatMoney,
 }: AnalisisVentasProps) {
+  const [conciliacionSucursal, setConciliacionSucursal] = useState<{ id: string; nombre: string } | null>(null);
+
   const dataPie = [
     { name: "Tarjetas", value: totales.tarjetas },
     { name: "Efectivo", value: totales.efectivo },
   ];
+
+  // Filtrar sucursales con plataformas
+  const sucursalesConPlataformas = dataPorSucursal.filter(s => 
+    SUCURSALES_CON_PLATAFORMAS.includes(s.nombre)
+  );
+
+  // Si hay una sucursal seleccionada para conciliación, mostrar ese componente
+  if (conciliacionSucursal) {
+    return (
+      <ConciliacionPlataformas
+        sucursalId={conciliacionSucursal.id}
+        sucursalNombre={conciliacionSucursal.nombre}
+        onClose={() => setConciliacionSucursal(null)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -151,6 +175,39 @@ export function AnalisisVentas({
           </CardContent>
         </Card>
       </div>
+
+      {/* Sección de Plataformas de Delivery */}
+      {sucursalesConPlataformas.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Smartphone className="w-5 h-5" />
+              Plataformas de Delivery
+            </CardTitle>
+            <CardDescription>
+              Conciliación de ventas por Rappi y Uber Eats
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {sucursalesConPlataformas.map((sucursal) => (
+                <Button
+                  key={sucursal.nombre}
+                  variant="outline"
+                  className="h-auto py-4 flex flex-col items-start gap-1"
+                  onClick={() => sucursal.id && setConciliacionSucursal({ id: sucursal.id, nombre: sucursal.nombre })}
+                  disabled={!sucursal.id}
+                >
+                  <span className="font-semibold">{sucursal.nombre}</span>
+                  <span className="text-xs text-muted-foreground">
+                    Ver conciliación de plataformas
+                  </span>
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
