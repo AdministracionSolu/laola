@@ -56,7 +56,7 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
     setCorteACambiar(null);
   };
   const exportarCSV = () => {
-    const headers = ["Fecha Venta", "Registrado", "Sucursal", "Tipo", "Corte X", "Tarjetas", "Efectivo", "Cobradas", "Por Cobrar", "Total", "Pago Proveedores", "Salarios", "Propinas", "Compras", "Pago Servicios"];
+    const headers = ["Fecha Venta", "Registrado", "Sucursal", "Tipo", "Corte X", "Tarjetas", "Efectivo", "Cobradas", "Por Cobrar", "Total", "Proveedores", "Salarios", "Propinas", "Compras", "Servicios", "Rappi", "Uber"];
     const rows = cortes.map((corte) => [
       corte.fecha_venta,
       format(parseISO(corte.created_at), "yyyy-MM-dd HH:mm"),
@@ -73,6 +73,8 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
       corte.propinas || 0,
       corte.compras || 0,
       corte.pago_servicios || 0,
+      corte.rappi || 0,
+      corte.uber || 0,
     ]);
     
     const csv = [headers, ...rows].map((row) => row.join(",")).join("\n");
@@ -129,6 +131,8 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
                   <TableHead className="text-right">Propinas</TableHead>
                   <TableHead className="text-right">Compras</TableHead>
                   <TableHead className="text-right">Servicios</TableHead>
+                  <TableHead className="text-right">Rappi</TableHead>
+                  <TableHead className="text-right">Uber</TableHead>
                   {onDelete && <TableHead className="w-12"></TableHead>}
                 </TableRow>
               </TableHeader>
@@ -204,6 +208,12 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground">
                       {formatMoney(Number(corte.pago_servicios || 0))}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {formatMoney(Number(corte.rappi || 0))}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {formatMoney(Number(corte.uber || 0))}
                     </TableCell>
                     {onDelete && (
                       <TableCell>

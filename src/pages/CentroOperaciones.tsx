@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calculator, CalendarDays, Package, Truck } from "lucide-react";
+import { Calculator, CalendarDays, Package, Truck, ClipboardCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 
@@ -58,6 +58,16 @@ export default function CentroOperaciones() {
             <Truck className="w-6 h-6 text-primary" />
             <span className="text-base font-semibold">Recepción</span>
             <span className="text-xs text-muted-foreground">Registrar llegada de mercancía</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            className="w-full h-20 flex flex-col gap-1 hover:bg-primary/5 hover:border-primary transition-all"
+            onClick={() => navigate("/centro-de-operaciones/contadoras")}
+          >
+            <ClipboardCheck className="w-6 h-6 text-primary" />
+            <span className="text-base font-semibold">Contadoras</span>
+            <span className="text-xs text-muted-foreground">Verificar ingresos vs sistema</span>
           </Button>
         </CardContent>
       </Card>

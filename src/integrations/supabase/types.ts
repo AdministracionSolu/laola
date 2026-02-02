@@ -422,6 +422,53 @@ export type Database = {
         }
         Relationships: []
       }
+      verificaciones_plataforma: {
+        Row: {
+          cantidad_reportada: number
+          cantidad_sistema: number
+          created_at: string
+          diferencia: number
+          fecha_fin: string
+          fecha_inicio: string
+          id: string
+          registrado_por: string | null
+          sucursal_id: string
+          tiene_discrepancia: boolean
+        }
+        Insert: {
+          cantidad_reportada?: number
+          cantidad_sistema?: number
+          created_at?: string
+          diferencia?: number
+          fecha_fin: string
+          fecha_inicio: string
+          id?: string
+          registrado_por?: string | null
+          sucursal_id: string
+          tiene_discrepancia?: boolean
+        }
+        Update: {
+          cantidad_reportada?: number
+          cantidad_sistema?: number
+          created_at?: string
+          diferencia?: number
+          fecha_fin?: string
+          fecha_inicio?: string
+          id?: string
+          registrado_por?: string | null
+          sucursal_id?: string
+          tiene_discrepancia?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verificaciones_plataforma_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       zonas_sucursal: {
         Row: {
           capacidad: number | null
