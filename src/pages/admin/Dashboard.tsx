@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, RefreshCw, Store, Camera, BarChart3, History, LayoutDashboard } from "lucide-react";
+import { LogOut, RefreshCw, Store, Camera, BarChart3, History, LayoutDashboard, ClipboardCheck } from "lucide-react";
 import { useEffect } from "react";
 
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
@@ -20,6 +20,7 @@ import { HistoricoTable } from "@/components/admin/HistoricoTable";
 import { EstadoActualView } from "@/components/admin/EstadoActualView";
 import { AnalisisVentas } from "@/components/admin/AnalisisVentas";
 import { DesgloseTerminales } from "@/components/admin/DesgloseTerminales";
+import { InformeCumplimiento } from "@/components/admin/InformeCumplimiento";
 
 export default function AdminDashboard() {
   const [filtroSucursal, setFiltroSucursal] = useState<string>("todas");
@@ -132,7 +133,7 @@ export default function AdminDashboard() {
       <main className="container mx-auto px-4 py-8">
         {/* Tabs principales: Estado Actual vs Análisis */}
         <Tabs value={vistaActiva} onValueChange={setVistaActiva} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
             <TabsTrigger value="estado" className="gap-2">
               <Camera className="w-4 h-4" />
               Estado Actual
@@ -140,6 +141,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="analisis" className="gap-2">
               <BarChart3 className="w-4 h-4" />
               Análisis de Ventas
+            </TabsTrigger>
+            <TabsTrigger value="cumplimiento" className="gap-2">
+              <ClipboardCheck className="w-4 h-4" />
+              Cumplimiento
             </TabsTrigger>
           </TabsList>
 
@@ -303,6 +308,10 @@ export default function AdminDashboard() {
                 />
               </TabsContent>
             </Tabs>
+          </TabsContent>
+          {/* Vista: Cumplimiento de Cierres */}
+          <TabsContent value="cumplimiento" className="space-y-6">
+            <InformeCumplimiento />
           </TabsContent>
         </Tabs>
       </main>
