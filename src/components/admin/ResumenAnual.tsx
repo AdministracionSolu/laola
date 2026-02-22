@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { endOfMonth } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -58,7 +59,8 @@ export function ResumenAnual() {
       const allCortes: CorteRow[] = [];
       for (let m = 0; m < 12; m++) {
         const desde = `${year}-${String(m + 1).padStart(2, "0")}-01`;
-        const hasta = `${year}-${String(m + 1).padStart(2, "0")}-31`;
+        const lastDay = endOfMonth(new Date(year, m)).getDate();
+        const hasta = `${year}-${String(m + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
         const { data } = await supabase
           .from("cortes_caja")
           .select("fecha_venta, sucursal_id, efectivo, tarjetas, total, sucursales(nombre)")
