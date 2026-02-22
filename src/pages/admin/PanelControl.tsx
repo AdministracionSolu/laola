@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, RefreshCw, Package, Truck, CalendarDays, DollarSign, Users } from "lucide-react";
+import { ArrowLeft, RefreshCw, Package, Truck, CalendarDays, DollarSign, Users, FileUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CargaHistorica } from "@/components/admin/CargaHistorica";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -244,7 +245,7 @@ export default function PanelControl() {
         </div>
 
         <Tabs defaultValue="pedidos">
-          <TabsList className="grid w-full grid-cols-3 mb-4">
+          <TabsList className="grid w-full grid-cols-4 mb-4">
             <TabsTrigger value="pedidos" className="gap-1 text-xs">
               <Package className="h-3 w-3" />
               Pedidos
@@ -256,6 +257,10 @@ export default function PanelControl() {
             <TabsTrigger value="reservaciones" className="gap-1 text-xs">
               <CalendarDays className="h-3 w-3" />
               Reservas
+            </TabsTrigger>
+            <TabsTrigger value="carga" className="gap-1 text-xs">
+              <FileUp className="h-3 w-3" />
+              Carga
             </TabsTrigger>
           </TabsList>
 
@@ -411,6 +416,10 @@ export default function PanelControl() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+          {/* Tab Carga Histórica */}
+          <TabsContent value="carga">
+            <CargaHistorica />
           </TabsContent>
         </Tabs>
       </div>
