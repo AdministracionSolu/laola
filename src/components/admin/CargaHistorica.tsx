@@ -10,14 +10,18 @@ import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, Loader2, Trash2, 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const SUCURSAL_MAP: Record<string, { id: string; nombre: string }> = {
-  "V. 161": { id: "f9ef883d-88dc-47e1-945d-af145905a955", nombre: "Del Valle" },
-  "V.161":  { id: "f9ef883d-88dc-47e1-945d-af145905a955", nombre: "Del Valle" },
-  "R. 955": { id: "dc600e86-cfd8-466a-b0e1-319a836d3af8", nombre: "Las Brisas" },
-  "R.955":  { id: "dc600e86-cfd8-466a-b0e1-319a836d3af8", nombre: "Las Brisas" },
-  "A. 233": { id: "79324e7b-c8ef-4355-b2b1-6965346a0ab1", nombre: "Cervecería" },
-  "A.233":  { id: "79324e7b-c8ef-4355-b2b1-6965346a0ab1", nombre: "Cervecería" },
-  "S. 1639": { id: "757d25e0-ce84-4d6f-a68a-d4639d3e409f", nombre: "Solares" },
-  "S.1639":  { id: "757d25e0-ce84-4d6f-a68a-d4639d3e409f", nombre: "Solares" },
+  "V. 161":        { id: "f9ef883d-88dc-47e1-945d-af145905a955", nombre: "Del Valle" },
+  "V.161":         { id: "f9ef883d-88dc-47e1-945d-af145905a955", nombre: "Del Valle" },
+  "VALLE 161":     { id: "f9ef883d-88dc-47e1-945d-af145905a955", nombre: "Del Valle" },
+  "R. 955":        { id: "dc600e86-cfd8-466a-b0e1-319a836d3af8", nombre: "Las Brisas" },
+  "R.955":         { id: "dc600e86-cfd8-466a-b0e1-319a836d3af8", nombre: "Las Brisas" },
+  "INSURGENTES 955": { id: "dc600e86-cfd8-466a-b0e1-319a836d3af8", nombre: "Las Brisas" },
+  "A. 233":        { id: "79324e7b-c8ef-4355-b2b1-6965346a0ab1", nombre: "Cervecería" },
+  "A.233":         { id: "79324e7b-c8ef-4355-b2b1-6965346a0ab1", nombre: "Cervecería" },
+  "ALAMEDA 233":   { id: "79324e7b-c8ef-4355-b2b1-6965346a0ab1", nombre: "Cervecería" },
+  "S. 1639":       { id: "757d25e0-ce84-4d6f-a68a-d4639d3e409f", nombre: "Solares" },
+  "S.1639":        { id: "757d25e0-ce84-4d6f-a68a-d4639d3e409f", nombre: "Solares" },
+  "GUADALAJARA":   { id: "757d25e0-ce84-4d6f-a68a-d4639d3e409f", nombre: "Solares" },
 };
 
 interface ParsedRow {
