@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, Loader2, Trash2 } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, Loader2, Trash2, X } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const SUCURSAL_MAP: Record<string, { id: string; nombre: string }> = {
@@ -21,7 +21,7 @@ const SUCURSAL_MAP: Record<string, { id: string; nombre: string }> = {
 };
 
 interface ParsedRow {
-  fecha: string; // YYYY-MM-DD
+  fecha: string;
   sucursal_id: string;
   sucursal_nombre: string;
   efectivo: number;
@@ -39,6 +39,17 @@ interface SucursalColumns {
   totalCol: number;
 }
 
+interface ParsedFile {
+  fileName: string;
+  mes: string;
+  rows: ParsedRow[];
+  errores: string[];
+  duplicados: string[];
+  status: "pending" | "uploading" | "done" | "error";
+  progress: number;
+  resultado: { ok: number; errores: number } | null;
+}
+
 function cleanMoney(val: unknown): number {
   if (typeof val === "number") return val;
   if (!val) return 0;
@@ -48,24 +59,19 @@ function cleanMoney(val: unknown): number {
 }
 
 function excelDateToISO(val: unknown, year?: number): string | null {
-  // If it's a JS Date (xlsx parses dates)
   if (val instanceof Date && !isNaN(val.getTime())) {
     return val.toISOString().split("T")[0];
   }
-  // If it's an Excel serial number
   if (typeof val === "number" && val > 40000) {
     const d = new Date((val - 25569) * 86400 * 1000);
     if (!isNaN(d.getTime())) return d.toISOString().split("T")[0];
   }
-  // If it's a string like "1-Dec" or "1-Dec-2025"
   if (typeof val === "string") {
     const str = val.trim();
     if (!str) return null;
-    // Try direct parse with year hint
     const withYear = str.includes("202") ? str : `${str}-${year || 2025}`;
     const d = new Date(withYear);
     if (!isNaN(d.getTime())) return d.toISOString().split("T")[0];
-    // Try native parse
     const d2 = new Date(str);
     if (!isNaN(d2.getTime())) return d2.toISOString().split("T")[0];
   }
@@ -78,10 +84,7 @@ function parseExcel(data: ArrayBuffer): { rows: ParsedRow[]; mes: string; errore
   const raw: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
 
   const errores: string[] = [];
-
-  // Find the header row with sucursal codes and the sub-header with EFECTIVO/TARJETA
   let sucursalHeaderRow = -1;
-  let subHeaderRow = -1;
   const sucursalCols: SucursalColumns[] = [];
 
   for (let r = 0; r < Math.min(raw.length, 10); r++) {
@@ -95,71 +98,68 @@ function parseExcel(data: ArrayBuffer): { rows: ParsedRow[]; mes: string; errore
       if (match && !sucursalCols.find((s) => s.code === match)) {
         sucursalHeaderRow = r;
         sucursalCols.push({
-          code: match,
-          id: SUCURSAL_MAP[match].id,
-          nombre: SUCURSAL_MAP[match].nombre,
-          dateCol: c,
-          efectivoCol: c + 1,
-          tarjetaCol: c + 2,
-          totalCol: c + 3,
+          code: match, id: SUCURSAL_MAP[match].id, nombre: SUCURSAL_MAP[match].nombre,
+          dateCol: c, efectivoCol: c + 1, tarjetaCol: c + 2, totalCol: c + 3,
         });
       }
     }
   }
 
   if (sucursalCols.length === 0) {
-    errores.push("No se encontraron códigos de sucursal (V.161, R.955, A.233, S.1639) en el archivo.");
+    errores.push("No se encontraron códigos de sucursal en el archivo.");
     return { rows: [], mes: "", errores };
   }
 
-  // Find sub-header row (EFECTIVO, TARJETA) to know where data starts
-  subHeaderRow = sucursalHeaderRow + 1;
-  const dataStartRow = subHeaderRow + 1;
+  const dataStartRow = sucursalHeaderRow + 2;
 
-  // Detect year from the title row (e.g., "DICIEMBRE 2025")
   let year = 2025;
   let mes = "";
   for (let r = 0; r < Math.min(raw.length, 5); r++) {
     const firstCell = String(raw[r]?.[0] || "").trim();
     const yearMatch = firstCell.match(/(20\d{2})/);
-    if (yearMatch) {
-      year = parseInt(yearMatch[1]);
-      mes = firstCell;
-      break;
-    }
+    if (yearMatch) { year = parseInt(yearMatch[1]); mes = firstCell; break; }
   }
 
   const rows: ParsedRow[] = [];
-
   for (let r = dataStartRow; r < raw.length; r++) {
     const row = raw[r];
     if (!row) continue;
-
-    // Use the first sucursal's date column to check if this is a data row
     const dateVal = row[sucursalCols[0].dateCol];
     const fecha = excelDateToISO(dateVal, year);
-    if (!fecha) continue; // Skip totals row and empty rows
+    if (!fecha) continue;
 
     for (const sc of sucursalCols) {
       const efectivo = cleanMoney(row[sc.efectivoCol]);
       const tarjetas = cleanMoney(row[sc.tarjetaCol]);
       const total = cleanMoney(row[sc.totalCol]);
-
-      // Skip rows where everything is 0
       if (efectivo === 0 && tarjetas === 0 && total === 0) continue;
-
-      rows.push({
-        fecha,
-        sucursal_id: sc.id,
-        sucursal_nombre: sc.nombre,
-        efectivo,
-        tarjetas,
-        total,
-      });
+      rows.push({ fecha, sucursal_id: sc.id, sucursal_nombre: sc.nombre, efectivo, tarjetas, total });
     }
   }
 
   return { rows, mes, errores };
+}
+
+async function checkDuplicates(rows: ParsedRow[]): Promise<string[]> {
+  if (rows.length === 0) return [];
+  const fechas = [...new Set(rows.map((r) => r.fecha))];
+  const sucursalIds = [...new Set(rows.map((r) => r.sucursal_id))];
+  const { data: existentes } = await supabase
+    .from("cortes_caja")
+    .select("fecha_venta, sucursal_id")
+    .eq("tipo_corte", "cierre")
+    .in("sucursal_id", sucursalIds)
+    .gte("fecha_venta", fechas[0])
+    .lte("fecha_venta", fechas[fechas.length - 1]);
+
+  if (existentes && existentes.length > 0) {
+    const dupsSet = new Set(existentes.map((e) => `${e.fecha_venta}_${e.sucursal_id}`));
+    const dups = rows
+      .filter((r) => dupsSet.has(`${r.fecha}_${r.sucursal_id}`))
+      .map((r) => `${r.fecha} - ${r.sucursal_nombre}`);
+    return [...new Set(dups)];
+  }
+  return [];
 }
 
 const formatMoney = (v: number) =>
@@ -167,149 +167,100 @@ const formatMoney = (v: number) =>
 
 export function CargaHistorica() {
   const { toast } = useToast();
-  const [parsedData, setParsedData] = useState<ParsedRow[] | null>(null);
-  const [mes, setMes] = useState("");
-  const [parseErrors, setParseErrors] = useState<string[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [resultado, setResultado] = useState<{ ok: number; errores: number } | null>(null);
-  const [duplicados, setDuplicados] = useState<string[] | null>(null);
+  const [files, setFiles] = useState<ParsedFile[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [showReemplazar, setShowReemplazar] = useState(false);
-  const [fileName, setFileName] = useState("");
+  const [globalProgress, setGlobalProgress] = useState(0);
 
-  const handleFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setFileName(file.name);
-    setResultado(null);
-    setDuplicados(null);
+  const allDone = files.length > 0 && files.every((f) => f.status === "done" || f.status === "error");
+  const hasDuplicates = files.some((f) => f.duplicados.length > 0 && f.status === "pending");
+  const hasData = files.some((f) => f.rows.length > 0);
 
-    const buffer = await file.arrayBuffer();
-    const { rows, mes: mesDetectado, errores } = parseExcel(buffer);
+  const handleFiles = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || []).slice(0, 12);
+    if (selectedFiles.length === 0) return;
 
-    setParsedData(rows);
-    setMes(mesDetectado);
-    setParseErrors(errores);
-
-    if (rows.length > 0) {
-      // Check for duplicates
-      const fechas = [...new Set(rows.map((r) => r.fecha))];
-      const sucursalIds = [...new Set(rows.map((r) => r.sucursal_id))];
-      const { data: existentes } = await supabase
-        .from("cortes_caja")
-        .select("fecha_venta, sucursal_id")
-        .eq("tipo_corte", "cierre")
-        .in("sucursal_id", sucursalIds)
-        .gte("fecha_venta", fechas[0])
-        .lte("fecha_venta", fechas[fechas.length - 1]);
-
-      if (existentes && existentes.length > 0) {
-        const dupsSet = new Set(existentes.map((e) => `${e.fecha_venta}_${e.sucursal_id}`));
-        const dups = rows
-          .filter((r) => dupsSet.has(`${r.fecha}_${r.sucursal_id}`))
-          .map((r) => `${r.fecha} - ${r.sucursal_nombre}`);
-        if (dups.length > 0) setDuplicados([...new Set(dups)]);
-      }
+    const parsed: ParsedFile[] = [];
+    for (const file of selectedFiles) {
+      const buffer = await file.arrayBuffer();
+      const { rows, mes, errores } = parseExcel(buffer);
+      const duplicados = await checkDuplicates(rows);
+      parsed.push({
+        fileName: file.name, mes, rows, errores, duplicados,
+        status: "pending", progress: 0, resultado: null,
+      });
     }
-
-    // Reset file input
+    setFiles(parsed);
     e.target.value = "";
   }, []);
 
-  const insertarDatos = async (reemplazar = false) => {
-    if (!parsedData || parsedData.length === 0) return;
-    setIsUploading(true);
-    setProgress(0);
-    setShowReemplazar(false);
+  const insertFile = async (pf: ParsedFile, reemplazar: boolean): Promise<ParsedFile> => {
+    if (pf.rows.length === 0) return { ...pf, status: "done", progress: 100, resultado: { ok: 0, errores: 0 } };
 
     try {
-      if (reemplazar) {
-        // Delete existing cierre records for this period
-        const fechas = [...new Set(parsedData.map((r) => r.fecha))];
-        const sucursalIds = [...new Set(parsedData.map((r) => r.sucursal_id))];
-        const { error: delErr } = await supabase
-          .from("cortes_caja")
-          .delete()
-          .eq("tipo_corte", "cierre")
-          .in("sucursal_id", sucursalIds)
-          .gte("fecha_venta", fechas[0])
-          .lte("fecha_venta", fechas[fechas.length - 1]);
-        if (delErr) throw delErr;
+      if (reemplazar && pf.duplicados.length > 0) {
+        const fechas = [...new Set(pf.rows.map((r) => r.fecha))];
+        const sucursalIds = [...new Set(pf.rows.map((r) => r.sucursal_id))];
+        await supabase.from("cortes_caja").delete()
+          .eq("tipo_corte", "cierre").in("sucursal_id", sucursalIds)
+          .gte("fecha_venta", fechas[0]).lte("fecha_venta", fechas[fechas.length - 1]);
       }
 
-      // Insert in batches of 50
       const batchSize = 50;
-      let ok = 0;
-      let errCount = 0;
-
-      for (let i = 0; i < parsedData.length; i += batchSize) {
-        const batch = parsedData.slice(i, i + batchSize).map((r) => ({
-          sucursal_id: r.sucursal_id,
-          tipo_corte: "cierre" as const,
-          efectivo: r.efectivo,
-          tarjetas: r.tarjetas,
-          total: r.total,
-          fecha_venta: r.fecha,
-          corte_x: 0,
-          cobradas: 0,
-          por_cobrar: 0,
+      let ok = 0, errCount = 0;
+      for (let i = 0; i < pf.rows.length; i += batchSize) {
+        const batch = pf.rows.slice(i, i + batchSize).map((r) => ({
+          sucursal_id: r.sucursal_id, tipo_corte: "cierre" as const,
+          efectivo: r.efectivo, tarjetas: r.tarjetas, total: r.total,
+          fecha_venta: r.fecha, corte_x: 0, cobradas: 0, por_cobrar: 0,
         }));
-
         const { error } = await supabase.from("cortes_caja").insert(batch);
-        if (error) {
-          errCount += batch.length;
-          console.error("Error inserting batch:", error);
-        } else {
-          ok += batch.length;
-        }
-        setProgress(Math.round(((i + batch.length) / parsedData.length) * 100));
+        if (error) { errCount += batch.length; } else { ok += batch.length; }
+        pf.progress = Math.round(((i + batch.length) / pf.rows.length) * 100);
       }
-
-      setResultado({ ok, errores: errCount });
-      if (errCount === 0) {
-        toast({ title: "Carga completada", description: `${ok} registros insertados exitosamente.` });
-      } else {
-        toast({ title: "Carga parcial", description: `${ok} ok, ${errCount} con error.`, variant: "destructive" });
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Error desconocido";
-      toast({ title: "Error", description: msg, variant: "destructive" });
-    } finally {
-      setIsUploading(false);
+      return { ...pf, status: "done", progress: 100, resultado: { ok, errores: errCount } };
+    } catch {
+      return { ...pf, status: "error", progress: 100, resultado: { ok: 0, errores: pf.rows.length } };
     }
+  };
+
+  const startUpload = async (reemplazar = false) => {
+    setIsProcessing(true);
+    setShowReemplazar(false);
+    setGlobalProgress(0);
+
+    const updated = [...files];
+    for (let i = 0; i < updated.length; i++) {
+      if (updated[i].rows.length === 0) {
+        updated[i] = { ...updated[i], status: "done", progress: 100, resultado: { ok: 0, errores: 0 } };
+        continue;
+      }
+      updated[i] = { ...updated[i], status: "uploading" };
+      setFiles([...updated]);
+      updated[i] = await insertFile(updated[i], reemplazar);
+      setFiles([...updated]);
+      setGlobalProgress(Math.round(((i + 1) / updated.length) * 100));
+    }
+
+    const totalOk = updated.reduce((s, f) => s + (f.resultado?.ok || 0), 0);
+    const totalErr = updated.reduce((s, f) => s + (f.resultado?.errores || 0), 0);
+    toast({
+      title: totalErr === 0 ? "Carga completada" : "Carga con errores",
+      description: `${totalOk} registros insertados${totalErr > 0 ? `, ${totalErr} con error` : ""}`,
+      variant: totalErr > 0 ? "destructive" : undefined,
+    });
+    setIsProcessing(false);
   };
 
   const handleConfirm = () => {
-    if (duplicados && duplicados.length > 0) {
-      setShowReemplazar(true);
-    } else {
-      insertarDatos(false);
-    }
+    if (hasDuplicates) { setShowReemplazar(true); } else { startUpload(false); }
   };
 
-  const limpiar = () => {
-    setParsedData(null);
-    setMes("");
-    setParseErrors([]);
-    setResultado(null);
-    setDuplicados(null);
-    setFileName("");
+  const removeFile = (idx: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  // Summary by sucursal
-  const resumenSucursal = parsedData
-    ? Object.values(
-        parsedData.reduce(
-          (acc, r) => {
-            if (!acc[r.sucursal_id]) acc[r.sucursal_id] = { nombre: r.sucursal_nombre, dias: 0, total: 0 };
-            acc[r.sucursal_id].dias++;
-            acc[r.sucursal_id].total += r.total;
-            return acc;
-          },
-          {} as Record<string, { nombre: string; dias: number; total: number }>
-        )
-      )
-    : [];
+  const limpiar = () => { setFiles([]); setGlobalProgress(0); };
 
   return (
     <div className="space-y-6">
@@ -320,137 +271,127 @@ export function CargaHistorica() {
             Carga Histórica de Ventas
           </CardTitle>
           <CardDescription>
-            Sube un archivo Excel mensual (.xlsx) para cargar los datos históricos como cortes de cierre.
+            Sube hasta 12 archivos Excel mensuales (.xlsx) para cargar los datos históricos como cortes de cierre.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {!parsedData && !resultado && (
+          {files.length === 0 && (
             <label className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-8 cursor-pointer hover:border-primary/50 transition-colors">
               <Upload className="w-10 h-10 text-muted-foreground mb-3" />
-              <span className="text-sm font-medium">Seleccionar archivo Excel</span>
-              <span className="text-xs text-muted-foreground mt-1">Formato: .xlsx</span>
-              <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFile} />
+              <span className="text-sm font-medium">Seleccionar archivos Excel</span>
+              <span className="text-xs text-muted-foreground mt-1">Hasta 12 archivos .xlsx</span>
+              <input type="file" accept=".xlsx,.xls" multiple className="hidden" onChange={handleFiles} />
             </label>
-          )}
-
-          {parseErrors.length > 0 && (
-            <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm">
-              <p className="font-medium flex items-center gap-2 text-destructive">
-                <AlertTriangle className="w-4 h-4" /> Errores al leer archivo
-              </p>
-              {parseErrors.map((e, i) => (
-                <p key={i} className="mt-1">{e}</p>
-              ))}
-            </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Preview */}
-      {parsedData && parsedData.length > 0 && !resultado && (
+      {files.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Preview: {mes || fileName}</CardTitle>
-            <CardDescription>
-              {parsedData.length} registros detectados en {resumenSucursal.length} sucursal(es)
-            </CardDescription>
+            <CardTitle className="text-lg">
+              {allDone ? "Resultado de la carga" : `${files.length} archivo(s) listos`}
+            </CardTitle>
+            {!allDone && (
+              <CardDescription>
+                {files.reduce((s, f) => s + f.rows.length, 0)} registros totales detectados
+              </CardDescription>
+            )}
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Resumen por sucursal */}
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Sucursal</TableHead>
-                  <TableHead className="text-right">Días</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead>Archivo</TableHead>
+                  <TableHead>Mes</TableHead>
+                  <TableHead className="text-right">Registros</TableHead>
+                  <TableHead className="text-right">Total Ventas</TableHead>
+                  <TableHead className="text-center">Estado</TableHead>
+                  {!allDone && !isProcessing && <TableHead className="w-10" />}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {resumenSucursal.map((s) => (
-                  <TableRow key={s.nombre}>
-                    <TableCell className="font-medium">{s.nombre}</TableCell>
-                    <TableCell className="text-right">{s.dias}</TableCell>
-                    <TableCell className="text-right">{formatMoney(s.total)}</TableCell>
-                  </TableRow>
-                ))}
+                {files.map((f, idx) => {
+                  const totalVentas = f.rows.reduce((s, r) => s + r.total, 0);
+                  return (
+                    <TableRow key={idx}>
+                      <TableCell className="font-medium text-xs max-w-[200px] truncate">{f.fileName}</TableCell>
+                      <TableCell className="text-xs">{f.mes || "—"}</TableCell>
+                      <TableCell className="text-right">{f.rows.length}</TableCell>
+                      <TableCell className="text-right text-xs">{formatMoney(totalVentas)}</TableCell>
+                      <TableCell className="text-center">
+                        {f.errores.length > 0 && f.rows.length === 0 ? (
+                          <span className="text-destructive text-xs flex items-center justify-center gap-1">
+                            <AlertTriangle className="w-3 h-3" /> Error
+                          </span>
+                        ) : f.status === "done" ? (
+                          <span className="text-primary text-xs flex items-center justify-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" /> {f.resultado?.ok || 0} ok
+                          </span>
+                        ) : f.status === "uploading" ? (
+                          <span className="text-xs flex items-center justify-center gap-1">
+                            <Loader2 className="w-3 h-3 animate-spin" /> {f.progress}%
+                          </span>
+                        ) : f.duplicados.length > 0 ? (
+                          <span className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                            <AlertTriangle className="w-3 h-3 text-destructive" /> {f.duplicados.length} dup
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Listo</span>
+                        )}
+                      </TableCell>
+                      {!allDone && !isProcessing && (
+                        <TableCell>
+                          <button onClick={() => removeFile(idx)} className="text-muted-foreground hover:text-destructive">
+                            <X className="w-4 h-4" />
+                          </button>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
 
-            {duplicados && duplicados.length > 0 && (
-              <div className="p-3 rounded-lg bg-accent border border-border text-sm">
-                <p className="font-medium flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-destructive" />
-                  {duplicados.length} registro(s) ya existen en la base de datos
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Al confirmar podrás elegir reemplazar los existentes o cancelar.
-                </p>
-              </div>
-            )}
-
-            {isUploading && (
+            {isProcessing && (
               <div className="space-y-2">
-                <Progress value={progress} />
-                <p className="text-sm text-muted-foreground text-center">{progress}%</p>
+                <Progress value={globalProgress} />
+                <p className="text-sm text-muted-foreground text-center">
+                  Procesando archivos... {globalProgress}%
+                </p>
               </div>
             )}
 
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={limpiar} disabled={isUploading}>
+              <Button variant="outline" onClick={limpiar} disabled={isProcessing}>
                 <Trash2 className="w-4 h-4 mr-2" />
-                Cancelar
+                {allDone ? "Cargar más archivos" : "Cancelar"}
               </Button>
-              <Button onClick={handleConfirm} disabled={isUploading}>
-                {isUploading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Cargando...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-4 h-4 mr-2" />
-                    Confirmar Carga
-                  </>
-                )}
-              </Button>
+              {!allDone && hasData && (
+                <Button onClick={handleConfirm} disabled={isProcessing}>
+                  {isProcessing ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Cargando...</>
+                  ) : (
+                    <><Upload className="w-4 h-4 mr-2" /> Confirmar Carga ({files.length} archivos)</>
+                  )}
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Result */}
-      {resultado && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center gap-3 text-center">
-              <CheckCircle2 className="w-12 h-12 text-primary" />
-              <h3 className="text-lg font-semibold">Carga Completada</h3>
-              <p className="text-sm text-muted-foreground">
-                {resultado.ok} registros insertados
-                {resultado.errores > 0 && `, ${resultado.errores} con error`}
-              </p>
-              <Button variant="outline" onClick={limpiar} className="mt-2">
-                Cargar otro archivo
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Replace dialog */}
       <AlertDialog open={showReemplazar} onOpenChange={setShowReemplazar}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Ya existen datos en este período</AlertDialogTitle>
+            <AlertDialogTitle>Ya existen datos en algunos períodos</AlertDialogTitle>
             <AlertDialogDescription>
-              Se encontraron {duplicados?.length} registro(s) existentes. ¿Deseas reemplazarlos con los nuevos datos?
+              Se encontraron registros duplicados en {files.filter((f) => f.duplicados.length > 0).length} archivo(s). ¿Deseas reemplazar los existentes con los nuevos datos?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => insertarDatos(true)}>
-              Reemplazar
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => startUpload(true)}>Reemplazar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
