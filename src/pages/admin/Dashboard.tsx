@@ -134,7 +134,7 @@ export default function AdminDashboard() {
       <main className="container mx-auto px-4 py-8">
         {/* Tabs principales: Estado Actual vs Análisis */}
         <Tabs value={vistaActiva} onValueChange={setVistaActiva} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
             <TabsTrigger value="estado" className="gap-2">
               <Camera className="w-4 h-4" />
               <span className="hidden sm:inline">Estado Actual</span>
@@ -154,11 +154,6 @@ export default function AdminDashboard() {
               <ClipboardCheck className="w-4 h-4" />
               <span className="hidden sm:inline">Cumplimiento</span>
               <span className="sm:hidden">Cumpl.</span>
-            </TabsTrigger>
-            <TabsTrigger value="carga" className="gap-2">
-              <FileUp className="w-4 h-4" />
-              <span className="hidden sm:inline">Carga Histórica</span>
-              <span className="sm:hidden">Carga</span>
             </TabsTrigger>
           </TabsList>
 
@@ -330,9 +325,6 @@ export default function AdminDashboard() {
           {/* Vista: Cumplimiento de Cierres */}
           <TabsContent value="cumplimiento" className="space-y-6">
             <InformeCumplimiento />
-          </TabsContent>
-          <TabsContent value="carga" className="space-y-6">
-            <CargaHistorica />
           </TabsContent>
         </Tabs>
       </main>
