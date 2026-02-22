@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, RefreshCw, Store, Camera, BarChart3, History, LayoutDashboard, ClipboardCheck, FileUp } from "lucide-react";
+import { LogOut, RefreshCw, Store, Camera, BarChart3, History, LayoutDashboard, ClipboardCheck, FileUp, CalendarDays } from "lucide-react";
 import { useEffect } from "react";
 
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
@@ -22,6 +22,7 @@ import { AnalisisVentas } from "@/components/admin/AnalisisVentas";
 import { DesgloseTerminales } from "@/components/admin/DesgloseTerminales";
 import { InformeCumplimiento } from "@/components/admin/InformeCumplimiento";
 import { CargaHistorica } from "@/components/admin/CargaHistorica";
+import { ResumenAnual } from "@/components/admin/ResumenAnual";
 export default function AdminDashboard() {
   const [filtroSucursal, setFiltroSucursal] = useState<string>("todas");
   const [filtroTipo, setFiltroTipo] = useState<string>("todos");
@@ -133,7 +134,7 @@ export default function AdminDashboard() {
       <main className="container mx-auto px-4 py-8">
         {/* Tabs principales: Estado Actual vs Análisis */}
         <Tabs value={vistaActiva} onValueChange={setVistaActiva} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
             <TabsTrigger value="estado" className="gap-2">
               <Camera className="w-4 h-4" />
               <span className="hidden sm:inline">Estado Actual</span>
@@ -143,6 +144,11 @@ export default function AdminDashboard() {
               <BarChart3 className="w-4 h-4" />
               <span className="hidden sm:inline">Análisis</span>
               <span className="sm:hidden">Ventas</span>
+            </TabsTrigger>
+            <TabsTrigger value="anual" className="gap-2">
+              <CalendarDays className="w-4 h-4" />
+              <span className="hidden sm:inline">Resumen Anual</span>
+              <span className="sm:hidden">Anual</span>
             </TabsTrigger>
             <TabsTrigger value="cumplimiento" className="gap-2">
               <ClipboardCheck className="w-4 h-4" />
@@ -316,6 +322,10 @@ export default function AdminDashboard() {
                 />
               </TabsContent>
             </Tabs>
+          </TabsContent>
+          {/* Vista: Resumen Anual */}
+          <TabsContent value="anual" className="space-y-6">
+            <ResumenAnual />
           </TabsContent>
           {/* Vista: Cumplimiento de Cierres */}
           <TabsContent value="cumplimiento" className="space-y-6">
