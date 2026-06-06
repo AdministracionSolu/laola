@@ -1,17 +1,10 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import {
-  ArrowLeft,
-  Check,
-  Loader2,
-  MapPin,
-  PackageCheck,
-  WifiOff,
-} from "lucide-react";
+import { ArrowLeft, Check, Loader2, MapPin, WifiOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -21,12 +14,19 @@ import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { getFechaNegocio, getHoraNegocio } from "@/lib/fecha";
 import { CantidadStepper } from "@/components/operaciones/CantidadStepper";
 
+interface Categoria {
+  id: string;
+  nombre: string;
+  orden: number;
+}
+
 interface Renglon {
-  pedido_detalle_id: string;
   insumo_id: string;
   nombre: string;
   unidad: string;
+  categoria_id: string;
   cantidad_pedida: number;
+  pedido_detalle_id: string | null;
   cantidad_recibida: number;
 }
 
@@ -39,6 +39,7 @@ export default function Recepciones() {
 
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [pedidoId, setPedidoId] = useState<string | null>(null);
   const [estadoPedido, setEstadoPedido] = useState<string | null>(null);
   const [enviadoAt, setEnviadoAt] = useState<string | null>(null);
@@ -50,51 +51,67 @@ export default function Recepciones() {
 
     (async () => {
       setLoading(true);
-      const { data: pedido } = await supabase
-        .from("pedidos")
-        .select("*")
-        .eq("sucursal_id", sucursalId)
-        .eq("fecha", fecha)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+
+      const [catRes, itemsRes, pedidoRes] = await Promise.all([
+        supabase.from("categorias_insumos").select("*").order("orden"),
+        supabase
+          .from("insumo_sucursal")
+          .select("orden, unidad, insumos!inner(id, nombre, categoria_id, unidad)")
+          .eq("sucursal_id", sucursalId)
+          .eq("activo", true)
+          .order("orden"),
+        supabase
+          .from("pedidos")
+          .select("*")
+          .eq("sucursal_id", sucursalId)
+          .eq("fecha", fecha)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
 
       if (cancelado) return;
 
-      if (!pedido || pedido.estado === "borrador") {
+      if (catRes.data) setCategorias(catRes.data);
+
+      // Lo que se pidió hoy (si hay pedido enviado): insumo_id → {detalle_id, pedida}
+      const orderMap = new Map<string, { id: string; pedida: number }>();
+      const pedido = pedidoRes.data;
+      if (pedido && pedido.estado !== "borrador") {
+        setPedidoId(pedido.id);
+        setEstadoPedido(pedido.estado);
+        setEnviadoAt(pedido.enviado_at);
+        const { data: det } = await supabase
+          .from("pedidos_detalle")
+          .select("id, insumo_id, cantidad_pedida")
+          .eq("pedido_id", pedido.id);
+        (det || []).forEach((d: { id: string; insumo_id: string; cantidad_pedida: number }) => {
+          if (Number(d.cantidad_pedida) > 0)
+            orderMap.set(d.insumo_id, { id: d.id, pedida: Number(d.cantidad_pedida) });
+        });
+      } else {
         setPedidoId(null);
         setEstadoPedido(pedido?.estado ?? null);
-        setRenglones([]);
-        setLoading(false);
-        return;
       }
 
-      setPedidoId(pedido.id);
-      setEstadoPedido(pedido.estado);
-      setEnviadoAt(pedido.enviado_at);
-
-      const { data: det } = await supabase
-        .from("pedidos_detalle")
-        .select("id, insumo_id, cantidad_pedida, insumos!inner(nombre, unidad)")
-        .eq("pedido_id", pedido.id);
-
-      type DetRow = {
-        id: string;
-        insumo_id: string;
-        cantidad_pedida: number;
-        insumos: { nombre: string; unidad: string | null };
+      type ItemRow = {
+        orden: number;
+        unidad: string | null;
+        insumos: { id: string; nombre: string; categoria_id: string; unidad: string | null };
       };
-      const rs: Renglon[] = ((det ?? []) as unknown as DetRow[])
-        .filter((d) => Number(d.cantidad_pedida) > 0)
-        .map((d) => ({
-          pedido_detalle_id: d.id,
-          insumo_id: d.insumo_id,
-          nombre: d.insumos.nombre,
-          unidad: d.insumos.unidad || "pz",
-          cantidad_pedida: Number(d.cantidad_pedida) || 0,
-          // Pre-llenado: llegó todo lo pedido (caso normal).
-          cantidad_recibida: Number(d.cantidad_pedida) || 0,
-        }));
+      const rs: Renglon[] = ((itemsRes.data ?? []) as unknown as ItemRow[]).map((r) => {
+        const od = orderMap.get(r.insumos.id);
+        return {
+          insumo_id: r.insumos.id,
+          nombre: r.insumos.nombre,
+          unidad: r.unidad || r.insumos.unidad || "pz",
+          categoria_id: r.insumos.categoria_id,
+          cantidad_pedida: od?.pedida ?? 0,
+          pedido_detalle_id: od?.id ?? null,
+          // Pre-llenado: si se pidió, llegó eso; si no, queda en 0 y lo capturan.
+          cantidad_recibida: od?.pedida ?? 0,
+        };
+      });
 
       setRenglones(rs);
       setLoading(false);
@@ -113,8 +130,22 @@ export default function Recepciones() {
     );
   };
 
+  const renglonesPorCategoria = useCallback(
+    (categoriaId: string) => renglones.filter((r) => r.categoria_id === categoriaId),
+    [renglones]
+  );
+
+  const recibidos = useMemo(
+    () => renglones.filter((r) => r.cantidad_recibida > 0),
+    [renglones]
+  );
+
+  // Diferencias solo sobre lo que sí se pidió.
   const hayDiferencias = useMemo(
-    () => renglones.some((r) => r.cantidad_recibida !== r.cantidad_pedida),
+    () =>
+      renglones.some(
+        (r) => r.cantidad_pedida > 0 && r.cantidad_recibida !== r.cantidad_pedida
+      ),
     [renglones]
   );
 
@@ -124,10 +155,13 @@ export default function Recepciones() {
     estadoPedido === "cerrado";
 
   const handleConfirmar = async () => {
-    if (!sucursalId || !pedidoId) return;
+    if (!sucursalId) return;
+    if (recibidos.length === 0) {
+      toast.error("Pon al menos un insumo con la cantidad que llegó");
+      return;
+    }
     setGuardando(true);
     try {
-      const ahora = new Date().toISOString();
       const { data: recepcion, error: recError } = await supabase
         .from("recepciones")
         .insert({
@@ -140,7 +174,7 @@ export default function Recepciones() {
         .single();
       if (recError) throw recError;
 
-      const detallesInsert = renglones.map((r) => ({
+      const detallesInsert = recibidos.map((r) => ({
         recepcion_id: recepcion.id,
         insumo_id: r.insumo_id,
         cantidad_recibida: r.cantidad_recibida,
@@ -151,14 +185,17 @@ export default function Recepciones() {
         .insert(detallesInsert);
       if (detError) throw detError;
 
-      const nuevoEstado = hayDiferencias ? "recibido_parcial" : "recibido";
-      const { error: pedError } = await supabase
-        .from("pedidos")
-        .update({ estado: nuevoEstado })
-        .eq("id", pedidoId);
-      if (pedError) throw pedError;
+      // Si había pedido del día, actualizar su estado.
+      if (pedidoId) {
+        const nuevoEstado = hayDiferencias ? "recibido_parcial" : "recibido";
+        const { error: pedError } = await supabase
+          .from("pedidos")
+          .update({ estado: nuevoEstado })
+          .eq("id", pedidoId);
+        if (pedError) throw pedError;
+        setEstadoPedido(nuevoEstado);
+      }
 
-      setEstadoPedido(nuevoEstado);
       toast.success(
         hayDiferencias
           ? "Recepción registrada (con diferencias) ✓"
@@ -204,17 +241,10 @@ export default function Recepciones() {
           <div className="flex justify-center py-16">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-        ) : !pedidoId ? (
+        ) : renglones.length === 0 ? (
           <Card>
-            <CardContent className="p-8 text-center space-y-3">
-              <PackageCheck className="h-10 w-10 mx-auto text-muted-foreground/50" />
-              <p className="text-sm text-muted-foreground">
-                No hay un pedido enviado hoy. Primero haz el pedido para poder
-                registrar lo que llegó.
-              </p>
-              <Button onClick={() => navigate("/pedidos/hacer")}>
-                Ir a hacer pedido
-              </Button>
+            <CardContent className="p-8 text-center text-muted-foreground text-sm">
+              Esta sucursal no tiene insumos asignados todavía.
             </CardContent>
           </Card>
         ) : (
@@ -222,18 +252,17 @@ export default function Recepciones() {
             {yaRecibido && (
               <Card className="border-emerald-300 bg-emerald-50">
                 <CardContent className="p-4 text-sm text-emerald-800">
-                  Ya registraste lo que llegó para el pedido de hoy. Puedes
-                  corregir y volver a confirmar si hubo un ajuste.
+                  Ya registraste lo que llegó hoy. Puedes corregir y volver a
+                  confirmar si hubo un ajuste.
                 </CardContent>
               </Card>
             )}
 
-            {enviadoAt && (
-              <p className="text-xs text-muted-foreground px-1">
-                Pedido enviado {getHoraNegocio(enviadoAt)} — confirma las
-                cantidades que llegaron.
-              </p>
-            )}
+            <p className="text-xs text-muted-foreground px-1">
+              {enviadoAt
+                ? `Pedido enviado ${getHoraNegocio(enviadoAt)} — confirma o ajusta lo que llegó.`
+                : "Pon qué llegó y cuánto. Lo que tenga 0 no se registra."}
+            </p>
 
             <Card>
               <CardContent className="p-4 space-y-1.5">
@@ -247,40 +276,58 @@ export default function Recepciones() {
               </CardContent>
             </Card>
 
-            {renglones.map((r) => {
-              const diff = r.cantidad_recibida !== r.cantidad_pedida;
+            {categorias.map((cat) => {
+              const rs = renglonesPorCategoria(cat.id);
+              if (rs.length === 0) return null;
               return (
-                <Card
-                  key={r.insumo_id}
-                  className={diff ? "border-amber-300 bg-amber-50/50" : ""}
-                >
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-base flex-1">
-                        {r.nombre}
-                      </span>
-                      <Badge variant="outline" className="text-xs">
-                        Pedido: {r.cantidad_pedida} {r.unidad}
-                      </Badge>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">
-                        ¿Cuánto llegó?
-                        {diff && (
-                          <span className="ml-2 text-amber-600 font-medium">
-                            ≠ pedido
-                          </span>
-                        )}
-                      </Label>
-                      <CantidadStepper
-                        value={r.cantidad_recibida}
-                        unidad={r.unidad}
-                        emphasis
-                        onChange={(v) => setRecibida(r.insumo_id, v)}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
+                <div key={cat.id} className="space-y-2">
+                  <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground px-1">
+                    {cat.nombre}
+                  </h2>
+                  {rs.map((r) => {
+                    const diff =
+                      r.cantidad_pedida > 0 && r.cantidad_recibida !== r.cantidad_pedida;
+                    return (
+                      <Card
+                        key={r.insumo_id}
+                        className={diff ? "border-amber-300 bg-amber-50/50" : ""}
+                      >
+                        <CardContent className="p-4 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-base flex-1">
+                              {r.nombre}
+                            </span>
+                            {r.cantidad_pedida > 0 ? (
+                              <Badge variant="outline" className="text-xs">
+                                Pedido: {r.cantidad_pedida} {r.unidad}
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="uppercase text-xs">
+                                {r.unidad}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">
+                              ¿Cuánto llegó?
+                              {diff && (
+                                <span className="ml-2 text-amber-600 font-medium">
+                                  ≠ pedido
+                                </span>
+                              )}
+                            </Label>
+                            <CantidadStepper
+                              value={r.cantidad_recibida}
+                              unidad={r.unidad}
+                              emphasis
+                              onChange={(v) => setRecibida(r.insumo_id, v)}
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
               );
             })}
           </>
@@ -288,20 +335,20 @@ export default function Recepciones() {
       </div>
 
       {/* Barra inferior fija */}
-      {!loading && pedidoId && renglones.length > 0 && (
+      {!loading && renglones.length > 0 && (
         <div className="fixed bottom-0 inset-x-0 bg-background border-t z-20">
           <div className="container mx-auto px-3 py-3 max-w-2xl">
             <Button
               className="w-full h-14 text-lg gap-2"
               onClick={handleConfirmar}
-              disabled={guardando}
+              disabled={guardando || recibidos.length === 0}
             >
               {guardando ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
                 <Check className="h-5 w-5" />
               )}
-              Confirmar recibido
+              Confirmar recibido ({recibidos.length})
             </Button>
           </div>
         </div>
