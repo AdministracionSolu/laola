@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => ({
         background_color: "#ffffff",
         display: "standalone",
         orientation: "portrait",
-        start_url: "/centro-de-operaciones",
+        start_url: "/pedidos",
         lang: "es-MX",
         icons: [
           { src: "/pwa-192x192.png", sizes: "192x192", type: "image/png" },

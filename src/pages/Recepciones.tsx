@@ -179,7 +179,7 @@ export default function Recepciones() {
       {/* Header */}
       <div className="bg-background border-b sticky top-0 z-20">
         <div className="container mx-auto px-3 py-2 flex items-center gap-3 max-w-2xl">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/centro-de-operaciones")}>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/pedidos")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <img src={logoLaOla} alt="La Ola" className="w-8 h-8 rounded-full object-cover" />
@@ -212,7 +212,7 @@ export default function Recepciones() {
                 No hay un pedido enviado hoy. Primero haz el pedido para poder
                 registrar lo que llegó.
               </p>
-              <Button onClick={() => navigate("/centro-de-operaciones/pedidos")}>
+              <Button onClick={() => navigate("/pedidos/hacer")}>
                 Ir a hacer pedido
               </Button>
             </CardContent>

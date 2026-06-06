@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Menu from "./pages/Menu";
 import Sucursales from "./pages/Sucursales";
@@ -17,6 +17,7 @@ import AdminLogin from "./pages/admin/Login";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminPanelControl from "./pages/admin/PanelControl";
 import AdminPedidos from "./pages/admin/Pedidos";
+import PedidosHome from "./pages/PedidosHome";
 import OperacionesLayout from "./components/operaciones/OperacionesLayout";
 import NotFound from "./pages/NotFound";
 
@@ -38,11 +39,15 @@ const App = () => (
           <Route path="/centro-de-operaciones/cortes" element={<Corte />} />
           <Route path="/centro-de-operaciones/reservaciones" element={<Reservaciones />} />
           <Route path="/centro-de-operaciones/contadoras" element={<Contadoras />} />
-          {/* Pedidos por sucursal: gate de sucursal solo en estas pantallas */}
+          {/* Pedidos: slug propio con gate de sucursal */}
           <Route element={<OperacionesLayout />}>
-            <Route path="/centro-de-operaciones/pedidos" element={<Pedidos />} />
-            <Route path="/centro-de-operaciones/recepciones" element={<Recepciones />} />
+            <Route path="/pedidos" element={<PedidosHome />} />
+            <Route path="/pedidos/hacer" element={<Pedidos />} />
+            <Route path="/pedidos/recepcion" element={<Recepciones />} />
           </Route>
+          {/* Redirects de rutas anteriores */}
+          <Route path="/centro-de-operaciones/pedidos" element={<Navigate to="/pedidos/hacer" replace />} />
+          <Route path="/centro-de-operaciones/recepciones" element={<Navigate to="/pedidos/recepcion" replace />} />
           {/* Legacy route redirect */}
           <Route path="/corte" element={<CentroOperaciones />} />
           <Route path="/admin/login" element={<AdminLogin />} />
