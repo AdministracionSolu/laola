@@ -33,14 +33,15 @@ const App = () => (
           <Route path="/menu" element={<Menu />} />
           <Route path="/sucursales" element={<Sucursales />} />
           <Route path="/contacto" element={<Contacto />} />
-          {/* Operaciones: gate de sucursal (se elige una vez por dispositivo) */}
+          {/* Centro de Operaciones: igual que antes (sin gate) */}
+          <Route path="/centro-de-operaciones" element={<CentroOperaciones />} />
+          <Route path="/centro-de-operaciones/cortes" element={<Corte />} />
+          <Route path="/centro-de-operaciones/reservaciones" element={<Reservaciones />} />
+          <Route path="/centro-de-operaciones/contadoras" element={<Contadoras />} />
+          {/* Pedidos por sucursal: gate de sucursal solo en estas pantallas */}
           <Route element={<OperacionesLayout />}>
-            <Route path="/centro-de-operaciones" element={<CentroOperaciones />} />
-            <Route path="/centro-de-operaciones/cortes" element={<Corte />} />
-            <Route path="/centro-de-operaciones/reservaciones" element={<Reservaciones />} />
             <Route path="/centro-de-operaciones/pedidos" element={<Pedidos />} />
             <Route path="/centro-de-operaciones/recepciones" element={<Recepciones />} />
-            <Route path="/centro-de-operaciones/contadoras" element={<Contadoras />} />
           </Route>
           {/* Legacy route redirect */}
           <Route path="/corte" element={<CentroOperaciones />} />

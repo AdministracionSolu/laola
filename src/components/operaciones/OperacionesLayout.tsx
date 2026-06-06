@@ -28,14 +28,23 @@ function Gate() {
 
   useEffect(() => {
     if (sucursalId) return;
-    supabase
-      .from("sucursales")
-      .select("id, nombre, pin")
-      .order("nombre")
-      .then(({ data }) => {
-        if (data) setSucursales(data as SucursalRow[]);
-        setLoading(false);
-      });
+    (async () => {
+      // Intenta con PIN; si la columna aún no existe (migración no aplicada),
+      // cae a la consulta básica para no dejar la pantalla vacía.
+      let { data, error } = await supabase
+        .from("sucursales")
+        .select("id, nombre, pin")
+        .order("nombre");
+      if (error) {
+        const fallback = await supabase
+          .from("sucursales")
+          .select("id, nombre")
+          .order("nombre");
+        data = (fallback.data || []).map((s) => ({ ...s, pin: null })) as SucursalRow[];
+      }
+      if (data) setSucursales(data as SucursalRow[]);
+      setLoading(false);
+    })();
   }, [sucursalId]);
 
   // Ya hay sucursal fijada: continúa a las pantallas de operaciones.
