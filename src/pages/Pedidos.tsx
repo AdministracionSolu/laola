@@ -1,24 +1,35 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Package, Send, History, Save } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from "@/components/ui/sheet";
+import {
+  ArrowLeft,
+  Send,
+  CheckCircle2,
+  Circle,
+  Loader2,
+  ClipboardList,
+  WifiOff,
+  MapPin,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-interface Sucursal {
-  id: string;
-  nombre: string;
-}
+import { useSucursal } from "@/contexts/SucursalContext";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { getFechaNegocio, getHoraNegocio } from "@/lib/fecha";
+import { CantidadStepper } from "@/components/operaciones/CantidadStepper";
 
 interface Categoria {
   id: string;
@@ -26,400 +37,525 @@ interface Categoria {
   orden: number;
 }
 
-interface Insumo {
-  id: string;
+interface ItemSucursal {
+  insumo_id: string;
   nombre: string;
   categoria_id: string;
   unidad: string;
+  nivel_par: number | null;
+  costo: number | null;
+  orden: number;
 }
 
-interface PedidoDetalle {
-  insumo_id: string;
+interface Detalle {
   existencia: number;
   cantidad_pedida: number;
+  cantidad_sugerida: number | null;
+  // El encargado capturó la existencia (la tarjeta queda "lista").
+  capturado: boolean;
+  // El encargado editó "Pides" a mano (no volver a sobreescribir con sugerido).
+  pedidoManual: boolean;
 }
 
-interface Pedido {
-  id: string;
-  sucursal_id: string;
-  fecha: string;
-  estado: string;
-  registrado_por: string | null;
-  notas: string | null;
-  created_at: string;
-  sucursales?: { nombre: string };
-}
+type ItemRow = {
+  orden: number;
+  nivel_par: number | null;
+  costo: number | null;
+  unidad: string | null;
+  insumos: { id: string; nombre: string; categoria_id: string; unidad: string | null };
+};
+
+type DetRow = {
+  insumo_id: string;
+  existencia: number | null;
+  cantidad_pedida: number;
+  cantidad_sugerida: number | null;
+};
+
+const detalleVacio = (): Detalle => ({
+  existencia: 0,
+  cantidad_pedida: 0,
+  cantidad_sugerida: null,
+  capturado: false,
+  pedidoManual: false,
+});
 
 export default function Pedidos() {
   const navigate = useNavigate();
-  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
+  const online = useOnlineStatus();
+  const { sucursalId, sucursalNombre, registradoPor, setRegistradoPor } =
+    useSucursal();
+
+  const fecha = getFechaNegocio();
+  const draftKey = `laola_pedido_draft_${sucursalId}_${fecha}`;
+
   const [categorias, setCategorias] = useState<Categoria[]>([]);
-  const [insumos, setInsumos] = useState<Insumo[]>([]);
-  const [sucursalSeleccionada, setSucursalSeleccionada] = useState<string>("");
-  const [registradoPor, setRegistradoPor] = useState("");
+  const [items, setItems] = useState<ItemSucursal[]>([]);
+  const [detalles, setDetalles] = useState<Record<string, Detalle>>({});
   const [notas, setNotas] = useState("");
-  const [detalles, setDetalles] = useState<Record<string, PedidoDetalle>>({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [pedidosRecientes, setPedidosRecientes] = useState<Pedido[]>([]);
-  const [activeTab, setActiveTab] = useState("nuevo");
+  const [pedidoId, setPedidoId] = useState<string | null>(null);
+  const [estadoPedido, setEstadoPedido] = useState<string | null>(null);
+  const [enviadoAt, setEnviadoAt] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [enviando, setEnviando] = useState(false);
+  const [revisar, setRevisar] = useState(false);
+  const [draftCargado, setDraftCargado] = useState(false);
 
+  // ---- Carga inicial ----
   useEffect(() => {
-    fetchData();
-    fetchPedidosRecientes();
-  }, []);
+    if (!sucursalId) return;
+    let cancelado = false;
 
-  const fetchData = async () => {
-    const [sucursalesRes, categoriasRes, insumosRes] = await Promise.all([
-      supabase.from("sucursales").select("*").order("nombre"),
-      supabase.from("categorias_insumos").select("*").order("orden"),
-      supabase.from("insumos").select("*").eq("activo", true).order("nombre"),
-    ]);
+    (async () => {
+      setLoading(true);
+      const [catRes, itemsRes, pedidoRes] = await Promise.all([
+        supabase.from("categorias_insumos").select("*").order("orden"),
+        supabase
+          .from("insumo_sucursal")
+          .select("orden, nivel_par, costo, unidad, insumos!inner(id, nombre, categoria_id, unidad)")
+          .eq("sucursal_id", sucursalId)
+          .eq("activo", true)
+          .order("orden"),
+        supabase
+          .from("pedidos")
+          .select("*")
+          .eq("sucursal_id", sucursalId)
+          .eq("fecha", fecha)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
 
-    if (sucursalesRes.data) setSucursales(sucursalesRes.data);
-    if (categoriasRes.data) setCategorias(categoriasRes.data);
-    if (insumosRes.data) setInsumos(insumosRes.data);
-  };
+      if (cancelado) return;
 
-  const fetchPedidosRecientes = async () => {
-    const { data } = await supabase
-      .from("pedidos")
-      .select("*, sucursales(nombre)")
-      .order("created_at", { ascending: false })
-      .limit(10);
-    if (data) setPedidosRecientes(data);
-  };
+      if (catRes.data) setCategorias(catRes.data);
 
-  const getInsumosByCategoria = (categoriaId: string) => {
-    return insumos.filter((i) => i.categoria_id === categoriaId);
-  };
-
-  const updateDetalle = (insumoId: string, field: "existencia" | "cantidad_pedida", value: number) => {
-    setDetalles((prev) => ({
-      ...prev,
-      [insumoId]: {
-        ...prev[insumoId],
-        insumo_id: insumoId,
-        existencia: prev[insumoId]?.existencia || 0,
-        cantidad_pedida: prev[insumoId]?.cantidad_pedida || 0,
-        [field]: value,
-      },
-    }));
-  };
-
-  const handleSubmit = async () => {
-    if (!sucursalSeleccionada) {
-      toast.error("Selecciona una sucursal");
-      return;
-    }
-
-    const detallesConCantidad = Object.values(detalles).filter(
-      (d) => d.cantidad_pedida > 0 || d.existencia > 0
-    );
-
-    if (detallesConCantidad.length === 0) {
-      toast.error("Agrega al menos un insumo al pedido");
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      // Crear pedido
-      const { data: pedido, error: pedidoError } = await supabase
-        .from("pedidos")
-        .insert({
-          sucursal_id: sucursalSeleccionada,
-          registrado_por: registradoPor || null,
-          notas: notas || null,
-          estado: "pendiente",
-        })
-        .select()
-        .single();
-
-      if (pedidoError) throw pedidoError;
-
-      // Crear detalles
-      const detallesInsert = detallesConCantidad.map((d) => ({
-        pedido_id: pedido.id,
-        insumo_id: d.insumo_id,
-        existencia: d.existencia,
-        cantidad_pedida: d.cantidad_pedida,
+      const itemRows = (itemsRes.data ?? []) as unknown as ItemRow[];
+      const mapped: ItemSucursal[] = itemRows.map((r) => ({
+        insumo_id: r.insumos.id,
+        nombre: r.insumos.nombre,
+        categoria_id: r.insumos.categoria_id,
+        unidad: r.unidad || r.insumos.unidad || "pz",
+        nivel_par: r.nivel_par,
+        costo: r.costo,
+        orden: r.orden,
       }));
+      setItems(mapped);
 
-      const { error: detallesError } = await supabase
+      // Estado base de detalles
+      const base: Record<string, Detalle> = {};
+      mapped.forEach((it) => (base[it.insumo_id] = detalleVacio()));
+
+      const pedido = pedidoRes.data;
+      if (pedido) {
+        setPedidoId(pedido.id);
+        setEstadoPedido(pedido.estado);
+        setEnviadoAt(pedido.enviado_at);
+        setNotas(pedido.notas || "");
+        const { data: det } = await supabase
+          .from("pedidos_detalle")
+          .select("*")
+          .eq("pedido_id", pedido.id);
+        ((det ?? []) as unknown as DetRow[]).forEach((d) => {
+          const sug =
+            d.cantidad_sugerida === null ? null : Number(d.cantidad_sugerida);
+          const ped = Number(d.cantidad_pedida) || 0;
+          base[d.insumo_id] = {
+            existencia: Number(d.existencia) || 0,
+            cantidad_pedida: ped,
+            cantidad_sugerida: sug,
+            capturado: true,
+            // Solo "manual" si el pedido difiere del sugerido (o no hubo sugerido).
+            pedidoManual: sug === null ? true : ped !== sug,
+          };
+        });
+      }
+
+      // Borrador local (lo más reciente capturado en el dispositivo)
+      try {
+        const raw = localStorage.getItem(draftKey);
+        if (raw && (!pedido || pedido.estado === "borrador" || pedido.estado === "enviado")) {
+          const parsed = JSON.parse(raw);
+          if (parsed.detalles) {
+            Object.entries(parsed.detalles).forEach(([k, v]) => {
+              if (base[k]) base[k] = { ...base[k], ...(v as Detalle) };
+            });
+          }
+          // No sobreescribir notas del servidor con un borrador vacío.
+          if (typeof parsed.notas === "string" && parsed.notas) setNotas(parsed.notas);
+        }
+      } catch {
+        /* ignorar borrador corrupto */
+      }
+
+      setDetalles(base);
+      setLoading(false);
+      setDraftCargado(true);
+    })();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [sucursalId, fecha, draftKey]);
+
+  // ---- Autoguardado del borrador en el dispositivo ----
+  useEffect(() => {
+    if (!draftCargado || !sucursalId) return;
+    try {
+      localStorage.setItem(draftKey, JSON.stringify({ detalles, notas }));
+    } catch {
+      /* almacenamiento lleno: ignorar */
+    }
+  }, [detalles, notas, draftCargado, draftKey, sucursalId]);
+
+  const itemsPorCategoria = useCallback(
+    (categoriaId: string) =>
+      items.filter((i) => i.categoria_id === categoriaId),
+    [items]
+  );
+
+  const setExistencia = (item: ItemSucursal, value: number) => {
+    setDetalles((prev) => {
+      const cur = prev[item.insumo_id] || detalleVacio();
+      const sugerido =
+        item.nivel_par != null ? Math.max(0, item.nivel_par - value) : null;
+      return {
+        ...prev,
+        [item.insumo_id]: {
+          ...cur,
+          existencia: value,
+          capturado: true,
+          cantidad_sugerida: sugerido,
+          // Pre-llenar "Pides" con el sugerido salvo que el encargado ya lo haya tocado.
+          cantidad_pedida: cur.pedidoManual
+            ? cur.cantidad_pedida
+            : sugerido ?? cur.cantidad_pedida,
+        },
+      };
+    });
+  };
+
+  const setPedida = (item: ItemSucursal, value: number) => {
+    setDetalles((prev) => {
+      const cur = prev[item.insumo_id] || detalleVacio();
+      return {
+        ...prev,
+        [item.insumo_id]: {
+          ...cur,
+          cantidad_pedida: value,
+          pedidoManual: true,
+          capturado: true,
+        },
+      };
+    });
+  };
+
+  const total = items.length;
+  const listos = useMemo(
+    () => items.filter((i) => detalles[i.insumo_id]?.capturado).length,
+    [items, detalles]
+  );
+  const renglonesPedido = useMemo(
+    () => items.filter((i) => (detalles[i.insumo_id]?.cantidad_pedida || 0) > 0),
+    [items, detalles]
+  );
+
+  const yaRecibido = estadoPedido === "recibido" || estadoPedido === "recibido_parcial" || estadoPedido === "cerrado";
+
+  const handleEnviar = async () => {
+    if (!sucursalId) return;
+    if (renglonesPedido.length === 0) {
+      toast.error("Agrega al menos un insumo con cantidad a pedir");
+      return;
+    }
+    setEnviando(true);
+    try {
+      let id = pedidoId;
+      const ahora = new Date().toISOString();
+
+      if (id) {
+        const { error } = await supabase
+          .from("pedidos")
+          .update({
+            estado: "enviado",
+            enviado_at: ahora,
+            registrado_por: registradoPor || null,
+            notas: notas || null,
+          })
+          .eq("id", id);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase
+          .from("pedidos")
+          .insert({
+            sucursal_id: sucursalId,
+            fecha,
+            estado: "enviado",
+            enviado_at: ahora,
+            registrado_por: registradoPor || null,
+            notas: notas || null,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        id = data.id;
+        setPedidoId(id);
+      }
+
+      const detallesUpsert = items
+        .filter((i) => {
+          const d = detalles[i.insumo_id];
+          return d && (d.cantidad_pedida > 0 || d.capturado);
+        })
+        .map((i) => {
+          const d = detalles[i.insumo_id];
+          return {
+            pedido_id: id,
+            insumo_id: i.insumo_id,
+            existencia: d.existencia,
+            cantidad_pedida: d.cantidad_pedida,
+            cantidad_sugerida: d.cantidad_sugerida,
+          };
+        });
+
+      // Upsert por (pedido_id, insumo_id): conserva los ids de renglón y por
+      // tanto el enlace con recepciones_detalle.pedido_detalle_id.
+      const { error: detError } = await supabase
         .from("pedidos_detalle")
-        .insert(detallesInsert);
+        .upsert(detallesUpsert, { onConflict: "pedido_id,insumo_id" });
+      if (detError) throw detError;
 
-      if (detallesError) throw detallesError;
-
-      toast.success("Pedido registrado correctamente");
-      
-      // Limpiar formulario
-      setDetalles({});
-      setNotas("");
-      setRegistradoPor("");
-      fetchPedidosRecientes();
-      setActiveTab("historial");
+      setEstadoPedido("enviado");
+      setEnviadoAt(ahora);
+      localStorage.removeItem(draftKey);
+      setRevisar(false);
+      toast.success(`Pedido enviado a las ${getHoraNegocio(ahora)} ✓`);
     } catch (error) {
-      console.error("Error:", error);
-      toast.error("Error al registrar el pedido");
+      console.error("Error al enviar pedido:", error);
+      toast.error("No se pudo enviar el pedido. Intenta de nuevo.");
     } finally {
-      setIsLoading(false);
+      setEnviando(false);
     }
   };
 
-  const getEstadoBadge = (estado: string) => {
-    switch (estado) {
-      case "pendiente":
-        return <Badge variant="secondary">Pendiente</Badge>;
-      case "recibido":
-        return <Badge variant="default">Recibido</Badge>;
-      case "parcial":
-        return <Badge variant="outline">Parcial</Badge>;
-      default:
-        return <Badge variant="outline">{estado}</Badge>;
-    }
-  };
-
-  const getTotalItems = () => {
-    return Object.values(detalles).filter((d) => d.cantidad_pedida > 0).length;
-  };
+  if (!sucursalId) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/10">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/10 pb-28">
       {/* Header */}
-      <div className="bg-background border-b sticky top-0 z-10">
-        <div className="container mx-auto px-3 py-2 flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/centro-de-operaciones")}
-          >
+      <div className="bg-background border-b sticky top-0 z-20">
+        <div className="container mx-auto px-3 py-2 flex items-center gap-3 max-w-2xl">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/centro-de-operaciones")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <img
-            src={logoLaOla}
-            alt="La Ola"
-            className="w-8 h-8 rounded-full object-cover"
-          />
+          <img src={logoLaOla} alt="La Ola" className="w-8 h-8 rounded-full object-cover" />
           <div className="flex-1">
-            <h1 className="text-base font-semibold">Pedidos</h1>
-            <p className="text-xs text-muted-foreground">
-              Registrar pedidos de insumos
+            <h1 className="text-base font-semibold leading-tight">Hacer Pedido</h1>
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <MapPin className="h-3 w-3" /> {sucursalNombre}
             </p>
           </div>
-          {getTotalItems() > 0 && (
-            <Badge variant="default" className="text-sm">
-              {getTotalItems()} items
+          {!online && (
+            <Badge variant="secondary" className="gap-1">
+              <WifiOff className="h-3 w-3" /> Sin conexión
             </Badge>
           )}
         </div>
+        {/* Barra de progreso */}
+        {!loading && total > 0 && (
+          <div className="container mx-auto px-3 pb-2 max-w-2xl">
+            <div className="flex items-center justify-between text-xs mb-1">
+              <span className="font-medium">
+                {listos} de {total} listos
+              </span>
+              {estadoPedido === "enviado" && enviadoAt && (
+                <span className="text-emerald-600 font-medium">
+                  Enviado {getHoraNegocio(enviadoAt)}
+                </span>
+              )}
+            </div>
+            <Progress value={total ? (listos / total) * 100 : 0} className="h-2" />
+          </div>
+        )}
       </div>
 
-      <div className="container mx-auto px-3 py-4 max-w-2xl">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="nuevo" className="gap-2">
-              <Package className="h-4 w-4" />
-              Nuevo Pedido
-            </TabsTrigger>
-            <TabsTrigger value="historial" className="gap-2">
-              <History className="h-4 w-4" />
-              Historial
-            </TabsTrigger>
-          </TabsList>
+      <div className="container mx-auto px-3 py-4 max-w-2xl space-y-4">
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : items.length === 0 ? (
+          <Card>
+            <CardContent className="p-8 text-center text-muted-foreground text-sm">
+              Esta sucursal no tiene insumos asignados todavía. El administrador
+              debe configurar la lista desde el panel.
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            {yaRecibido && (
+              <Card className="border-emerald-300 bg-emerald-50">
+                <CardContent className="p-4 text-sm text-emerald-800">
+                  El pedido de hoy ya fue recibido. Lo que captures aquí
+                  reabrirá el pedido como nuevo envío.
+                </CardContent>
+              </Card>
+            )}
 
-          <TabsContent value="nuevo" className="space-y-4">
-            {/* Sucursal y Quien Registra */}
+            {/* Encargado */}
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Información</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-sm">Sucursal *</Label>
-                  <Select
-                    value={sucursalSeleccionada}
-                    onValueChange={setSucursalSeleccionada}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona sucursal" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sucursales.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.nombre}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-sm">Registrado por</Label>
-                  <Input
-                    placeholder="Tu nombre"
-                    value={registradoPor}
-                    onChange={(e) => setRegistradoPor(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-sm">Notas</Label>
-                  <Textarea
-                    placeholder="Observaciones del pedido..."
-                    value={notas}
-                    onChange={(e) => setNotas(e.target.value)}
-                    rows={2}
-                  />
-                </div>
+              <CardContent className="p-4 space-y-1.5">
+                <Label className="text-sm">¿Quién hace el pedido?</Label>
+                <Input
+                  placeholder="Tu nombre"
+                  value={registradoPor}
+                  onChange={(e) => setRegistradoPor(e.target.value)}
+                  className="h-11"
+                />
               </CardContent>
             </Card>
 
-            {/* Lista de Insumos por Categoría */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Insumos</CardTitle>
-                <CardDescription>
-                  Ingresa existencia y cantidad a pedir
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-[50vh]">
-                  <Accordion type="multiple" className="w-full">
-                    {categorias.map((categoria) => {
-                      const insumosCategoria = getInsumosByCategoria(categoria.id);
-                      if (insumosCategoria.length === 0) return null;
-
-                      const itemsConPedido = insumosCategoria.filter(
-                        (i) => detalles[i.id]?.cantidad_pedida > 0
-                      ).length;
-
-                      return (
-                        <AccordionItem key={categoria.id} value={categoria.id}>
-                          <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{categoria.nombre}</span>
-                              {itemsConPedido > 0 && (
-                                <Badge variant="secondary" className="text-xs">
-                                  {itemsConPedido}
-                                </Badge>
-                              )}
-                            </div>
-                          </AccordionTrigger>
-                          <AccordionContent className="px-4 pb-4">
-                            <div className="space-y-3">
-                              {/* Header */}
-                              <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground font-medium">
-                                <div className="col-span-6">Insumo</div>
-                                <div className="col-span-3 text-center">Exist.</div>
-                                <div className="col-span-3 text-center">Pedido</div>
-                              </div>
-                              
-                              {insumosCategoria.map((insumo) => (
-                                <div
-                                  key={insumo.id}
-                                  className="grid grid-cols-12 gap-2 items-center"
-                                >
-                                  <div className="col-span-6 text-sm truncate">
-                                    {insumo.nombre}
-                                  </div>
-                                  <div className="col-span-3">
-                                    <Input
-                                      type="number"
-                                      min="0"
-                                      placeholder="0"
-                                      className="h-8 text-center text-sm"
-                                      value={detalles[insumo.id]?.existencia || ""}
-                                      onChange={(e) =>
-                                        updateDetalle(
-                                          insumo.id,
-                                          "existencia",
-                                          parseFloat(e.target.value) || 0
-                                        )
-                                      }
-                                    />
-                                  </div>
-                                  <div className="col-span-3">
-                                    <Input
-                                      type="number"
-                                      min="0"
-                                      placeholder="0"
-                                      className="h-8 text-center text-sm font-medium"
-                                      value={detalles[insumo.id]?.cantidad_pedida || ""}
-                                      onChange={(e) =>
-                                        updateDetalle(
-                                          insumo.id,
-                                          "cantidad_pedida",
-                                          parseFloat(e.target.value) || 0
-                                        )
-                                      }
-                                    />
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </AccordionContent>
-                        </AccordionItem>
-                      );
-                    })}
-                  </Accordion>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-
-            {/* Botón Enviar */}
-            <Button
-              className="w-full h-12 text-base gap-2"
-              onClick={handleSubmit}
-              disabled={isLoading || !sucursalSeleccionada}
-            >
-              <Send className="h-5 w-5" />
-              {isLoading ? "Enviando..." : "Enviar Pedido"}
-            </Button>
-          </TabsContent>
-
-          <TabsContent value="historial" className="space-y-3">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Últimos Pedidos</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                {pedidosRecientes.length === 0 ? (
-                  <div className="p-4 text-center text-muted-foreground text-sm">
-                    No hay pedidos registrados
-                  </div>
-                ) : (
-                  <div className="divide-y">
-                    {pedidosRecientes.map((pedido) => (
-                      <div
-                        key={pedido.id}
-                        className="p-4 flex items-center justify-between"
+            {/* Insumos por categoría */}
+            {categorias.map((cat) => {
+              const its = itemsPorCategoria(cat.id);
+              if (its.length === 0) return null;
+              return (
+                <div key={cat.id} className="space-y-2">
+                  <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground px-1">
+                    {cat.nombre}
+                  </h2>
+                  {its.map((item) => {
+                    const d = detalles[item.insumo_id] || detalleVacio();
+                    return (
+                      <Card
+                        key={item.insumo_id}
+                        className={
+                          d.capturado ? "border-emerald-300 bg-emerald-50/40" : ""
+                        }
                       >
-                        <div>
-                          <p className="font-medium text-sm">
-                            {pedido.sucursales?.nombre}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(pedido.created_at).toLocaleDateString("es-MX", {
-                              day: "numeric",
-                              month: "short",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                            {pedido.registrado_por && ` • ${pedido.registrado_por}`}
-                          </p>
-                        </div>
-                        {getEstadoBadge(pedido.estado)}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                        <CardContent className="p-4 space-y-3">
+                          <div className="flex items-center gap-2">
+                            {d.capturado ? (
+                              <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+                            ) : (
+                              <Circle className="h-5 w-5 text-muted-foreground/40 shrink-0" />
+                            )}
+                            <span className="font-semibold text-base flex-1">
+                              {item.nombre}
+                            </span>
+                            <Badge variant="outline" className="uppercase text-xs">
+                              {item.unidad}
+                            </Badge>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">
+                                ¿Qué tienes?
+                              </Label>
+                              <CantidadStepper
+                                value={d.existencia}
+                                unidad={item.unidad}
+                                onChange={(v) => setExistencia(item, v)}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">
+                                Pides
+                                {item.nivel_par != null && (
+                                  <span className="ml-1 text-muted-foreground/70">
+                                    (par {item.nivel_par})
+                                  </span>
+                                )}
+                              </Label>
+                              <CantidadStepper
+                                value={d.cantidad_pedida}
+                                unidad={item.unidad}
+                                emphasis
+                                onChange={(v) => setPedida(item, v)}
+                              />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </>
+        )}
       </div>
+
+      {/* Barra inferior fija */}
+      {!loading && items.length > 0 && (
+        <div className="fixed bottom-0 inset-x-0 bg-background border-t z-20">
+          <div className="container mx-auto px-3 py-3 max-w-2xl">
+            <Button
+              className="w-full h-14 text-lg gap-2"
+              onClick={() => setRevisar(true)}
+              disabled={renglonesPedido.length === 0}
+            >
+              <ClipboardList className="h-5 w-5" />
+              Revisar pedido ({renglonesPedido.length})
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Hoja de revisión */}
+      <Sheet open={revisar} onOpenChange={setRevisar}>
+        <SheetContent side="bottom" className="max-h-[85vh] flex flex-col">
+          <SheetHeader>
+            <SheetTitle>Revisar pedido · {sucursalNombre}</SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto py-2 divide-y">
+            {renglonesPedido.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8 text-sm">
+                No hay insumos con cantidad a pedir.
+              </p>
+            ) : (
+              renglonesPedido.map((item) => {
+                const d = detalles[item.insumo_id];
+                return (
+                  <div
+                    key={item.insumo_id}
+                    className="flex items-center justify-between py-2.5"
+                  >
+                    <span className="text-sm">{item.nombre}</span>
+                    <span className="font-semibold">
+                      {d.cantidad_pedida} {item.unidad}
+                    </span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+          <div className="space-y-1.5 py-2">
+            <Label className="text-sm">Notas (opcional)</Label>
+            <Input
+              placeholder="Observaciones del pedido…"
+              value={notas}
+              onChange={(e) => setNotas(e.target.value)}
+              className="h-11"
+            />
+          </div>
+          <SheetFooter>
+            <Button
+              className="w-full h-14 text-lg gap-2"
+              onClick={handleEnviar}
+              disabled={enviando || renglonesPedido.length === 0}
+            >
+              {enviando ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Send className="h-5 w-5" />
+              )}
+              {estadoPedido === "enviado" ? "Actualizar pedido" : "Enviar pedido"}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

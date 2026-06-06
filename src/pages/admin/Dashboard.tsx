@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, RefreshCw, Store, Camera, BarChart3, History, LayoutDashboard, ClipboardCheck, FileUp, CalendarDays } from "lucide-react";
+import { LogOut, RefreshCw, Store, Camera, BarChart3, History, LayoutDashboard, ClipboardCheck, FileUp, CalendarDays, Package } from "lucide-react";
 import { useEffect } from "react";
 
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
@@ -119,6 +119,10 @@ export default function AdminDashboard() {
             <Button variant="default" onClick={() => navigate("/admin/panel-control")} className="gap-2">
               <LayoutDashboard className="w-4 h-4" />
               <span className="hidden sm:inline">Panel Control</span>
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/admin/pedidos")} className="gap-2">
+              <Package className="w-4 h-4" />
+              <span className="hidden sm:inline">Insumos &amp; Pedidos</span>
             </Button>
             <Button variant="outline" size="icon" onClick={handleRefresh}>
               <RefreshCw className="w-4 h-4" />

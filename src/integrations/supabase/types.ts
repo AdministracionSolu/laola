@@ -150,9 +150,61 @@ export type Database = {
           },
         ]
       }
+      insumo_sucursal: {
+        Row: {
+          activo: boolean
+          costo: number | null
+          created_at: string
+          id: string
+          insumo_id: string
+          nivel_par: number | null
+          orden: number
+          sucursal_id: string
+          unidad: string | null
+        }
+        Insert: {
+          activo?: boolean
+          costo?: number | null
+          created_at?: string
+          id?: string
+          insumo_id: string
+          nivel_par?: number | null
+          orden?: number
+          sucursal_id: string
+          unidad?: string | null
+        }
+        Update: {
+          activo?: boolean
+          costo?: number | null
+          created_at?: string
+          id?: string
+          insumo_id?: string
+          nivel_par?: number | null
+          orden?: number
+          sucursal_id?: string
+          unidad?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insumo_sucursal_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insumo_sucursal_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pedidos: {
         Row: {
           created_at: string
+          enviado_at: string | null
           estado: string
           fecha: string
           id: string
@@ -163,6 +215,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          enviado_at?: string | null
           estado?: string
           fecha?: string
           id?: string
@@ -173,6 +226,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          enviado_at?: string | null
           estado?: string
           fecha?: string
           id?: string
@@ -194,6 +248,7 @@ export type Database = {
       pedidos_detalle: {
         Row: {
           cantidad_pedida: number
+          cantidad_sugerida: number | null
           created_at: string
           existencia: number | null
           id: string
@@ -202,6 +257,7 @@ export type Database = {
         }
         Insert: {
           cantidad_pedida?: number
+          cantidad_sugerida?: number | null
           created_at?: string
           existencia?: number | null
           id?: string
@@ -210,6 +266,7 @@ export type Database = {
         }
         Update: {
           cantidad_pedida?: number
+          cantidad_sugerida?: number | null
           created_at?: string
           existencia?: number | null
           id?: string
@@ -389,18 +446,21 @@ export type Database = {
           direccion: string | null
           id: string
           nombre: string
+          pin: string | null
         }
         Insert: {
           created_at?: string
           direccion?: string | null
           id?: string
           nombre: string
+          pin?: string | null
         }
         Update: {
           created_at?: string
           direccion?: string | null
           id?: string
           nombre?: string
+          pin?: string | null
         }
         Relationships: []
       }

@@ -16,6 +16,8 @@ import Contadoras from "./pages/Contadoras";
 import AdminLogin from "./pages/admin/Login";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminPanelControl from "./pages/admin/PanelControl";
+import AdminPedidos from "./pages/admin/Pedidos";
+import OperacionesLayout from "./components/operaciones/OperacionesLayout";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,17 +33,21 @@ const App = () => (
           <Route path="/menu" element={<Menu />} />
           <Route path="/sucursales" element={<Sucursales />} />
           <Route path="/contacto" element={<Contacto />} />
-          <Route path="/centro-de-operaciones" element={<CentroOperaciones />} />
-          <Route path="/centro-de-operaciones/cortes" element={<Corte />} />
-          <Route path="/centro-de-operaciones/reservaciones" element={<Reservaciones />} />
-          <Route path="/centro-de-operaciones/pedidos" element={<Pedidos />} />
-          <Route path="/centro-de-operaciones/recepciones" element={<Recepciones />} />
-          <Route path="/centro-de-operaciones/contadoras" element={<Contadoras />} />
+          {/* Operaciones: gate de sucursal (se elige una vez por dispositivo) */}
+          <Route element={<OperacionesLayout />}>
+            <Route path="/centro-de-operaciones" element={<CentroOperaciones />} />
+            <Route path="/centro-de-operaciones/cortes" element={<Corte />} />
+            <Route path="/centro-de-operaciones/reservaciones" element={<Reservaciones />} />
+            <Route path="/centro-de-operaciones/pedidos" element={<Pedidos />} />
+            <Route path="/centro-de-operaciones/recepciones" element={<Recepciones />} />
+            <Route path="/centro-de-operaciones/contadoras" element={<Contadoras />} />
+          </Route>
           {/* Legacy route redirect */}
           <Route path="/corte" element={<CentroOperaciones />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/panel-control" element={<AdminPanelControl />} />
+          <Route path="/admin/pedidos" element={<AdminPedidos />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
