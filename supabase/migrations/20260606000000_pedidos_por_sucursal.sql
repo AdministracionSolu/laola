@@ -6,12 +6,9 @@
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
--- 1. Sucursales reales (renombrar las demo). Idempotente por nombre.
+-- 1. Sucursales: se conservan los nombres reales de la base
+--    (Del Valle, Las Brisas, Cervecería, Solares). No se renombran.
 -- ---------------------------------------------------------------------
-UPDATE public.sucursales SET nombre = 'Valle'      WHERE nombre = 'Del Valle';
-UPDATE public.sucursales SET nombre = 'Rodeo'      WHERE nombre = 'Insurgentes';
-UPDATE public.sucursales SET nombre = 'Cervecería' WHERE nombre = 'Las Brisas';
--- 'Solares' ya existe. Direcciones reales: [CONFIRMAR con el dueño].
 
 -- PIN opcional de 4 dígitos por sucursal (NULL = sin PIN).
 ALTER TABLE public.sucursales ADD COLUMN IF NOT EXISTS pin text;
@@ -219,49 +216,49 @@ CREATE INDEX IF NOT EXISTS idx_insumo_sucursal_suc
 
 -- ---------------------------------------------------------------------
 -- 7. Asignación de proteínas por sucursal (matriz §5). Idempotente.
---    Valle 21 · Rodeo 17 · Cervecería 19 · Solares 21 (= copia de Valle [CONFIRMAR]).
+--    Del Valle 21 · Las Brisas 17 · Cervecería 19 · Solares 21 (= copia de Del Valle).
 -- ---------------------------------------------------------------------
 INSERT INTO public.insumo_sucursal (insumo_id, sucursal_id, orden)
 SELECT i.id, s.id, m.orden
 FROM (VALUES
-    ('Valle','Camarón 61-70',1),
-    ('Valle','Camarón 31-35',2),
-    ('Valle','Camarón 21-25',3),
-    ('Valle','Pulpo 2-4',4),
-    ('Valle','Atún medallón',5),
-    ('Valle','Marlin ahumado',6),
-    ('Valle','Robalo chico',7),
-    ('Valle','Robalo filete',8),
-    ('Valle','Sierra',9),
-    ('Valle','Camarón vapor 25-30',10),
-    ('Valle','Camarón 7-11',11),
-    ('Valle','Camarón 12-25',12),
-    ('Valle','Camarón seco',13),
-    ('Valle','Bolsas ostión',14),
-    ('Valle','Callo de hacha',15),
-    ('Valle','Pescado p/sarandear',16),
-    ('Valle','Filete de res',17),
-    ('Valle','Costilla de cerdo',18),
-    ('Valle','Alitas',19),
-    ('Valle','Boneless',20),
-    ('Valle','Pizzas',21),
-    ('Rodeo','Camarón 61-70',1),
-    ('Rodeo','Camarón 31-35',2),
-    ('Rodeo','Camarón 21-25',3),
-    ('Rodeo','Pulpo 2-4',4),
-    ('Rodeo','Atún medallón',5),
-    ('Rodeo','Marlin ahumado',6),
-    ('Rodeo','Robalo chico',7),
-    ('Rodeo','Robalo filete',8),
-    ('Rodeo','Sierra',9),
-    ('Rodeo','Camarón vapor 25-30',10),
-    ('Rodeo','Camarón 7-11',11),
-    ('Rodeo','Camarón 12-25',12),
-    ('Rodeo','Camarón seco',13),
-    ('Rodeo','Bolsas ostión',14),
-    ('Rodeo','Callo de hacha',15),
-    ('Rodeo','Boneless',20),
-    ('Rodeo','Pizzas',21),
+    ('Del Valle','Camarón 61-70',1),
+    ('Del Valle','Camarón 31-35',2),
+    ('Del Valle','Camarón 21-25',3),
+    ('Del Valle','Pulpo 2-4',4),
+    ('Del Valle','Atún medallón',5),
+    ('Del Valle','Marlin ahumado',6),
+    ('Del Valle','Robalo chico',7),
+    ('Del Valle','Robalo filete',8),
+    ('Del Valle','Sierra',9),
+    ('Del Valle','Camarón vapor 25-30',10),
+    ('Del Valle','Camarón 7-11',11),
+    ('Del Valle','Camarón 12-25',12),
+    ('Del Valle','Camarón seco',13),
+    ('Del Valle','Bolsas ostión',14),
+    ('Del Valle','Callo de hacha',15),
+    ('Del Valle','Pescado p/sarandear',16),
+    ('Del Valle','Filete de res',17),
+    ('Del Valle','Costilla de cerdo',18),
+    ('Del Valle','Alitas',19),
+    ('Del Valle','Boneless',20),
+    ('Del Valle','Pizzas',21),
+    ('Las Brisas','Camarón 61-70',1),
+    ('Las Brisas','Camarón 31-35',2),
+    ('Las Brisas','Camarón 21-25',3),
+    ('Las Brisas','Pulpo 2-4',4),
+    ('Las Brisas','Atún medallón',5),
+    ('Las Brisas','Marlin ahumado',6),
+    ('Las Brisas','Robalo chico',7),
+    ('Las Brisas','Robalo filete',8),
+    ('Las Brisas','Sierra',9),
+    ('Las Brisas','Camarón vapor 25-30',10),
+    ('Las Brisas','Camarón 7-11',11),
+    ('Las Brisas','Camarón 12-25',12),
+    ('Las Brisas','Camarón seco',13),
+    ('Las Brisas','Bolsas ostión',14),
+    ('Las Brisas','Callo de hacha',15),
+    ('Las Brisas','Boneless',20),
+    ('Las Brisas','Pizzas',21),
     ('Cervecería','Camarón 61-70',1),
     ('Cervecería','Camarón 31-35',2),
     ('Cervecería','Camarón 21-25',3),
