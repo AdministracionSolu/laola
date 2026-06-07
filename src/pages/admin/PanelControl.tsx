@@ -13,6 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { AdminCorteDialog } from "@/components/admin/AdminCorteDialog";
+import { esProteina, infoProteina } from "@/lib/proteinas";
 
 interface Sucursal {
   id: string;
@@ -310,14 +311,14 @@ export default function PanelControl() {
                     <ScrollArea className="h-[50vh]">
                       <div className="p-3 space-y-2">
                         {pedidosDetalle
-                          .filter(d => d.cantidad_pedida > 0)
+                          .filter(d => d.cantidad_pedida > 0 && esProteina(d.insumos?.nombre ?? ""))
                           .map((detalle) => (
                             <div
                               key={detalle.id}
                               className="flex items-center justify-between text-sm py-1 border-b border-dashed"
                             >
                               <span className="truncate flex-1">
-                                {detalle.insumos?.nombre}
+                                {infoProteina(detalle.insumos?.nombre ?? "")?.display ?? detalle.insumos?.nombre}
                               </span>
                               <div className="flex items-center gap-3 text-right">
                                 <span className="text-xs text-muted-foreground">

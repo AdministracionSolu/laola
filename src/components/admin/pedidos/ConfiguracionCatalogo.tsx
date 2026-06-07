@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { esProteina, infoProteina } from "@/lib/proteinas";
 import { toast } from "sonner";
 
 interface Categoria {
@@ -178,7 +179,10 @@ export function ConfiguracionCatalogo() {
     );
   }
 
-  const insumosActivos = insumos.filter((i) => i.activo);
+  // Solo proteínas de la lista oficial (oculta el resto del catálogo).
+  const insumosProteina = insumos.filter((i) => esProteina(i.nombre));
+  const insumosActivos = insumosProteina.filter((i) => i.activo);
+  const nombreInsumo = (i: Insumo) => infoProteina(i.nombre)?.display ?? i.nombre;
 
   return (
     <div className="space-y-4">
@@ -280,7 +284,7 @@ export function ConfiguracionCatalogo() {
                     />
                   </div>
                   <div className="col-span-10 sm:col-span-4 text-sm">
-                    {insumo.nombre}
+                    {nombreInsumo(insumo)}
                     {!incluido && (
                       <span className="ml-2 text-xs text-muted-foreground">
                         (no pide)
@@ -363,13 +367,13 @@ export function ConfiguracionCatalogo() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="divide-y max-h-72 overflow-y-auto">
-            {insumos.map((insumo) => (
+            {insumosProteina.map((insumo) => (
               <div
                 key={insumo.id}
                 className="flex items-center justify-between px-4 py-2"
               >
                 <div className="text-sm">
-                  {insumo.nombre}{" "}
+                  {nombreInsumo(insumo)}{" "}
                   <Badge variant="outline" className="ml-1 text-xs">
                     {insumo.unidad}
                   </Badge>

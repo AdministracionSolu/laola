@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { infoProteina } from "@/lib/proteinas";
+import { infoProteina, esProteina } from "@/lib/proteinas";
 
 export interface SucursalLite {
   id: string;
@@ -96,12 +96,18 @@ export function useAnaliticaPedidos(desde: string, hasta: string): AnaliticaData
     const sucs = (sucRes.data || []) as SucursalLite[];
     setSucursales(sucs);
 
+    // IDs de proteínas (lista oficial). Todo lo demás se ignora en la analítica.
+    const insRows = (insRes.data ?? []) as { id: string; nombre: string; unidad: string | null }[];
+    const proteinIds = new Set(insRows.filter((r) => esProteina(r.nombre)).map((r) => r.id));
+
     setInsumosMaster(
-      ((insRes.data ?? []) as { id: string; nombre: string; unidad: string | null }[]).map((r) => ({
-        id: r.id,
-        nombre: r.nombre,
-        unidad: r.unidad || "pz",
-      }))
+      insRows
+        .map((r) => {
+          const p = infoProteina(r.nombre);
+          if (!p) return null;
+          return { id: r.id, nombre: p.display, unidad: p.unidad || r.unidad || "pz" } as InsumoMaster;
+        })
+        .filter((x): x is InsumoMaster => x !== null)
     );
 
     type ListaRow = {
@@ -154,7 +160,7 @@ export function useAnaliticaPedidos(desde: string, hasta: string): AnaliticaData
         cantidad_pedida: number;
         cantidad_sugerida: number | null;
       };
-      pedDet = ((data ?? []) as PDRow[]).map((d) => {
+      pedDet = ((data ?? []) as PDRow[]).filter((d) => proteinIds.has(d.insumo_id)).map((d) => {
         const p = pedFecha.get(d.pedido_id);
         return {
           pedido_id: d.pedido_id,
@@ -186,7 +192,7 @@ export function useAnaliticaPedidos(desde: string, hasta: string): AnaliticaData
         cantidad_recibida: number;
         pedido_detalle_id: string | null;
       };
-      recDet = ((data ?? []) as RDRow[]).map((d) => {
+      recDet = ((data ?? []) as RDRow[]).filter((d) => proteinIds.has(d.insumo_id)).map((d) => {
         const r = recFecha.get(d.recepcion_id);
         return {
           sucursal_id: r?.sucursal_id || "",
