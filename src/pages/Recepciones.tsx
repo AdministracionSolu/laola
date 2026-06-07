@@ -164,6 +164,10 @@ export default function Recepciones() {
 
   const handleConfirmar = async () => {
     if (!sucursalId) return;
+    if (!registradoPor.trim()) {
+      toast.error("Escribe quién recibió");
+      return;
+    }
     if (recibidos.length === 0) {
       toast.error("Pon al menos un insumo con la cantidad que llegó");
       return;
@@ -272,11 +276,11 @@ export default function Recepciones() {
                 : "Pon qué llegó y cuánto. Lo que tenga 0 no se registra."}
             </p>
 
-            <Card>
+            <Card className={!registradoPor.trim() ? "border-amber-300" : ""}>
               <CardContent className="p-4 space-y-1.5">
-                <Label className="text-sm">¿Quién recibió?</Label>
+                <Label className="text-sm">¿Quién recibió? *</Label>
                 <Input
-                  placeholder="Tu nombre"
+                  placeholder="Escribe tu nombre"
                   value={registradoPor}
                   onChange={(e) => setRegistradoPor(e.target.value)}
                   className="h-11"
@@ -349,7 +353,7 @@ export default function Recepciones() {
             <Button
               className="w-full h-14 text-lg gap-2"
               onClick={handleConfirmar}
-              disabled={guardando || recibidos.length === 0}
+              disabled={guardando || recibidos.length === 0 || !registradoPor.trim()}
             >
               {guardando ? (
                 <Loader2 className="h-5 w-5 animate-spin" />

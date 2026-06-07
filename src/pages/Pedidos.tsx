@@ -274,6 +274,10 @@ export default function Pedidos() {
 
   const handleEnviar = async () => {
     if (!sucursalId) return;
+    if (!registradoPor.trim()) {
+      toast.error("Escribe quién hace el pedido");
+      return;
+    }
     if (renglonesPedido.length === 0) {
       toast.error("Agrega al menos un insumo con cantidad a pedir");
       return;
@@ -413,11 +417,11 @@ export default function Pedidos() {
             )}
 
             {/* Encargado */}
-            <Card>
+            <Card className={!registradoPor.trim() ? "border-amber-300" : ""}>
               <CardContent className="p-4 space-y-1.5">
-                <Label className="text-sm">¿Quién hace el pedido?</Label>
+                <Label className="text-sm">¿Quién hace el pedido? *</Label>
                 <Input
-                  placeholder="Tu nombre"
+                  placeholder="Escribe tu nombre"
                   value={registradoPor}
                   onChange={(e) => setRegistradoPor(e.target.value)}
                   className="h-11"
@@ -461,7 +465,7 @@ export default function Pedidos() {
                           <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
                               <Label className="text-xs text-muted-foreground">
-                                ¿Qué tienes?
+                                Existencia
                               </Label>
                               <CantidadStepper
                                 value={d.existencia}
@@ -471,7 +475,7 @@ export default function Pedidos() {
                             </div>
                             <div className="space-y-1">
                               <Label className="text-xs text-muted-foreground">
-                                Pides
+                                Pedido
                                 {item.nivel_par != null && (
                                   <span className="ml-1 text-muted-foreground/70">
                                     (par {item.nivel_par})
@@ -542,7 +546,14 @@ export default function Pedidos() {
             )}
           </div>
           <div className="space-y-1.5 py-2">
-            <Label className="text-sm">Notas (opcional)</Label>
+            <Label className="text-sm">¿Quién hace el pedido? *</Label>
+            <Input
+              placeholder="Escribe tu nombre"
+              value={registradoPor}
+              onChange={(e) => setRegistradoPor(e.target.value)}
+              className={`h-11 ${!registradoPor.trim() ? "border-amber-400" : ""}`}
+            />
+            <Label className="text-sm pt-1">Notas (opcional)</Label>
             <Input
               placeholder="Observaciones del pedido…"
               value={notas}
@@ -554,7 +565,7 @@ export default function Pedidos() {
             <Button
               className="w-full h-14 text-lg gap-2"
               onClick={handleEnviar}
-              disabled={enviando || renglonesPedido.length === 0}
+              disabled={enviando || renglonesPedido.length === 0 || !registradoPor.trim()}
             >
               {enviando ? (
                 <Loader2 className="h-5 w-5 animate-spin" />

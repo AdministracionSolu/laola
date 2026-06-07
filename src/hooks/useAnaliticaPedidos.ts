@@ -28,6 +28,7 @@ export interface PedidoLite {
 }
 
 export interface PedidoDetLite {
+  id: string;
   pedido_id: string;
   sucursal_id: string;
   fecha: string;
@@ -35,6 +36,7 @@ export interface PedidoDetLite {
   existencia: number;
   cantidad_pedida: number;
   cantidad_sugerida: number | null;
+  cantidad_enviada: number | null;
 }
 
 export interface RecepcionDetLite {
@@ -151,18 +153,21 @@ export function useAnaliticaPedidos(desde: string, hasta: string): AnaliticaData
     if (pedIds.length > 0) {
       const { data } = await supabase
         .from("pedidos_detalle")
-        .select("pedido_id, insumo_id, existencia, cantidad_pedida, cantidad_sugerida")
+        .select("id, pedido_id, insumo_id, existencia, cantidad_pedida, cantidad_sugerida, cantidad_enviada")
         .in("pedido_id", pedIds);
       type PDRow = {
+        id: string;
         pedido_id: string;
         insumo_id: string;
         existencia: number | null;
         cantidad_pedida: number;
         cantidad_sugerida: number | null;
+        cantidad_enviada: number | null;
       };
       pedDet = ((data ?? []) as PDRow[]).filter((d) => proteinIds.has(d.insumo_id)).map((d) => {
         const p = pedFecha.get(d.pedido_id);
         return {
+          id: d.id,
           pedido_id: d.pedido_id,
           sucursal_id: p?.sucursal_id || "",
           fecha: p?.fecha || "",
@@ -171,6 +176,10 @@ export function useAnaliticaPedidos(desde: string, hasta: string): AnaliticaData
           cantidad_pedida: Number(d.cantidad_pedida) || 0,
           cantidad_sugerida:
             d.cantidad_sugerida === null ? null : Number(d.cantidad_sugerida),
+          cantidad_enviada:
+            d.cantidad_enviada === null || d.cantidad_enviada === undefined
+              ? null
+              : Number(d.cantidad_enviada),
         };
       });
     }

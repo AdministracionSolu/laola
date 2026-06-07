@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ import {
   Flame,
   DollarSign,
   Settings,
+  ShieldAlert,
 } from "lucide-react";
 import { format, subDays } from "date-fns";
 import {
@@ -122,35 +124,68 @@ export default function AdminPedidos() {
     );
   }, [lista, nombreInsumo]);
 
+  // Ediciones locales de "enviado" (admin) por id de detalle.
+  const [enviadoEdits, setEnviadoEdits] = useState<Record<string, number>>({});
+  const enviadoDe = useCallback(
+    (d: { id: string; cantidad_enviada: number | null }) =>
+      enviadoEdits[d.id] ?? (d.cantidad_enviada ?? null),
+    [enviadoEdits]
+  );
+
+  const saveEnviado = async (detalleId: string, value: number) => {
+    const { error } = await supabase
+      .from("pedidos_detalle")
+      .update({ cantidad_enviada: value })
+      .eq("id", detalleId);
+    if (error) {
+      toast.error("No se pudo guardar lo enviado");
+      return;
+    }
+    setEnviadoEdits((prev) => ({ ...prev, [detalleId]: value }));
+    toast.success("Envío guardado");
+  };
+
   // ============ 1) Consolidado del día (matriz) ============
   const consolidado = useMemo(() => {
     const dia = hasta;
-    const pedDia = pedidosDetalle.filter((d) => d.fecha === dia);
-    const recDia = recepcionesDetalle.filter((d) => d.fecha === dia);
-    const get = (
-      arr: Array<Record<string, unknown>>,
-      suc: string,
-      ins: string,
-      campo: string
-    ) =>
-      arr
-        .filter((d) => d.sucursal_id === suc && d.insumo_id === ins)
-        .reduce((s, d) => s + (Number(d[campo]) || 0), 0);
+    const pedMap = new Map<string, (typeof pedidosDetalle)[number]>();
+    pedidosDetalle
+      .filter((d) => d.fecha === dia)
+      .forEach((d) => pedMap.set(`${d.sucursal_id}|${d.insumo_id}`, d));
+    const recMap = new Map<string, number>();
+    recepcionesDetalle
+      .filter((d) => d.fecha === dia)
+      .forEach((d) =>
+        recMap.set(
+          `${d.sucursal_id}|${d.insumo_id}`,
+          (recMap.get(`${d.sucursal_id}|${d.insumo_id}`) || 0) + d.cantidad_recibida
+        )
+      );
 
     return insumosOrden
       .map((ins) => {
-        const celdas = sucursales.map((s) => ({
-          sucursal_id: s.id,
-          existencia: get(pedDia as unknown as Record<string, unknown>[], s.id, ins, "existencia"),
-          pedido: get(pedDia as unknown as Record<string, unknown>[], s.id, ins, "cantidad_pedida"),
-          recibido: get(recDia as unknown as Record<string, unknown>[], s.id, ins, "cantidad_recibida"),
-        }));
+        const celdas = sucursales.map((s) => {
+          const det = pedMap.get(`${s.id}|${ins}`);
+          return {
+            sucursal_id: s.id,
+            detalleId: det?.id ?? null,
+            existencia: det?.existencia ?? 0,
+            pedido: det?.cantidad_pedida ?? 0,
+            enviado: det ? enviadoDe(det) : null,
+            recibido: recMap.get(`${s.id}|${ins}`) ?? 0,
+          };
+        });
         const totalPed = celdas.reduce((s, c) => s + c.pedido, 0);
         const totalRec = celdas.reduce((s, c) => s + c.recibido, 0);
         return { insumo_id: ins, nombre: nombreInsumo.get(ins) || ins, celdas, totalPed, totalRec };
       })
-      .filter((r) => r.totalPed > 0 || r.totalRec > 0);
-  }, [hasta, pedidosDetalle, recepcionesDetalle, insumosOrden, sucursales, nombreInsumo]);
+      .filter(
+        (r) =>
+          r.totalPed > 0 ||
+          r.totalRec > 0 ||
+          r.celdas.some((c) => c.enviado != null && c.enviado > 0)
+      );
+  }, [hasta, pedidosDetalle, recepcionesDetalle, insumosOrden, sucursales, nombreInsumo, enviadoDe]);
 
   const exportConsolidado = () => {
     const filas = consolidado.map((r) => {
@@ -159,6 +194,7 @@ export default function AdminPedidos() {
         const s = sucursales.find((x) => x.id === c.sucursal_id)?.nombre || "";
         fila[`${s} existencia`] = c.existencia;
         fila[`${s} pedido`] = c.pedido;
+        fila[`${s} enviado`] = c.enviado ?? "";
         fila[`${s} recibido`] = c.recibido;
       });
       fila["Total pedido"] = r.totalPed;
@@ -167,6 +203,39 @@ export default function AdminPedidos() {
     });
     exportarExcel(filas, `consolidado_${hasta}`, "Consolidado");
   };
+
+  // ============ Fugas: Enviado (admin) vs Recibido (sucursal) ============
+  const fugas = useMemo(() => {
+    const env = new Map<string, number>();
+    pedidosDetalle.forEach((d) => {
+      const e = enviadoDe(d);
+      if (e != null)
+        env.set(`${d.sucursal_id}|${d.insumo_id}`, (env.get(`${d.sucursal_id}|${d.insumo_id}`) || 0) + e);
+    });
+    const rec = new Map<string, number>();
+    recepcionesDetalle.forEach((d) =>
+      rec.set(
+        `${d.sucursal_id}|${d.insumo_id}`,
+        (rec.get(`${d.sucursal_id}|${d.insumo_id}`) || 0) + d.cantidad_recibida
+      )
+    );
+    const keys = new Set([...env.keys(), ...rec.keys()]);
+    return Array.from(keys)
+      .map((k) => {
+        const [suc, ins] = k.split("|");
+        const enviado = env.get(k) || 0;
+        const recibido = rec.get(k) || 0;
+        return {
+          sucursal: sucursales.find((s) => s.id === suc)?.nombre || "",
+          insumo: nombreInsumo.get(ins) || ins,
+          enviado,
+          recibido,
+          diferencia: enviado - recibido,
+        };
+      })
+      .filter((r) => r.enviado > 0 || r.recibido > 0)
+      .sort((a, b) => Math.abs(b.diferencia) - Math.abs(a.diferencia));
+  }, [pedidosDetalle, recepcionesDetalle, sucursales, nombreInsumo, enviadoDe]);
 
   // ============ 2) Semáforo de estados ============
   const semaforo = useMemo(() => {
@@ -394,6 +463,7 @@ export default function AdminPedidos() {
                 <TabsTrigger value="tendencia" className="gap-1 text-xs"><TrendingUp className="h-3.5 w-3.5" />Tendencia</TabsTrigger>
                 <TabsTrigger value="sugerido" className="gap-1 text-xs"><GitCompareArrows className="h-3.5 w-3.5" />Sugerido</TabsTrigger>
                 <TabsTrigger value="fill" className="gap-1 text-xs"><PackageCheck className="h-3.5 w-3.5" />Recibido</TabsTrigger>
+                <TabsTrigger value="fugas" className="gap-1 text-xs"><ShieldAlert className="h-3.5 w-3.5" />Fugas</TabsTrigger>
                 <TabsTrigger value="consumo" className="gap-1 text-xs"><Flame className="h-3.5 w-3.5" />Consumo</TabsTrigger>
                 <TabsTrigger value="anomalias" className="gap-1 text-xs"><AlertTriangle className="h-3.5 w-3.5" />Anomalías</TabsTrigger>
                 <TabsTrigger value="gasto" className="gap-1 text-xs"><DollarSign className="h-3.5 w-3.5" />Gasto</TabsTrigger>
@@ -407,7 +477,9 @@ export default function AdminPedidos() {
                 <CardHeader className="pb-2 flex-row items-center justify-between">
                   <div>
                     <CardTitle className="text-sm">Consolidado del {hasta}</CardTitle>
-                    <CardDescription className="text-xs">Existencia · Pedido · Recibido por sucursal</CardDescription>
+                    <CardDescription className="text-xs">
+                      Cada celda: <b>ex</b>istencia · lo que <b>pide</b> · <b>casilla editable: cuánto envías</b> · lo que <b>rec</b>ibió. En rojo si recibido ≠ enviado.
+                    </CardDescription>
                   </div>
                   <Button size="sm" variant="outline" className="gap-1" onClick={exportConsolidado} disabled={!consolidado.length}>
                     <Download className="h-4 w-4" /> Excel
@@ -429,14 +501,37 @@ export default function AdminPedidos() {
                         {consolidado.map((r) => (
                           <tr key={r.insumo_id} className="border-b">
                             <td className="p-2 sticky left-0 bg-background font-medium">{r.nombre}</td>
-                            {r.celdas.map((c) => (
-                              <td key={c.sucursal_id} className="p-2 text-center tabular-nums">
-                                <span className="text-muted-foreground/70">{num(c.existencia)}</span>
-                                <span className="text-muted-foreground"> · </span>
-                                <span className="text-foreground font-medium">{num(c.pedido)}</span>
-                                <span className="text-muted-foreground"> · {num(c.recibido)}</span>
-                              </td>
-                            ))}
+                            {r.celdas.map((c) => {
+                              const fuga = c.enviado != null && c.enviado !== c.recibido && (c.enviado > 0 || c.recibido > 0);
+                              return (
+                                <td key={c.sucursal_id} className="p-2 text-center tabular-nums align-top">
+                                  <div className="text-[11px] text-muted-foreground">
+                                    ex {num(c.existencia)} · pide {num(c.pedido)}
+                                  </div>
+                                  {c.detalleId ? (
+                                    <Input
+                                      type="number"
+                                      inputMode="decimal"
+                                      defaultValue={c.enviado ?? ""}
+                                      placeholder={`→${num(c.pedido)}`}
+                                      title="Cuánto envías realmente"
+                                      onBlur={(e) =>
+                                        saveEnviado(
+                                          c.detalleId as string,
+                                          e.target.value === "" ? 0 : parseFloat(e.target.value) || 0
+                                        )
+                                      }
+                                      className="h-8 w-16 mx-auto my-1 text-center font-semibold"
+                                    />
+                                  ) : (
+                                    <div className="text-muted-foreground/40 my-1">—</div>
+                                  )}
+                                  <div className={`text-[11px] ${fuga ? "text-red-600 font-semibold" : "text-muted-foreground"}`}>
+                                    rec {num(c.recibido)}
+                                  </div>
+                                </td>
+                              );
+                            })}
                             <td className="p-2 text-center font-semibold">{num(r.totalPed)}</td>
                           </tr>
                         ))}
@@ -568,6 +663,44 @@ export default function AdminPedidos() {
                         </tr>
                       ))}
                       {!pedidoVsRecibido.length && <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">Sin datos.</td></tr>}
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Fugas: Enviado (admin) vs Recibido (sucursal) */}
+            <TabsContent value="fugas">
+              <Card>
+                <CardHeader className="pb-2 flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-sm">Fugas — Enviado vs Recibido</CardTitle>
+                    <CardDescription className="text-xs">
+                      Lo que el admin declaró que envió vs lo que la sucursal dice que recibió. Diferencia &gt; 0 = no llegó todo.
+                    </CardDescription>
+                  </div>
+                  <Button size="sm" variant="outline" className="gap-1" onClick={() => exportarExcel(fugas, `fugas_${desde}_${hasta}`)} disabled={!fugas.length}>
+                    <Download className="h-4 w-4" /> Excel
+                  </Button>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <table className="w-full text-sm">
+                    <thead><tr className="border-b text-xs text-muted-foreground">
+                      <th className="text-left p-2">Sucursal</th><th className="text-left p-2">Insumo</th><th className="p-2 text-center">Enviado</th><th className="p-2 text-center">Recibido</th><th className="p-2 text-center">Diferencia</th>
+                    </tr></thead>
+                    <tbody>
+                      {fugas.map((r, i) => (
+                        <tr key={i} className="border-b">
+                          <td className="p-2">{r.sucursal}</td>
+                          <td className="p-2 font-medium">{r.insumo}</td>
+                          <td className="p-2 text-center">{num(r.enviado)}</td>
+                          <td className="p-2 text-center">{num(r.recibido)}</td>
+                          <td className={`p-2 text-center font-semibold ${r.diferencia > 0 ? "text-red-600" : r.diferencia < 0 ? "text-amber-600" : "text-emerald-600"}`}>
+                            {r.diferencia > 0 ? "+" : ""}{num(r.diferencia)}
+                          </td>
+                        </tr>
+                      ))}
+                      {!fugas.length && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">Captura lo enviado en el Consolidado para ver fugas.</td></tr>}
                     </tbody>
                   </table>
                 </CardContent>
