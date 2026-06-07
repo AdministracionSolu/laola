@@ -141,9 +141,9 @@ export default function AdminPedidos() {
       .map((ins) => {
         const celdas = sucursales.map((s) => ({
           sucursal_id: s.id,
-          existencia: get(pedDia, s.id, ins, "existencia"),
-          pedido: get(pedDia, s.id, ins, "cantidad_pedida"),
-          recibido: get(recDia, s.id, ins, "cantidad_recibida"),
+          existencia: get(pedDia as unknown as Record<string, unknown>[], s.id, ins, "existencia"),
+          pedido: get(pedDia as unknown as Record<string, unknown>[], s.id, ins, "cantidad_pedida"),
+          recibido: get(recDia as unknown as Record<string, unknown>[], s.id, ins, "cantidad_recibida"),
         }));
         const totalPed = celdas.reduce((s, c) => s + c.pedido, 0);
         const totalRec = celdas.reduce((s, c) => s + c.recibido, 0);
