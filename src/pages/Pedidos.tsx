@@ -30,6 +30,7 @@ import { useSucursal } from "@/contexts/SucursalContext";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { getFechaNegocio, getHoraNegocio } from "@/lib/fecha";
 import { CantidadStepper } from "@/components/operaciones/CantidadStepper";
+import { infoProteina } from "@/lib/proteinas";
 
 interface Categoria {
   id: string;
@@ -131,15 +132,24 @@ export default function Pedidos() {
       if (catRes.data) setCategorias(catRes.data);
 
       const itemRows = (itemsRes.data ?? []) as unknown as ItemRow[];
-      const mapped: ItemSucursal[] = itemRows.map((r) => ({
-        insumo_id: r.insumos.id,
-        nombre: r.insumos.nombre,
-        categoria_id: r.insumos.categoria_id,
-        unidad: r.unidad || r.insumos.unidad || "pz",
-        nivel_par: r.nivel_par,
-        costo: r.costo,
-        orden: r.orden,
-      }));
+      const mapped: ItemSucursal[] = itemRows
+        // Solo proteínas de la lista oficial: oculta el resto del catálogo
+        // aunque la base las tenga asignadas a la sucursal.
+        .map((r) => {
+          const p = infoProteina(r.insumos.nombre);
+          if (!p) return null;
+          return {
+            insumo_id: r.insumos.id,
+            nombre: p.display,
+            categoria_id: r.insumos.categoria_id,
+            unidad: r.unidad || p.unidad || r.insumos.unidad || "pz",
+            nivel_par: r.nivel_par,
+            costo: r.costo,
+            orden: p.orden,
+          } as ItemSucursal;
+        })
+        .filter((x): x is ItemSucursal => x !== null)
+        .sort((a, b) => a.orden - b.orden);
       setItems(mapped);
 
       // Estado base de detalles

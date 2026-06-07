@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { infoProteina } from "@/lib/proteinas";
 
 export interface SucursalLite {
   id: string;
@@ -114,17 +115,24 @@ export function useAnaliticaPedidos(desde: string, hasta: string): AnaliticaData
       insumos: { nombre: string; categoria_id: string; unidad: string | null };
     };
     setLista(
-      ((listaRes.data ?? []) as unknown as ListaRow[]).map((r) => ({
-        insumo_id: r.insumo_id,
-        sucursal_id: r.sucursal_id,
-        nombre: r.insumos.nombre,
-        categoria_id: r.insumos.categoria_id,
-        unidad: r.unidad || r.insumos.unidad || "pz",
-        nivel_par: r.nivel_par,
-        costo: r.costo,
-        orden: r.orden,
-        activo: r.activo,
-      }))
+      ((listaRes.data ?? []) as unknown as ListaRow[])
+        // Solo proteínas de la lista oficial (oculta el resto del catálogo).
+        .map((r) => {
+          const p = infoProteina(r.insumos.nombre);
+          if (!p) return null;
+          return {
+            insumo_id: r.insumo_id,
+            sucursal_id: r.sucursal_id,
+            nombre: p.display,
+            categoria_id: r.insumos.categoria_id,
+            unidad: r.unidad || p.unidad || r.insumos.unidad || "pz",
+            nivel_par: r.nivel_par,
+            costo: r.costo,
+            orden: p.orden,
+            activo: r.activo,
+          } as ListaItem;
+        })
+        .filter((x): x is ListaItem => x !== null)
     );
 
     const peds = (pedRes.data || []) as PedidoLite[];

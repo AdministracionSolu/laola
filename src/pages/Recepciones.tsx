@@ -13,6 +13,7 @@ import { useSucursal } from "@/contexts/SucursalContext";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { getFechaNegocio, getHoraNegocio } from "@/lib/fecha";
 import { CantidadStepper } from "@/components/operaciones/CantidadStepper";
+import { infoProteina } from "@/lib/proteinas";
 
 interface Categoria {
   id: string;
@@ -99,19 +100,26 @@ export default function Recepciones() {
         unidad: string | null;
         insumos: { id: string; nombre: string; categoria_id: string; unidad: string | null };
       };
-      const rs: Renglon[] = ((itemsRes.data ?? []) as unknown as ItemRow[]).map((r) => {
-        const od = orderMap.get(r.insumos.id);
-        return {
-          insumo_id: r.insumos.id,
-          nombre: r.insumos.nombre,
-          unidad: r.unidad || r.insumos.unidad || "pz",
-          categoria_id: r.insumos.categoria_id,
-          cantidad_pedida: od?.pedida ?? 0,
-          pedido_detalle_id: od?.id ?? null,
-          // Pre-llenado: si se pidió, llegó eso; si no, queda en 0 y lo capturan.
-          cantidad_recibida: od?.pedida ?? 0,
-        };
-      });
+      const rs: Renglon[] = ((itemsRes.data ?? []) as unknown as ItemRow[])
+        // Solo proteínas de la lista oficial.
+        .map((r) => {
+          const p = infoProteina(r.insumos.nombre);
+          if (!p) return null;
+          const od = orderMap.get(r.insumos.id);
+          return {
+            insumo_id: r.insumos.id,
+            nombre: p.display,
+            unidad: r.unidad || p.unidad || r.insumos.unidad || "pz",
+            categoria_id: r.insumos.categoria_id,
+            cantidad_pedida: od?.pedida ?? 0,
+            pedido_detalle_id: od?.id ?? null,
+            // Pre-llenado: si se pidió, llegó eso; si no, queda en 0 y lo capturan.
+            cantidad_recibida: od?.pedida ?? 0,
+            _orden: p.orden,
+          } as Renglon & { _orden: number };
+        })
+        .filter((x): x is Renglon & { _orden: number } => x !== null)
+        .sort((a, b) => a._orden - b._orden);
 
       setRenglones(rs);
       setLoading(false);
