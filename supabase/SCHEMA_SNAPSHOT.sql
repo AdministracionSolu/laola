@@ -71,7 +71,8 @@ CREATE TABLE pedidos_detalle (
   cantidad_pedida numeric NOT NULL DEFAULT 0,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   cantidad_sugerida numeric
-  -- NOTA: cantidad_enviada NO existe aún (migración 20260607010000 pendiente de aplicar)
+  -- Modelo Feature 1: existencia (sucursal) · cantidad_sugerida (solicitud sucursal)
+  --                   · cantidad_pedida (pedido real capturado por el admin)
 );
 CREATE TABLE recepciones (
   id uuid NOT NULL DEFAULT gen_random_uuid(),

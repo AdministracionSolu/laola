@@ -11,6 +11,9 @@ import { toast } from "sonner";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 import { getHoraNegocio } from "@/lib/fecha";
 
+const money = (n: number) =>
+  new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(n);
+
 interface Producto {
   id: string;
   nombre: string;
@@ -155,7 +158,7 @@ export default function ProveedorPortal() {
               </div>
               {p.precio_vigente != null && (
                 <p className="text-xs text-muted-foreground">
-                  Precio actual: <b>${p.precio_vigente}</b> / {p.unidad}
+                  Precio actual: <b>{money(p.precio_vigente)}</b> / {p.unidad}
                   {p.precio_fecha && ` · ${getHoraNegocio(p.precio_fecha)}`}
                 </p>
               )}

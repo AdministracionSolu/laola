@@ -171,7 +171,7 @@ export default function AdminPedidos() {
             detalleId: det?.id ?? null,
             existencia: det?.existencia ?? 0,
             // Lo que solicitó la sucursal (cantidad_sugerida).
-            solicitado: det?.cantidad_sugerida ?? det?.cantidad_pedida ?? 0,
+            solicitado: det?.cantidad_sugerida ?? 0,
             // Pedido real (editable por el admin) = cantidad_pedida.
             pedidoReal: det ? pedidoRealDe(det) : null,
             recibido: recMap.get(`${s.id}|${ins}`) ?? 0,

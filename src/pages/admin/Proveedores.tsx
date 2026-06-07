@@ -15,6 +15,9 @@ import logoLaOla from "@/assets/logo-la-ola.jpeg";
 import { infoProteina, esProteina } from "@/lib/proteinas";
 import { exportarExcel } from "@/lib/exportar";
 
+const money = (n: number) =>
+  new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(n);
+
 interface Proveedor {
   id: string; nombre: string; categoria: string | null;
   contacto: string | null; telefono: string | null; token: string; activo: boolean;
@@ -177,7 +180,7 @@ export default function AdminProveedores() {
                             <span className="text-muted-foreground"> · {o.producto}</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold tabular-nums">${o.precio} / {o.unidad}</span>
+                            <span className="font-semibold tabular-nums">{money(o.precio)} / {o.unidad}</span>
                             {barato && <Badge className="bg-emerald-500 hover:bg-emerald-500">más barato</Badge>}
                           </div>
                         </div>

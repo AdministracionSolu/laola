@@ -290,25 +290,15 @@ export default function Pedidos() {
       let id = pedidoId;
       const ahora = new Date().toISOString();
 
-      if (id) {
-        const { error } = await supabase
-          .from("pedidos")
-          .update({
-            estado: "enviado",
-            enviado_at: ahora,
-            registrado_por: registradoPor || null,
-            notas: notas || null,
-          })
-          .eq("id", id);
-        if (error) throw error;
-      } else {
+      // 1) Asegurar el pedido (si es nuevo, como borrador). El paso a "enviado"
+      //    se hace AL FINAL, para no dejar un pedido enviado con detalle parcial.
+      if (!id) {
         const { data, error } = await supabase
           .from("pedidos")
           .insert({
             sucursal_id: sucursalId,
             fecha,
-            estado: "enviado",
-            enviado_at: ahora,
+            estado: "borrador",
             registrado_por: registradoPor || null,
             notas: notas || null,
           })
@@ -319,16 +309,26 @@ export default function Pedidos() {
         setPedidoId(id);
       }
 
-      const detallesUpsert = items
-        .filter((i) => {
-          const d = detalles[i.insumo_id];
-          return d && (d.cantidad_pedida > 0 || d.capturado);
-        })
+      const aGuardar = items.filter((i) => {
+        const d = detalles[i.insumo_id];
+        return d && (d.cantidad_pedida > 0 || d.capturado);
+      });
+
+      // Renglones que ya existen en este pedido (para no pisar lo que el admin
+      // haya capturado en cantidad_pedida).
+      const { data: existRows } = await supabase
+        .from("pedidos_detalle")
+        .select("id, insumo_id")
+        .eq("pedido_id", id);
+      const existentes = new Map(
+        ((existRows ?? []) as { id: string; insumo_id: string }[]).map((r) => [r.insumo_id, r.id])
+      );
+
+      // Nuevos: se insertan con cantidad_pedida = la solicitud (default a ajustar).
+      const nuevos = aGuardar
+        .filter((i) => !existentes.has(i.insumo_id))
         .map((i) => {
           const d = detalles[i.insumo_id];
-          // Lo que captura la sucursal es su solicitud => cantidad_sugerida.
-          // cantidad_pedida arranca igual; el admin la ajusta en el condensado
-          // con lo que REALMENTE se pidió.
           return {
             pedido_id: id,
             insumo_id: i.insumo_id,
@@ -337,13 +337,36 @@ export default function Pedidos() {
             cantidad_pedida: d.cantidad_pedida,
           };
         });
+      if (nuevos.length) {
+        const { error } = await supabase.from("pedidos_detalle").insert(nuevos);
+        if (error) throw error;
+      }
 
-      // Upsert por (pedido_id, insumo_id): conserva los ids de renglón y por
-      // tanto el enlace con recepciones_detalle.pedido_detalle_id.
-      const { error: detError } = await supabase
-        .from("pedidos_detalle")
-        .upsert(detallesUpsert, { onConflict: "pedido_id,insumo_id" });
-      if (detError) throw detError;
+      // Existentes: solo existencia + solicitud (NO cantidad_pedida del admin).
+      const actualizaciones = aGuardar
+        .filter((i) => existentes.has(i.insumo_id))
+        .map((i) => {
+          const d = detalles[i.insumo_id];
+          return supabase
+            .from("pedidos_detalle")
+            .update({ existencia: d.existencia, cantidad_sugerida: d.cantidad_pedida })
+            .eq("id", existentes.get(i.insumo_id) as string);
+        });
+      const resultados = await Promise.all(actualizaciones);
+      const errUpd = resultados.find((r) => r.error);
+      if (errUpd?.error) throw errUpd.error;
+
+      // 3) Último paso: marcar enviado (detalle ya quedó completo).
+      const { error: estadoErr } = await supabase
+        .from("pedidos")
+        .update({
+          estado: "enviado",
+          enviado_at: ahora,
+          registrado_por: registradoPor || null,
+          notas: notas || null,
+        })
+        .eq("id", id);
+      if (estadoErr) throw estadoErr;
 
       setEstadoPedido("enviado");
       setEnviadoAt(ahora);
