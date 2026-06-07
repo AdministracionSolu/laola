@@ -124,25 +124,25 @@ export default function AdminPedidos() {
     );
   }, [lista, nombreInsumo]);
 
-  // Ediciones locales de "enviado" (admin) por id de detalle.
-  const [enviadoEdits, setEnviadoEdits] = useState<Record<string, number>>({});
-  const enviadoDe = useCallback(
-    (d: { id: string; cantidad_enviada: number | null }) =>
-      enviadoEdits[d.id] ?? (d.cantidad_enviada ?? null),
-    [enviadoEdits]
+  // Ediciones locales del "pedido real" (admin) por id de detalle.
+  const [pedidoEdits, setPedidoEdits] = useState<Record<string, number>>({});
+  const pedidoRealDe = useCallback(
+    (d: { id: string; cantidad_pedida: number }) =>
+      pedidoEdits[d.id] ?? (d.cantidad_pedida ?? 0),
+    [pedidoEdits]
   );
 
-  const saveEnviado = async (detalleId: string, value: number) => {
+  const savePedidoReal = async (detalleId: string, value: number) => {
     const { error } = await supabase
       .from("pedidos_detalle")
-      .update({ cantidad_enviada: value })
+      .update({ cantidad_pedida: value })
       .eq("id", detalleId);
     if (error) {
-      toast.error("No se pudo guardar lo enviado");
+      toast.error("No se pudo guardar el pedido");
       return;
     }
-    setEnviadoEdits((prev) => ({ ...prev, [detalleId]: value }));
-    toast.success("Envío guardado");
+    setPedidoEdits((prev) => ({ ...prev, [detalleId]: value }));
+    toast.success("Pedido guardado");
   };
 
   // ============ 1) Consolidado del día (matriz) ============
@@ -170,12 +170,14 @@ export default function AdminPedidos() {
             sucursal_id: s.id,
             detalleId: det?.id ?? null,
             existencia: det?.existencia ?? 0,
-            pedido: det?.cantidad_pedida ?? 0,
-            enviado: det ? enviadoDe(det) : null,
+            // Lo que solicitó la sucursal (cantidad_sugerida).
+            solicitado: det?.cantidad_sugerida ?? det?.cantidad_pedida ?? 0,
+            // Pedido real (editable por el admin) = cantidad_pedida.
+            pedidoReal: det ? pedidoRealDe(det) : null,
             recibido: recMap.get(`${s.id}|${ins}`) ?? 0,
           };
         });
-        const totalPed = celdas.reduce((s, c) => s + c.pedido, 0);
+        const totalPed = celdas.reduce((s, c) => s + (c.pedidoReal ?? 0), 0);
         const totalRec = celdas.reduce((s, c) => s + c.recibido, 0);
         return { insumo_id: ins, nombre: nombreInsumo.get(ins) || ins, celdas, totalPed, totalRec };
       })
@@ -183,9 +185,9 @@ export default function AdminPedidos() {
         (r) =>
           r.totalPed > 0 ||
           r.totalRec > 0 ||
-          r.celdas.some((c) => c.enviado != null && c.enviado > 0)
+          r.celdas.some((c) => c.solicitado > 0)
       );
-  }, [hasta, pedidosDetalle, recepcionesDetalle, insumosOrden, sucursales, nombreInsumo, enviadoDe]);
+  }, [hasta, pedidosDetalle, recepcionesDetalle, insumosOrden, sucursales, nombreInsumo, pedidoRealDe]);
 
   const exportConsolidado = () => {
     const filas = consolidado.map((r) => {
@@ -193,8 +195,8 @@ export default function AdminPedidos() {
       r.celdas.forEach((c) => {
         const s = sucursales.find((x) => x.id === c.sucursal_id)?.nombre || "";
         fila[`${s} existencia`] = c.existencia;
-        fila[`${s} pedido`] = c.pedido;
-        fila[`${s} enviado`] = c.enviado ?? "";
+        fila[`${s} solicitado`] = c.solicitado;
+        fila[`${s} pedido real`] = c.pedidoReal ?? "";
         fila[`${s} recibido`] = c.recibido;
       });
       fila["Total pedido"] = r.totalPed;
@@ -204,13 +206,13 @@ export default function AdminPedidos() {
     exportarExcel(filas, `consolidado_${hasta}`, "Consolidado");
   };
 
-  // ============ Fugas: Enviado (admin) vs Recibido (sucursal) ============
+  // ============ Fugas: Pedido real (admin) vs Recibido (sucursal) ============
   const fugas = useMemo(() => {
-    const env = new Map<string, number>();
+    const ped = new Map<string, number>();
     pedidosDetalle.forEach((d) => {
-      const e = enviadoDe(d);
-      if (e != null)
-        env.set(`${d.sucursal_id}|${d.insumo_id}`, (env.get(`${d.sucursal_id}|${d.insumo_id}`) || 0) + e);
+      const p = pedidoRealDe(d);
+      if (p > 0)
+        ped.set(`${d.sucursal_id}|${d.insumo_id}`, (ped.get(`${d.sucursal_id}|${d.insumo_id}`) || 0) + p);
     });
     const rec = new Map<string, number>();
     recepcionesDetalle.forEach((d) =>
@@ -219,23 +221,23 @@ export default function AdminPedidos() {
         (rec.get(`${d.sucursal_id}|${d.insumo_id}`) || 0) + d.cantidad_recibida
       )
     );
-    const keys = new Set([...env.keys(), ...rec.keys()]);
+    const keys = new Set([...ped.keys(), ...rec.keys()]);
     return Array.from(keys)
       .map((k) => {
         const [suc, ins] = k.split("|");
-        const enviado = env.get(k) || 0;
+        const pedido = ped.get(k) || 0;
         const recibido = rec.get(k) || 0;
         return {
           sucursal: sucursales.find((s) => s.id === suc)?.nombre || "",
           insumo: nombreInsumo.get(ins) || ins,
-          enviado,
+          pedido,
           recibido,
-          diferencia: enviado - recibido,
+          diferencia: pedido - recibido,
         };
       })
-      .filter((r) => r.enviado > 0 || r.recibido > 0)
+      .filter((r) => r.pedido > 0 || r.recibido > 0)
       .sort((a, b) => Math.abs(b.diferencia) - Math.abs(a.diferencia));
-  }, [pedidosDetalle, recepcionesDetalle, sucursales, nombreInsumo, enviadoDe]);
+  }, [pedidosDetalle, recepcionesDetalle, sucursales, nombreInsumo, pedidoRealDe]);
 
   // ============ 2) Semáforo de estados ============
   const semaforo = useMemo(() => {
@@ -478,7 +480,7 @@ export default function AdminPedidos() {
                   <div>
                     <CardTitle className="text-sm">Consolidado del {hasta}</CardTitle>
                     <CardDescription className="text-xs">
-                      Cada celda: <b>ex</b>istencia · lo que <b>pide</b> · <b>casilla editable: cuánto envías</b> · lo que <b>rec</b>ibió. En rojo si recibido ≠ enviado.
+                      Cada celda: <b>ex</b>istencia · lo que la sucursal <b>pidió</b> · <b>casilla editable: cuánto se pidió realmente</b> · lo que <b>rec</b>ibió. En rojo si recibido ≠ pedido real.
                     </CardDescription>
                   </div>
                   <Button size="sm" variant="outline" className="gap-1" onClick={exportConsolidado} disabled={!consolidado.length}>
@@ -502,21 +504,21 @@ export default function AdminPedidos() {
                           <tr key={r.insumo_id} className="border-b">
                             <td className="p-2 sticky left-0 bg-background font-medium">{r.nombre}</td>
                             {r.celdas.map((c) => {
-                              const fuga = c.enviado != null && c.enviado !== c.recibido && (c.enviado > 0 || c.recibido > 0);
+                              const fuga = c.pedidoReal != null && c.pedidoReal !== c.recibido && (c.pedidoReal > 0 || c.recibido > 0);
                               return (
                                 <td key={c.sucursal_id} className="p-2 text-center tabular-nums align-top">
                                   <div className="text-[11px] text-muted-foreground">
-                                    ex {num(c.existencia)} · pide {num(c.pedido)}
+                                    ex {num(c.existencia)} · pidió {num(c.solicitado)}
                                   </div>
                                   {c.detalleId ? (
                                     <Input
                                       type="number"
                                       inputMode="decimal"
-                                      defaultValue={c.enviado ?? ""}
-                                      placeholder={`→${num(c.pedido)}`}
-                                      title="Cuánto envías realmente"
+                                      defaultValue={c.pedidoReal ?? ""}
+                                      placeholder={`→${num(c.solicitado)}`}
+                                      title="Cuánto se pidió realmente"
                                       onBlur={(e) =>
-                                        saveEnviado(
+                                        savePedidoReal(
                                           c.detalleId as string,
                                           e.target.value === "" ? 0 : parseFloat(e.target.value) || 0
                                         )
@@ -669,14 +671,14 @@ export default function AdminPedidos() {
               </Card>
             </TabsContent>
 
-            {/* Fugas: Enviado (admin) vs Recibido (sucursal) */}
+            {/* Fugas: Pedido real (admin) vs Recibido (sucursal) */}
             <TabsContent value="fugas">
               <Card>
                 <CardHeader className="pb-2 flex-row items-center justify-between">
                   <div>
-                    <CardTitle className="text-sm">Fugas — Enviado vs Recibido</CardTitle>
+                    <CardTitle className="text-sm">Fugas — Pedido vs Recibido</CardTitle>
                     <CardDescription className="text-xs">
-                      Lo que el admin declaró que envió vs lo que la sucursal dice que recibió. Diferencia &gt; 0 = no llegó todo.
+                      Lo que el admin pidió realmente vs lo que la sucursal dice que recibió. Diferencia &gt; 0 = no llegó todo (posible fuga).
                     </CardDescription>
                   </div>
                   <Button size="sm" variant="outline" className="gap-1" onClick={() => exportarExcel(fugas, `fugas_${desde}_${hasta}`)} disabled={!fugas.length}>
@@ -686,21 +688,21 @@ export default function AdminPedidos() {
                 <CardContent className="p-0">
                   <table className="w-full text-sm">
                     <thead><tr className="border-b text-xs text-muted-foreground">
-                      <th className="text-left p-2">Sucursal</th><th className="text-left p-2">Insumo</th><th className="p-2 text-center">Enviado</th><th className="p-2 text-center">Recibido</th><th className="p-2 text-center">Diferencia</th>
+                      <th className="text-left p-2">Sucursal</th><th className="text-left p-2">Insumo</th><th className="p-2 text-center">Pedido</th><th className="p-2 text-center">Recibido</th><th className="p-2 text-center">Diferencia</th>
                     </tr></thead>
                     <tbody>
                       {fugas.map((r, i) => (
                         <tr key={i} className="border-b">
                           <td className="p-2">{r.sucursal}</td>
                           <td className="p-2 font-medium">{r.insumo}</td>
-                          <td className="p-2 text-center">{num(r.enviado)}</td>
+                          <td className="p-2 text-center">{num(r.pedido)}</td>
                           <td className="p-2 text-center">{num(r.recibido)}</td>
                           <td className={`p-2 text-center font-semibold ${r.diferencia > 0 ? "text-red-600" : r.diferencia < 0 ? "text-amber-600" : "text-emerald-600"}`}>
                             {r.diferencia > 0 ? "+" : ""}{num(r.diferencia)}
                           </td>
                         </tr>
                       ))}
-                      {!fugas.length && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">Captura lo enviado en el Consolidado para ver fugas.</td></tr>}
+                      {!fugas.length && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">Captura el pedido real en el Consolidado para ver fugas.</td></tr>}
                     </tbody>
                   </table>
                 </CardContent>

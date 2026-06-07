@@ -170,13 +170,16 @@ export default function Pedidos() {
           const sug =
             d.cantidad_sugerida === null ? null : Number(d.cantidad_sugerida);
           const ped = Number(d.cantidad_pedida) || 0;
+          // El campo "Pedido" de cocina = la solicitud de la sucursal
+          // (cantidad_sugerida). cantidad_pedida la maneja el admin aparte.
+          const solicitud = sug ?? ped;
           base[d.insumo_id] = {
             existencia: Number(d.existencia) || 0,
-            cantidad_pedida: ped,
+            cantidad_pedida: solicitud,
             cantidad_sugerida: sug,
             capturado: true,
-            // Solo "manual" si el pedido difiere del sugerido (o no hubo sugerido).
-            pedidoManual: sug === null ? true : ped !== sug,
+            // Ya capturado: no recalcular el sugerido al editar existencia.
+            pedidoManual: true,
           };
         });
       }
@@ -323,12 +326,15 @@ export default function Pedidos() {
         })
         .map((i) => {
           const d = detalles[i.insumo_id];
+          // Lo que captura la sucursal es su solicitud => cantidad_sugerida.
+          // cantidad_pedida arranca igual; el admin la ajusta en el condensado
+          // con lo que REALMENTE se pidió.
           return {
             pedido_id: id,
             insumo_id: i.insumo_id,
             existencia: d.existencia,
+            cantidad_sugerida: d.cantidad_pedida,
             cantidad_pedida: d.cantidad_pedida,
-            cantidad_sugerida: d.cantidad_sugerida,
           };
         });
 
