@@ -17,7 +17,9 @@ import AdminLogin from "./pages/admin/Login";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminPanelControl from "./pages/admin/PanelControl";
 import AdminPedidos from "./pages/admin/Pedidos";
+import AdminProveedores from "./pages/admin/Proveedores";
 import PedidosHome from "./pages/PedidosHome";
+import ProveedorPortal from "./pages/ProveedorPortal";
 import OperacionesLayout from "./components/operaciones/OperacionesLayout";
 import NotFound from "./pages/NotFound";
 
@@ -54,6 +56,9 @@ const App = () => (
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/panel-control" element={<AdminPanelControl />} />
           <Route path="/admin/pedidos" element={<AdminPedidos />} />
+          <Route path="/admin/proveedores" element={<AdminProveedores />} />
+          {/* Portal público del proveedor (sin login, por token) */}
+          <Route path="/proveedor/:token" element={<ProveedorPortal />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

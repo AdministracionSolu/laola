@@ -124,6 +124,10 @@ export default function AdminDashboard() {
               <Package className="w-4 h-4" />
               <span className="hidden sm:inline">Insumos &amp; Pedidos</span>
             </Button>
+            <Button variant="outline" onClick={() => navigate("/admin/proveedores")} className="gap-2">
+              <Store className="w-4 h-4" />
+              <span className="hidden sm:inline">Proveedores</span>
+            </Button>
             <Button variant="outline" size="icon" onClick={handleRefresh}>
               <RefreshCw className="w-4 h-4" />
             </Button>
