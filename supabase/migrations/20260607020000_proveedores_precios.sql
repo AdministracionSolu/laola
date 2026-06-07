@@ -51,21 +51,21 @@ CREATE POLICY "lectura interna proveedores" ON public.proveedores
   FOR SELECT TO authenticated USING (true);
 DROP POLICY IF EXISTS "admin gestiona proveedores" ON public.proveedores;
 CREATE POLICY "admin gestiona proveedores" ON public.proveedores
-  FOR ALL TO authenticated USING (has_role(auth.uid(),'admin')) WITH CHECK (has_role(auth.uid(),'admin'));
+  FOR ALL TO authenticated USING (has_role(auth.uid(),'admin'::app_role)) WITH CHECK (has_role(auth.uid(),'admin'::app_role));
 
 DROP POLICY IF EXISTS "lectura interna prov_productos" ON public.proveedor_productos;
 CREATE POLICY "lectura interna prov_productos" ON public.proveedor_productos
   FOR SELECT TO authenticated USING (true);
 DROP POLICY IF EXISTS "admin gestiona prov_productos" ON public.proveedor_productos;
 CREATE POLICY "admin gestiona prov_productos" ON public.proveedor_productos
-  FOR ALL TO authenticated USING (has_role(auth.uid(),'admin')) WITH CHECK (has_role(auth.uid(),'admin'));
+  FOR ALL TO authenticated USING (has_role(auth.uid(),'admin'::app_role)) WITH CHECK (has_role(auth.uid(),'admin'::app_role));
 
 DROP POLICY IF EXISTS "lectura interna prov_precios" ON public.proveedor_precios;
 CREATE POLICY "lectura interna prov_precios" ON public.proveedor_precios
   FOR SELECT TO authenticated USING (true);
 DROP POLICY IF EXISTS "admin gestiona prov_precios" ON public.proveedor_precios;
 CREATE POLICY "admin gestiona prov_precios" ON public.proveedor_precios
-  FOR ALL TO authenticated USING (has_role(auth.uid(),'admin')) WITH CHECK (has_role(auth.uid(),'admin'));
+  FOR ALL TO authenticated USING (has_role(auth.uid(),'admin'::app_role)) WITH CHECK (has_role(auth.uid(),'admin'::app_role));
 
 -- ---------------------------------------------------------------------
 -- RPCs self-service por token (aislamiento por proveedor)
@@ -207,3 +207,6 @@ FROM (VALUES
 ) AS x(telefono, prod, unidad, insumo_match)
 JOIN public.proveedores p ON p.telefono = x.telefono
 ON CONFLICT (proveedor_id, nombre) DO NOTHING;
+
+-- Forzar a PostgREST a refrescar el esquema (ver tablas/funciones nuevas)
+NOTIFY pgrst, 'reload schema';
