@@ -44,7 +44,7 @@ export default function PedidosHome() {
   const yaEnviado = estado === "enviado" || yaRecibido;
 
   const estadoTexto = () => {
-    if (!estado || estado === "borrador") return "Pedido de hoy: pendiente";
+    if (!estado || estado === "borrador") return "Todavía no se ha hecho el pedido de hoy";
     if (estado === "enviado")
       return `Enviado ${enviadoAt ? getHoraNegocio(enviadoAt) : ""} — esperando entrega`;
     return ESTADO_LABEL[estado] || estado;
