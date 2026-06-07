@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, RefreshCw, Copy, Loader2, Scale, Link2, GitMerge, Download } from "lucide-react";
+import { ArrowLeft, RefreshCw, Copy, Loader2, Scale, Link2, GitMerge, Download, Package, Plus, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 import { infoProteina, esProteina } from "@/lib/proteinas";
@@ -23,7 +25,7 @@ interface Proveedor {
   contacto: string | null; telefono: string | null; token: string; activo: boolean;
 }
 interface Producto {
-  id: string; proveedor_id: string; nombre: string; unidad: string | null; insumo_id: string | null;
+  id: string; proveedor_id: string; nombre: string; unidad: string | null; insumo_id: string | null; activo: boolean;
 }
 interface PrecioRow { proveedor_producto_id: string; precio: number; created_at: string; }
 interface InsumoLite { id: string; nombre: string; }
@@ -40,7 +42,7 @@ export default function AdminProveedores() {
     setLoading(true);
     const [provRes, prodRes, preRes, insRes] = await Promise.all([
       supabase.from("proveedores").select("*").order("categoria").order("nombre"),
-      supabase.from("proveedor_productos").select("id, proveedor_id, nombre, unidad, insumo_id"),
+      supabase.from("proveedor_productos").select("id, proveedor_id, nombre, unidad, insumo_id, activo"),
       supabase.from("proveedor_precios").select("proveedor_producto_id, precio, created_at").order("created_at", { ascending: false }),
       supabase.from("insumos").select("id, nombre").eq("activo", true),
     ]);
@@ -78,7 +80,7 @@ export default function AdminProveedores() {
   const comparativa = useMemo(() => {
     const porInsumo = new Map<string, { proveedor: string; producto: string; precio: number; unidad: string }[]>();
     productos.forEach((prod) => {
-      if (!prod.insumo_id) return;
+      if (!prod.insumo_id || !prod.activo) return;
       const vig = vigentePorProducto.get(prod.id);
       if (!vig) return;
       const arr = porInsumo.get(prod.insumo_id) || [];
@@ -125,6 +127,43 @@ export default function AdminProveedores() {
     toast.success("Mapeo guardado");
   };
 
+  // ---- Edición de productos por proveedor ----
+  const [provSel, setProvSel] = useState<string>("");
+  const [nuevoNombre, setNuevoNombre] = useState("");
+  const [nuevaUnidad, setNuevaUnidad] = useState("kg");
+  const [nuevoInsumo, setNuevoInsumo] = useState<string>("none");
+  useEffect(() => {
+    if (!provSel && proveedores.length) setProvSel(proveedores[0].id);
+  }, [proveedores, provSel]);
+
+  const toggleActivoProducto = async (prod: Producto) => {
+    const { error } = await supabase
+      .from("proveedor_productos")
+      .update({ activo: !prod.activo })
+      .eq("id", prod.id);
+    if (error) { toast.error("No se pudo actualizar"); return; }
+    setProductos((prev) => prev.map((p) => (p.id === prod.id ? { ...p, activo: !p.activo } : p)));
+  };
+
+  const agregarProducto = async () => {
+    if (!provSel || !nuevoNombre.trim()) { toast.error("Escribe el nombre del producto"); return; }
+    const { data, error } = await supabase
+      .from("proveedor_productos")
+      .insert({
+        proveedor_id: provSel,
+        nombre: nuevoNombre.trim(),
+        unidad: nuevaUnidad.trim() || "kg",
+        insumo_id: nuevoInsumo === "none" ? null : nuevoInsumo,
+      })
+      .select()
+      .single();
+    if (error || !data) { toast.error("No se pudo agregar (¿nombre repetido?)"); return; }
+    setProductos((prev) => [...prev, data as Producto]);
+    setNuevoNombre("");
+    setNuevoInsumo("none");
+    toast.success("Producto agregado");
+  };
+
   const copiarLiga = (token: string) => {
     const url = `${window.location.origin}/proveedor/${token}`;
     navigator.clipboard.writeText(url).then(
@@ -155,6 +194,7 @@ export default function AdminProveedores() {
         <Tabs defaultValue="comparativa">
           <TabsList className="mb-4">
             <TabsTrigger value="comparativa" className="gap-1 text-xs"><Scale className="h-3.5 w-3.5" />Comparativa</TabsTrigger>
+            <TabsTrigger value="productos" className="gap-1 text-xs"><Package className="h-3.5 w-3.5" />Productos</TabsTrigger>
             <TabsTrigger value="proveedores" className="gap-1 text-xs"><Link2 className="h-3.5 w-3.5" />Proveedores</TabsTrigger>
             <TabsTrigger value="mapeo" className="gap-1 text-xs"><GitMerge className="h-3.5 w-3.5" />Mapeo</TabsTrigger>
           </TabsList>
@@ -195,6 +235,100 @@ export default function AdminProveedores() {
                 Aún no hay precios cargados con productos mapeados. Comparte las ligas a los proveedores y mapea sus productos.
               </CardContent></Card>
             )}
+          </TabsContent>
+
+          {/* Productos por proveedor (agregar/quitar; el enlace se adapta) */}
+          <TabsContent value="productos">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center justify-between gap-2">
+                  <span>Productos de</span>
+                  <Select value={provSel} onValueChange={setProvSel}>
+                    <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {proveedores.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Lo que tenga “Activo” es lo que verá ese proveedor en su liga. “Quitar” lo oculta sin borrar el histórico.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                {/* Agregar producto */}
+                <div className="p-3 border-b bg-muted/30 grid grid-cols-12 gap-2 items-end">
+                  <div className="col-span-5 space-y-1">
+                    <Label className="text-xs">Nuevo producto</Label>
+                    <Input value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} placeholder="Ej. Camarón U-15" className="h-9" />
+                  </div>
+                  <div className="col-span-2 space-y-1">
+                    <Label className="text-xs">Unidad</Label>
+                    <Input value={nuevaUnidad} onChange={(e) => setNuevaUnidad(e.target.value)} placeholder="kg" className="h-9" />
+                  </div>
+                  <div className="col-span-3 space-y-1">
+                    <Label className="text-xs">Insumo interno</Label>
+                    <Select value={nuevoInsumo} onValueChange={setNuevoInsumo}>
+                      <SelectTrigger className="h-9"><SelectValue placeholder="Sin mapeo" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sin mapeo</SelectItem>
+                        {insumos.map((i) => (
+                          <SelectItem key={i.id} value={i.id}>{infoProteina(i.nombre)?.display ?? i.nombre}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-2">
+                    <Button className="w-full gap-1 h-9" onClick={agregarProducto}><Plus className="h-4 w-4" />Agregar</Button>
+                  </div>
+                </div>
+                {/* Lista de productos del proveedor */}
+                <ScrollArea className="max-h-[60vh]">
+                  <div className="divide-y">
+                    {productos
+                      .filter((p) => p.proveedor_id === provSel)
+                      .sort((a, b) => Number(b.activo) - Number(a.activo) || a.nombre.localeCompare(b.nombre))
+                      .map((prod) => {
+                        const vig = vigentePorProducto.get(prod.id);
+                        return (
+                          <div key={prod.id} className={`grid grid-cols-12 items-center gap-2 px-4 py-2 ${prod.activo ? "" : "opacity-50"}`}>
+                            <div className="col-span-4 text-sm">
+                              {prod.nombre}
+                              <span className="text-xs text-muted-foreground"> · {prod.unidad}</span>
+                              {vig && <span className="text-xs text-emerald-600"> · {money(vig.precio)}</span>}
+                            </div>
+                            <div className="col-span-5">
+                              <Select value={prod.insumo_id ?? "none"} onValueChange={(v) => setMapeo(prod.id, v === "none" ? null : v)}>
+                                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Sin mapeo" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">Sin mapeo</SelectItem>
+                                  {insumos.map((i) => (
+                                    <SelectItem key={i.id} value={i.id}>{infoProteina(i.nombre)?.display ?? i.nombre}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="col-span-3 text-right">
+                              <Button
+                                size="sm"
+                                variant={prod.activo ? "ghost" : "outline"}
+                                className="gap-1 text-xs"
+                                onClick={() => toggleActivoProducto(prod)}
+                              >
+                                {prod.activo ? <><EyeOff className="h-3.5 w-3.5" />Quitar</> : <><Eye className="h-3.5 w-3.5" />Activar</>}
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    {productos.filter((p) => p.proveedor_id === provSel).length === 0 && (
+                      <div className="p-8 text-center text-sm text-muted-foreground">Este proveedor no tiene productos. Agrégalos arriba.</div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Proveedores + ligas */}
