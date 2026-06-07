@@ -128,7 +128,7 @@ export default function AdminPedidos() {
     const pedDia = pedidosDetalle.filter((d) => d.fecha === dia);
     const recDia = recepcionesDetalle.filter((d) => d.fecha === dia);
     const get = (
-      arr: Array<Record<string, number | string | null>>,
+      arr: Array<{ sucursal_id: string; insumo_id: string } & Record<string, unknown>>,
       suc: string,
       ins: string,
       campo: string
