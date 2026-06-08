@@ -4,14 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Check, Loader2, MapPin, WifiOff } from "lucide-react";
+import { ArrowLeft, Check, Loader2, MapPin, WifiOff, PackageCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 import { useSucursal } from "@/contexts/SucursalContext";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
-import { getFechaCalendario, getHoraNegocio } from "@/lib/fecha";
+import { getFechaCalendario } from "@/lib/fecha";
 import { CantidadStepper } from "@/components/operaciones/CantidadStepper";
 import { infoProteina } from "@/lib/proteinas";
 
@@ -26,9 +26,8 @@ interface Renglon {
   nombre: string;
   unidad: string;
   categoria_id: string;
-  cantidad_pedida: number;
   pedido_detalle_id: string | null;
-  cantidad_recibida: number;
+  orden: number;
 }
 
 export default function Recepciones() {
@@ -42,10 +41,29 @@ export default function Recepciones() {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [pedidoId, setPedidoId] = useState<string | null>(null);
   const [pedidoFecha, setPedidoFecha] = useState<string | null>(null);
-  const [estadoPedido, setEstadoPedido] = useState<string | null>(null);
-  const [enviadoAt, setEnviadoAt] = useState<string | null>(null);
   const [proveedor, setProveedor] = useState("");
   const [renglones, setRenglones] = useState<Renglon[]>([]);
+  // Lo que se está capturando AHORA (vacío por defecto).
+  const [recibido, setRecibido] = useState<Record<string, number>>({});
+  // Acumulado ya registrado hoy por insumo (no se compara con el pedido).
+  const [yaRecibido, setYaRecibido] = useState<Record<string, number>>({});
+
+  // Suma lo ya recibido hoy por insumo (de recepciones previas del pedido).
+  const cargarYaRecibido = useCallback(async (detalleIds: string[]) => {
+    if (detalleIds.length === 0) {
+      setYaRecibido({});
+      return;
+    }
+    const { data } = await supabase
+      .from("recepciones_detalle")
+      .select("insumo_id, cantidad_recibida, pedido_detalle_id")
+      .in("pedido_detalle_id", detalleIds);
+    const acc: Record<string, number> = {};
+    (data || []).forEach((r: { insumo_id: string; cantidad_recibida: number }) => {
+      acc[r.insumo_id] = (acc[r.insumo_id] || 0) + Number(r.cantidad_recibida || 0);
+    });
+    setYaRecibido(acc);
+  }, []);
 
   useEffect(() => {
     if (!sucursalId) return;
@@ -53,17 +71,9 @@ export default function Recepciones() {
 
     (async () => {
       setLoading(true);
-
-      const [catRes, itemsRes, pedidoRes] = await Promise.all([
+      const [catRes, pedidoRes] = await Promise.all([
         supabase.from("categorias_insumos").select("*").order("orden"),
-        supabase
-          .from("insumo_sucursal")
-          .select("orden, unidad, insumos!inner(id, nombre, categoria_id, unidad)")
-          .eq("sucursal_id", sucursalId)
-          .eq("activo", true)
-          .order("orden"),
         // Último pedido enviado de la sucursal (la entrega que se está recibiendo).
-        // No se casa por fecha por el corte de hora; se toma el más reciente no-borrador.
         supabase
           .from("pedidos")
           .select("*")
@@ -75,99 +85,72 @@ export default function Recepciones() {
       ]);
 
       if (cancelado) return;
-
       if (catRes.data) setCategorias(catRes.data);
 
-      // Lo que se pidió (pedido enviado): insumo_id → {detalle_id, pedida}
-      const orderMap = new Map<string, { id: string; pedida: number }>();
       const pedido = pedidoRes.data;
-      if (pedido && pedido.estado !== "borrador") {
-        setPedidoId(pedido.id);
-        setPedidoFecha(pedido.fecha);
-        setEstadoPedido(pedido.estado);
-        setEnviadoAt(pedido.enviado_at);
-        const { data: det } = await supabase
-          .from("pedidos_detalle")
-          .select("id, insumo_id, cantidad_pedida")
-          .eq("pedido_id", pedido.id);
-        (det || []).forEach((d: { id: string; insumo_id: string; cantidad_pedida: number }) => {
-          if (Number(d.cantidad_pedida) > 0)
-            orderMap.set(d.insumo_id, { id: d.id, pedida: Number(d.cantidad_pedida) });
-        });
-      } else {
+      if (!pedido) {
         setPedidoId(null);
-        setEstadoPedido(pedido?.estado ?? null);
+        setRenglones([]);
+        setLoading(false);
+        return;
       }
 
-      type ItemRow = {
-        orden: number;
-        unidad: string | null;
-        insumos: { id: string; nombre: string; categoria_id: string; unidad: string | null };
+      setPedidoId(pedido.id);
+      setPedidoFecha(pedido.fecha);
+
+      // Renglones = lo que se pidió (nombres, SIN mostrar cantidades).
+      const { data: det } = await supabase
+        .from("pedidos_detalle")
+        .select("id, insumo_id, cantidad_pedida, insumos!inner(nombre, categoria_id, unidad)")
+        .eq("pedido_id", pedido.id);
+
+      type DetRow = {
+        id: string;
+        insumo_id: string;
+        cantidad_pedida: number;
+        insumos: { nombre: string; categoria_id: string; unidad: string | null };
       };
-      const rs: Renglon[] = ((itemsRes.data ?? []) as unknown as ItemRow[])
-        // Solo proteínas de la lista oficial.
-        .map((r) => {
-          const p = infoProteina(r.insumos.nombre);
-          if (!p) return null;
-          const od = orderMap.get(r.insumos.id);
+      const rs: Renglon[] = ((det ?? []) as unknown as DetRow[])
+        .filter((d) => Number(d.cantidad_pedida) > 0)
+        .map((d) => {
+          const p = infoProteina(d.insumos.nombre);
           return {
-            insumo_id: r.insumos.id,
-            nombre: p.display,
-            unidad: r.unidad || p.unidad || r.insumos.unidad || "pz",
-            categoria_id: r.insumos.categoria_id,
-            cantidad_pedida: od?.pedida ?? 0,
-            pedido_detalle_id: od?.id ?? null,
-            // Pre-llenado: si se pidió, llegó eso; si no, queda en 0 y lo capturan.
-            cantidad_recibida: od?.pedida ?? 0,
-            _orden: p.orden,
-          } as Renglon & { _orden: number };
+            insumo_id: d.insumo_id,
+            nombre: p?.display ?? d.insumos.nombre,
+            unidad: d.insumos.unidad || p?.unidad || "pz",
+            categoria_id: d.insumos.categoria_id,
+            pedido_detalle_id: d.id,
+            orden: p?.orden ?? 999,
+          };
         })
-        .filter((x): x is Renglon & { _orden: number } => x !== null)
-        .sort((a, b) => a._orden - b._orden);
+        .sort((a, b) => a.orden - b.orden);
 
       setRenglones(rs);
+      await cargarYaRecibido(rs.map((r) => r.pedido_detalle_id!).filter(Boolean));
+      setRecibido({});
       setLoading(false);
     })();
 
     return () => {
       cancelado = true;
     };
-  }, [sucursalId]);
+  }, [sucursalId, cargarYaRecibido]);
 
-  const setRecibida = (insumoId: string, value: number) => {
-    setRenglones((prev) =>
-      prev.map((r) =>
-        r.insumo_id === insumoId ? { ...r, cantidad_recibida: value } : r
-      )
-    );
-  };
+  const setCantidad = (insumoId: string, value: number) =>
+    setRecibido((prev) => ({ ...prev, [insumoId]: value }));
 
   const renglonesPorCategoria = useCallback(
     (categoriaId: string) => renglones.filter((r) => r.categoria_id === categoriaId),
     [renglones]
   );
 
-  const recibidos = useMemo(
-    () => renglones.filter((r) => r.cantidad_recibida > 0),
-    [renglones]
+  const capturados = useMemo(
+    () => renglones.filter((r) => (recibido[r.insumo_id] || 0) > 0),
+    [renglones, recibido]
   );
 
-  // Diferencias solo sobre lo que sí se pidió.
-  const hayDiferencias = useMemo(
-    () =>
-      renglones.some(
-        (r) => r.cantidad_pedida > 0 && r.cantidad_recibida !== r.cantidad_pedida
-      ),
-    [renglones]
-  );
-
-  const yaRecibido =
-    estadoPedido === "recibido" ||
-    estadoPedido === "recibido_parcial" ||
-    estadoPedido === "cerrado";
-
-  const handleConfirmar = async () => {
-    if (!sucursalId) return;
+  const handleRegistrar = async () => {
+    if (!sucursalId || !pedidoId) return;
     if (!registradoPor.trim()) {
       toast.error("Escribe quién recibió");
       return;
@@ -176,8 +159,8 @@ export default function Recepciones() {
       toast.error("Escribe el nombre del proveedor");
       return;
     }
-    if (recibidos.length === 0) {
-      toast.error("Pon al menos un insumo con la cantidad que llegó");
+    if (capturados.length === 0) {
+      toast.error("Pon la cantidad de al menos un insumo que llegó");
       return;
     }
     setGuardando(true);
@@ -194,10 +177,10 @@ export default function Recepciones() {
         .single();
       if (recError) throw recError;
 
-      const detallesInsert = recibidos.map((r) => ({
+      const detallesInsert = capturados.map((r) => ({
         recepcion_id: recepcion.id,
         insumo_id: r.insumo_id,
-        cantidad_recibida: r.cantidad_recibida,
+        cantidad_recibida: recibido[r.insumo_id],
         pedido_detalle_id: r.pedido_detalle_id,
       }));
       const { error: detError } = await supabase
@@ -205,25 +188,17 @@ export default function Recepciones() {
         .insert(detallesInsert);
       if (detError) throw detError;
 
-      // Si había pedido del día, actualizar su estado.
-      if (pedidoId) {
-        const nuevoEstado = hayDiferencias ? "recibido_parcial" : "recibido";
-        const { error: pedError } = await supabase
-          .from("pedidos")
-          .update({ estado: nuevoEstado })
-          .eq("id", pedidoId);
-        if (pedError) throw pedError;
-        setEstadoPedido(nuevoEstado);
-      }
+      // Marca que ya empezó a recibirse (puede seguir llegando más).
+      await supabase.from("pedidos").update({ estado: "recibido_parcial" }).eq("id", pedidoId);
 
-      toast.success(
-        hayDiferencias
-          ? "Recepción registrada (con diferencias) ✓"
-          : "Recepción registrada ✓"
-      );
+      toast.success(`Registrado lo que llegó (${capturados.length}) ✓`);
+      // Limpia para la siguiente entrega (otro proveedor / otro momento).
+      setRecibido({});
+      setProveedor("");
+      await cargarYaRecibido(renglones.map((r) => r.pedido_detalle_id!).filter(Boolean));
     } catch (error) {
       console.error("Error al registrar recepción:", error);
-      toast.error("No se pudo registrar la recepción. Intenta de nuevo.");
+      toast.error("No se pudo registrar. Intenta de nuevo.");
     } finally {
       setGuardando(false);
     }
@@ -241,9 +216,7 @@ export default function Recepciones() {
           </Button>
           <img src={logoLaOla} alt="La Ola" className="w-8 h-8 rounded-full object-cover" />
           <div className="flex-1">
-            <h1 className="text-base font-semibold leading-tight">
-              Registrar lo que llegó
-            </h1>
+            <h1 className="text-base font-semibold leading-tight">Registrar lo que llegó</h1>
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <MapPin className="h-3 w-3" /> {sucursalNombre}
             </p>
@@ -261,27 +234,21 @@ export default function Recepciones() {
           <div className="flex justify-center py-16">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-        ) : renglones.length === 0 ? (
+        ) : !pedidoId ? (
           <Card>
-            <CardContent className="p-8 text-center text-muted-foreground text-sm">
-              Esta sucursal no tiene insumos asignados todavía.
+            <CardContent className="p-8 text-center space-y-3">
+              <PackageCheck className="h-10 w-10 mx-auto text-muted-foreground/50" />
+              <p className="text-sm text-muted-foreground">
+                No hay un pedido enviado todavía. Primero haz el pedido.
+              </p>
+              <Button onClick={() => navigate("/pedidos/hacer")}>Ir a hacer pedido</Button>
             </CardContent>
           </Card>
         ) : (
           <>
-            {yaRecibido && (
-              <Card className="border-emerald-300 bg-emerald-50">
-                <CardContent className="p-4 text-sm text-emerald-800">
-                  Ya registraste lo que llegó hoy. Puedes corregir y volver a
-                  confirmar si hubo un ajuste.
-                </CardContent>
-              </Card>
-            )}
-
             <p className="text-xs text-muted-foreground px-1">
-              {enviadoAt
-                ? `Pedido enviado ${getHoraNegocio(enviadoAt)} — confirma o ajusta lo que llegó.`
-                : "Pon qué llegó y cuánto. Lo que tenga 0 no se registra."}
+              Pon solo lo que llegó ahora. Puedes registrar varias veces durante el día
+              (cada entrega/proveedor por separado) y se va sumando.
             </p>
 
             <Card className={!registradoPor.trim() || !proveedor.trim() ? "border-amber-300" : ""}>
@@ -315,49 +282,32 @@ export default function Recepciones() {
                   <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground px-1">
                     {cat.nombre}
                   </h2>
-                  {rs.map((r) => {
-                    const diff =
-                      r.cantidad_pedida > 0 && r.cantidad_recibida !== r.cantidad_pedida;
-                    return (
-                      <Card
-                        key={r.insumo_id}
-                        className={diff ? "border-amber-300 bg-amber-50/50" : ""}
-                      >
-                        <CardContent className="p-4 space-y-3">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-base flex-1">
-                              {r.nombre}
-                            </span>
-                            {r.cantidad_pedida > 0 ? (
-                              <Badge variant="outline" className="text-xs">
-                                Pedido: {r.cantidad_pedida} {r.unidad}
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="uppercase text-xs">
-                                {r.unidad}
-                              </Badge>
+                  {rs.map((r) => (
+                    <Card key={r.insumo_id}>
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-base flex-1">{r.nombre}</span>
+                          <Badge variant="outline" className="uppercase text-xs">{r.unidad}</Badge>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground flex items-center gap-2">
+                            ¿Cuánto llegó?
+                            {(yaRecibido[r.insumo_id] || 0) > 0 && (
+                              <span className="text-emerald-600">
+                                · ya registrado hoy: {yaRecibido[r.insumo_id]} {r.unidad}
+                              </span>
                             )}
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">
-                              ¿Cuánto llegó?
-                              {diff && (
-                                <span className="ml-2 text-amber-600 font-medium">
-                                  ≠ pedido
-                                </span>
-                              )}
-                            </Label>
-                            <CantidadStepper
-                              value={r.cantidad_recibida}
-                              unidad={r.unidad}
-                              emphasis
-                              onChange={(v) => setRecibida(r.insumo_id, v)}
-                            />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
+                          </Label>
+                          <CantidadStepper
+                            value={recibido[r.insumo_id] || 0}
+                            unidad={r.unidad}
+                            emphasis
+                            onChange={(v) => setCantidad(r.insumo_id, v)}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               );
             })}
@@ -366,20 +316,16 @@ export default function Recepciones() {
       </div>
 
       {/* Barra inferior fija */}
-      {!loading && renglones.length > 0 && (
+      {!loading && pedidoId && renglones.length > 0 && (
         <div className="fixed bottom-0 inset-x-0 bg-background border-t z-20">
           <div className="container mx-auto px-3 py-3 max-w-2xl">
             <Button
               className="w-full h-14 text-lg gap-2"
-              onClick={handleConfirmar}
-              disabled={guardando || recibidos.length === 0 || !registradoPor.trim() || !proveedor.trim()}
+              onClick={handleRegistrar}
+              disabled={guardando || capturados.length === 0 || !registradoPor.trim() || !proveedor.trim()}
             >
-              {guardando ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Check className="h-5 w-5" />
-              )}
-              Confirmar recibido ({recibidos.length})
+              {guardando ? <Loader2 className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
+              Registrar lo que llegó ({capturados.length})
             </Button>
           </div>
         </div>
