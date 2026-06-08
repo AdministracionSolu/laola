@@ -293,6 +293,113 @@ export type Database = {
           },
         ]
       }
+      proveedor_precios: {
+        Row: {
+          created_at: string
+          id: string
+          precio: number
+          proveedor_producto_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          precio: number
+          proveedor_producto_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          precio?: number
+          proveedor_producto_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proveedor_precios_proveedor_producto_id_fkey"
+            columns: ["proveedor_producto_id"]
+            isOneToOne: false
+            referencedRelation: "proveedor_productos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proveedor_productos: {
+        Row: {
+          activo: boolean
+          created_at: string
+          id: string
+          insumo_id: string | null
+          nombre: string
+          proveedor_id: string
+          unidad: string | null
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string
+          id?: string
+          insumo_id?: string | null
+          nombre: string
+          proveedor_id: string
+          unidad?: string | null
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string
+          id?: string
+          insumo_id?: string | null
+          nombre?: string
+          proveedor_id?: string
+          unidad?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proveedor_productos_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proveedor_productos_proveedor_id_fkey"
+            columns: ["proveedor_id"]
+            isOneToOne: false
+            referencedRelation: "proveedores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proveedores: {
+        Row: {
+          activo: boolean
+          categoria: string | null
+          contacto: string | null
+          created_at: string
+          id: string
+          nombre: string
+          telefono: string | null
+          token: string
+        }
+        Insert: {
+          activo?: boolean
+          categoria?: string | null
+          contacto?: string | null
+          created_at?: string
+          id?: string
+          nombre: string
+          telefono?: string | null
+          token?: string
+        }
+        Update: {
+          activo?: boolean
+          categoria?: string | null
+          contacto?: string | null
+          created_at?: string
+          id?: string
+          nombre?: string
+          telefono?: string | null
+          token?: string
+        }
+        Relationships: []
+      }
       recepciones: {
         Row: {
           created_at: string
@@ -577,6 +684,15 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      prov_add_producto: {
+        Args: { p_nombre: string; p_token: string; p_unidad: string }
+        Returns: string
+      }
+      prov_catalogo: { Args: { p_token: string }; Returns: Json }
+      prov_set_precio: {
+        Args: { p_precio: number; p_producto_id: string; p_token: string }
         Returns: boolean
       }
     }
