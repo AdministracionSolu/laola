@@ -20,6 +20,7 @@ import AdminPedidos from "./pages/admin/Pedidos";
 import AdminProveedores from "./pages/admin/Proveedores";
 import PedidosHome from "./pages/PedidosHome";
 import ProveedorPortal from "./pages/ProveedorPortal";
+import DepurarProveedores from "./pages/DepurarProveedores";
 import OperacionesLayout from "./components/operaciones/OperacionesLayout";
 import NotFound from "./pages/NotFound";
 
@@ -59,6 +60,8 @@ const App = () => (
           <Route path="/admin/proveedores" element={<AdminProveedores />} />
           {/* Portal público del proveedor (sin login, por token) */}
           <Route path="/proveedor/:token" element={<ProveedorPortal />} />
+          {/* Depuración de listas de proveedores (uso único, por token) */}
+          <Route path="/depurar/:token" element={<DepurarProveedores />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
