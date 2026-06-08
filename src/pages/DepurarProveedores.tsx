@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 
 interface Prod { id: string; nombre: string; unidad: string; }
-interface Prov { id: string; nombre: string; categoria: string | null; productos: Prod[]; }
+interface Prov { id: string; nombre: string; categoria: string | null; depurado: boolean; productos: Prod[]; }
 
 const rpc = (fn: string, args: Record<string, unknown>) =>
   (supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>)(fn, args);
@@ -48,6 +48,19 @@ export default function DepurarProveedores() {
       else next.add(id);
       return next;
     });
+
+  const marcarRevisado = async (provId: string, value: boolean) => {
+    const { data, error } = await rpc("depurar_marcar", {
+      p_token: token,
+      p_proveedor_id: provId,
+      p_depurado: value,
+    });
+    if (error || data === false) {
+      toast.error("No se pudo marcar");
+      return;
+    }
+    setProveedores((prev) => prev.map((p) => (p.id === provId ? { ...p, depurado: value } : p)));
+  };
 
   const guardar = async () => {
     if (quitar.size === 0) {
@@ -105,17 +118,23 @@ export default function DepurarProveedores() {
       </div>
 
       <div className="container mx-auto px-3 py-3 max-w-2xl">
-        <p className="text-xs text-muted-foreground px-1 mb-2">
-          Toca un proveedor para abrirlo. Dale <b>Quitar</b> a lo que NO vende y al final <b>Guardar</b>.
-        </p>
+        <div className="flex items-center justify-between px-1 mb-2">
+          <p className="text-xs text-muted-foreground">
+            Toca un proveedor, dale <b>Quitar</b> a lo que NO vende y <b>Guardar</b>.
+          </p>
+          <Badge variant="secondary" className="shrink-0">
+            {proveedores.filter((p) => p.depurado).length}/{proveedores.length} revisados
+          </Badge>
+        </div>
         <Accordion type="multiple" className="space-y-2">
           {proveedores.map((p) => {
             const porQuitar = p.productos.filter((x) => quitar.has(x.id)).length;
             const quedan = p.productos.length - porQuitar;
             return (
-              <AccordionItem key={p.id} value={p.id} className="border rounded-lg bg-background">
+              <AccordionItem key={p.id} value={p.id} className={`border rounded-lg ${p.depurado ? "bg-emerald-50 border-emerald-300" : "bg-background"}`}>
                 <AccordionTrigger className="px-3 py-3 hover:no-underline">
-                  <div className="flex items-center gap-2 text-left">
+                  <div className="flex items-center gap-2 text-left flex-wrap">
+                    {p.depurado && <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />}
                     <span className="font-semibold">{p.nombre}</span>
                     {p.categoria && <Badge variant="outline" className="text-xs">{p.categoria}</Badge>}
                     <Badge variant="secondary" className="text-xs">{quedan} quedan</Badge>
@@ -152,6 +171,15 @@ export default function DepurarProveedores() {
                     {p.productos.length === 0 && (
                       <div className="px-3 py-4 text-center text-xs text-muted-foreground">Sin productos.</div>
                     )}
+                  </div>
+                  <div className="p-3 border-t">
+                    <Button
+                      variant={p.depurado ? "outline" : "secondary"}
+                      className="w-full gap-2"
+                      onClick={() => marcarRevisado(p.id, !p.depurado)}
+                    >
+                      {p.depurado ? <><RotateCcw className="h-4 w-4" />Marcar como pendiente</> : <><CheckCircle2 className="h-4 w-4" />Marcar como revisado</>}
+                    </Button>
                   </div>
                 </AccordionContent>
               </AccordionItem>
