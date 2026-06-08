@@ -132,17 +132,42 @@ export default function AdminPedidos() {
     [pedidoEdits]
   );
 
-  const savePedidoReal = async (detalleId: string, value: number) => {
-    const { error } = await supabase
-      .from("pedidos_detalle")
-      .update({ cantidad_pedida: value })
-      .eq("id", detalleId);
-    if (error) {
-      toast.error("No se pudo guardar el pedido");
+  const [guardandoPedido, setGuardandoPedido] = useState(false);
+
+  // Edición local (no guarda hasta dar "Guardar pedido del día").
+  const setPedido = (detalleId: string, value: number) =>
+    setPedidoEdits((prev) => ({ ...prev, [detalleId]: value }));
+
+  // "Trasladar": llena "cuánto les vamos a pedir" con lo que pidió cada sucursal.
+  const copiarSolicitados = () => {
+    const next: Record<string, number> = {};
+    pedidosDetalle
+      .filter((d) => d.fecha === hasta)
+      .forEach((d) => {
+        next[d.id] = d.cantidad_sugerida ?? d.cantidad_pedida ?? 0;
+      });
+    setPedidoEdits((prev) => ({ ...prev, ...next }));
+    toast.success("Copiado lo que pidieron las sucursales");
+  };
+
+  const guardarPedidoDelDia = async () => {
+    const entries = Object.entries(pedidoEdits);
+    if (entries.length === 0) {
+      toast.error("No hay cambios que guardar");
       return;
     }
-    setPedidoEdits((prev) => ({ ...prev, [detalleId]: value }));
-    toast.success("Pedido guardado");
+    setGuardandoPedido(true);
+    const results = await Promise.all(
+      entries.map(([id, value]) =>
+        supabase.from("pedidos_detalle").update({ cantidad_pedida: value }).eq("id", id)
+      )
+    );
+    setGuardandoPedido(false);
+    if (results.find((r) => r.error)) {
+      toast.error("No se pudieron guardar todos los renglones");
+      return;
+    }
+    toast.success("Pedido del día guardado ✓");
   };
 
   // ============ 1) Consolidado del día (matriz) ============
@@ -460,7 +485,7 @@ export default function AdminPedidos() {
           <Tabs defaultValue="consolidado">
             <ScrollArea className="w-full whitespace-nowrap">
               <TabsList className="inline-flex w-max mb-4">
-                <TabsTrigger value="consolidado" className="gap-1 text-xs"><Grid3x3 className="h-3.5 w-3.5" />Consolidado</TabsTrigger>
+                <TabsTrigger value="consolidado" className="gap-1 text-xs"><Grid3x3 className="h-3.5 w-3.5" />Pedido del día</TabsTrigger>
                 <TabsTrigger value="estados" className="gap-1 text-xs"><TrafficCone className="h-3.5 w-3.5" />Estados</TabsTrigger>
                 <TabsTrigger value="tendencia" className="gap-1 text-xs"><TrendingUp className="h-3.5 w-3.5" />Tendencia</TabsTrigger>
                 <TabsTrigger value="sugerido" className="gap-1 text-xs"><GitCompareArrows className="h-3.5 w-3.5" />Sugerido</TabsTrigger>
@@ -476,16 +501,27 @@ export default function AdminPedidos() {
             {/* 1) Consolidado */}
             <TabsContent value="consolidado">
               <Card>
-                <CardHeader className="pb-2 flex-row items-center justify-between">
-                  <div>
-                    <CardTitle className="text-sm">Consolidado del {hasta}</CardTitle>
-                    <CardDescription className="text-xs">
-                      Cada celda: <b>ex</b>istencia · lo que la sucursal <b>pidió</b> · <b>casilla editable: cuánto se pidió realmente</b> · lo que <b>rec</b>ibió. En rojo si recibido ≠ pedido real.
-                    </CardDescription>
+                <CardHeader className="pb-2 space-y-2">
+                  <div className="flex flex-row items-center justify-between gap-2">
+                    <div>
+                      <CardTitle className="text-sm">Pedido del día — {hasta}</CardTitle>
+                      <CardDescription className="text-xs">
+                        Cada celda: <b>ex</b>istencia · lo que la sucursal <b>pidió</b> · <b>casilla: cuánto les vamos a pedir</b>. Captura y guarda.
+                      </CardDescription>
+                    </div>
+                    <Button size="sm" variant="outline" className="gap-1" onClick={exportConsolidado} disabled={!consolidado.length}>
+                      <Download className="h-4 w-4" /> Excel
+                    </Button>
                   </div>
-                  <Button size="sm" variant="outline" className="gap-1" onClick={exportConsolidado} disabled={!consolidado.length}>
-                    <Download className="h-4 w-4" /> Excel
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="secondary" className="gap-1" onClick={copiarSolicitados} disabled={!consolidado.length}>
+                      <GitCompareArrows className="h-4 w-4" /> Copiar lo que pidieron
+                    </Button>
+                    <Button size="sm" className="gap-1" onClick={guardarPedidoDelDia} disabled={guardandoPedido || Object.keys(pedidoEdits).length === 0}>
+                      {guardandoPedido ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4 rotate-180" />}
+                      Guardar pedido del día
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="p-0">
                   <ScrollArea className="w-full whitespace-nowrap">
@@ -494,46 +530,48 @@ export default function AdminPedidos() {
                         <tr className="border-b text-xs text-muted-foreground">
                           <th className="text-left p-2 sticky left-0 bg-background">Insumo</th>
                           {sucursales.map((s) => (
-                            <th key={s.id} className="p-2 text-center min-w-[90px]">{s.nombre}</th>
+                            <th key={s.id} className="p-2 text-center min-w-[110px]">{s.nombre}</th>
                           ))}
-                          <th className="p-2 text-center">Total</th>
+                          <th className="p-2 text-center">Total a pedir</th>
                         </tr>
                       </thead>
                       <tbody>
                         {consolidado.map((r) => (
                           <tr key={r.insumo_id} className="border-b">
                             <td className="p-2 sticky left-0 bg-background font-medium">{r.nombre}</td>
-                            {r.celdas.map((c) => {
-                              const fuga = c.pedidoReal != null && c.pedidoReal !== c.recibido && (c.pedidoReal > 0 || c.recibido > 0);
-                              return (
-                                <td key={c.sucursal_id} className="p-2 text-center tabular-nums align-top">
-                                  <div className="text-[11px] text-muted-foreground">
-                                    ex {num(c.existencia)} · pidió {num(c.solicitado)}
-                                  </div>
-                                  {c.detalleId ? (
+                            {r.celdas.map((c) => (
+                              <td key={c.sucursal_id} className="p-2 text-center tabular-nums align-top">
+                                <div className="text-[11px] text-muted-foreground">
+                                  ex {num(c.existencia)} · pidió {num(c.solicitado)}
+                                </div>
+                                {c.detalleId ? (
+                                  <div className="flex items-center justify-center gap-1 my-1">
+                                    <button
+                                      type="button"
+                                      title="Usar lo que pidió la sucursal"
+                                      onClick={() => setPedido(c.detalleId as string, c.solicitado)}
+                                      className="text-muted-foreground hover:text-primary text-xs px-1"
+                                    >
+                                      ←
+                                    </button>
                                     <Input
                                       type="number"
                                       inputMode="decimal"
-                                      defaultValue={c.pedidoReal ?? ""}
-                                      placeholder={`→${num(c.solicitado)}`}
-                                      title="Cuánto se pidió realmente"
-                                      onBlur={(e) =>
-                                        savePedidoReal(
+                                      value={c.pedidoReal === null ? "" : String(c.pedidoReal)}
+                                      onChange={(e) =>
+                                        setPedido(
                                           c.detalleId as string,
                                           e.target.value === "" ? 0 : parseFloat(e.target.value) || 0
                                         )
                                       }
-                                      className="h-8 w-16 mx-auto my-1 text-center font-semibold"
+                                      className="h-8 w-16 text-center font-semibold"
                                     />
-                                  ) : (
-                                    <div className="text-muted-foreground/40 my-1">—</div>
-                                  )}
-                                  <div className={`text-[11px] ${fuga ? "text-red-600 font-semibold" : "text-muted-foreground"}`}>
-                                    rec {num(c.recibido)}
                                   </div>
-                                </td>
-                              );
-                            })}
+                                ) : (
+                                  <div className="text-muted-foreground/40 my-1">—</div>
+                                )}
+                              </td>
+                            ))}
                             <td className="p-2 text-center font-semibold">{num(r.totalPed)}</td>
                           </tr>
                         ))}
