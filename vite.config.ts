@@ -38,6 +38,11 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
+        // Limpia cachés viejos y toma control de inmediato (evita versiones
+        // pegadas en el celular tras un deploy).
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
         navigateFallbackDenylist: [/^\/admin/],
         runtimeCaching: [
           {
