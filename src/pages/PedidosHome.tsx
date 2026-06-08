@@ -1,33 +1,22 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Package, Truck, MapPin, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 import { useSucursal } from "@/contexts/SucursalContext";
 import { supabase } from "@/integrations/supabase/client";
-import { getFechaNegocio, getHoraNegocio } from "@/lib/fecha";
-
-const ESTADO_LABEL: Record<string, string> = {
-  borrador: "Borrador sin enviar",
-  enviado: "Enviado",
-  recibido: "Recibido",
-  recibido_parcial: "Recibido (con diferencias)",
-  cerrado: "Cerrado",
-};
+import { getFechaNegocio } from "@/lib/fecha";
 
 export default function PedidosHome() {
   const navigate = useNavigate();
   const { sucursalId, sucursalNombre, clearSucursal } = useSucursal();
   const [estado, setEstado] = useState<string | null>(null);
-  const [enviadoAt, setEnviadoAt] = useState<string | null>(null);
 
   useEffect(() => {
     if (!sucursalId) return;
     supabase
       .from("pedidos")
-      .select("estado, enviado_at")
+      .select("estado")
       .eq("sucursal_id", sucursalId)
       .eq("fecha", getFechaNegocio())
       .order("created_at", { ascending: false })
@@ -35,20 +24,12 @@ export default function PedidosHome() {
       .maybeSingle()
       .then(({ data }) => {
         setEstado(data?.estado ?? null);
-        setEnviadoAt(data?.enviado_at ?? null);
       });
   }, [sucursalId]);
 
   const yaRecibido =
     estado === "recibido" || estado === "recibido_parcial" || estado === "cerrado";
   const yaEnviado = estado === "enviado" || yaRecibido;
-
-  const estadoTexto = () => {
-    if (!estado || estado === "borrador") return "Todavía no se ha hecho el pedido de hoy";
-    if (estado === "enviado")
-      return `Enviado ${enviadoAt ? getHoraNegocio(enviadoAt) : ""} — esperando entrega`;
-    return ESTADO_LABEL[estado] || estado;
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/10 p-4">
@@ -68,21 +49,6 @@ export default function PedidosHome() {
             <RefreshCw className="h-3.5 w-3.5" /> Cambiar
           </Button>
         </div>
-
-        {/* Estado del pedido del día */}
-        <Card className="mb-3">
-          <CardContent className="p-3 flex items-center justify-between">
-            <span className="text-sm font-medium">{estadoTexto()}</span>
-            {estado && estado !== "borrador" && (
-              <Badge
-                variant={yaRecibido ? "default" : "secondary"}
-                className={yaRecibido ? "bg-emerald-500 hover:bg-emerald-500" : ""}
-              >
-                {ESTADO_LABEL[estado] || estado}
-              </Badge>
-            )}
-          </CardContent>
-        </Card>
 
         {/* 2 acciones — nada más */}
         <div className="grid gap-3">

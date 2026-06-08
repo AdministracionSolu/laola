@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 import { useSucursal } from "@/contexts/SucursalContext";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
-import { getFechaNegocio, getHoraNegocio } from "@/lib/fecha";
+import { getFechaCalendario, getHoraNegocio } from "@/lib/fecha";
 import { CantidadStepper } from "@/components/operaciones/CantidadStepper";
 import { infoProteina } from "@/lib/proteinas";
 
@@ -36,14 +36,15 @@ export default function Recepciones() {
   const online = useOnlineStatus();
   const { sucursalId, sucursalNombre, registradoPor, setRegistradoPor } =
     useSucursal();
-  const fecha = getFechaNegocio();
 
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [pedidoId, setPedidoId] = useState<string | null>(null);
+  const [pedidoFecha, setPedidoFecha] = useState<string | null>(null);
   const [estadoPedido, setEstadoPedido] = useState<string | null>(null);
   const [enviadoAt, setEnviadoAt] = useState<string | null>(null);
+  const [proveedor, setProveedor] = useState("");
   const [renglones, setRenglones] = useState<Renglon[]>([]);
 
   useEffect(() => {
@@ -61,11 +62,13 @@ export default function Recepciones() {
           .eq("sucursal_id", sucursalId)
           .eq("activo", true)
           .order("orden"),
+        // Último pedido enviado de la sucursal (la entrega que se está recibiendo).
+        // No se casa por fecha por el corte de hora; se toma el más reciente no-borrador.
         supabase
           .from("pedidos")
           .select("*")
           .eq("sucursal_id", sucursalId)
-          .eq("fecha", fecha)
+          .neq("estado", "borrador")
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
@@ -75,11 +78,12 @@ export default function Recepciones() {
 
       if (catRes.data) setCategorias(catRes.data);
 
-      // Lo que se pidió hoy (si hay pedido enviado): insumo_id → {detalle_id, pedida}
+      // Lo que se pidió (pedido enviado): insumo_id → {detalle_id, pedida}
       const orderMap = new Map<string, { id: string; pedida: number }>();
       const pedido = pedidoRes.data;
       if (pedido && pedido.estado !== "borrador") {
         setPedidoId(pedido.id);
+        setPedidoFecha(pedido.fecha);
         setEstadoPedido(pedido.estado);
         setEnviadoAt(pedido.enviado_at);
         const { data: det } = await supabase
@@ -128,7 +132,7 @@ export default function Recepciones() {
     return () => {
       cancelado = true;
     };
-  }, [sucursalId, fecha]);
+  }, [sucursalId]);
 
   const setRecibida = (insumoId: string, value: number) => {
     setRenglones((prev) =>
@@ -168,6 +172,10 @@ export default function Recepciones() {
       toast.error("Escribe quién recibió");
       return;
     }
+    if (!proveedor.trim()) {
+      toast.error("Escribe el nombre del proveedor");
+      return;
+    }
     if (recibidos.length === 0) {
       toast.error("Pon al menos un insumo con la cantidad que llegó");
       return;
@@ -178,9 +186,9 @@ export default function Recepciones() {
         .from("recepciones")
         .insert({
           sucursal_id: sucursalId,
-          proveedor: "Pescadería",
-          fecha,
-          registrado_por: registradoPor || null,
+          proveedor: proveedor.trim(),
+          fecha: pedidoFecha ?? getFechaCalendario(),
+          registrado_por: registradoPor.trim(),
         })
         .select()
         .single();
@@ -276,15 +284,26 @@ export default function Recepciones() {
                 : "Pon qué llegó y cuánto. Lo que tenga 0 no se registra."}
             </p>
 
-            <Card className={!registradoPor.trim() ? "border-amber-300" : ""}>
-              <CardContent className="p-4 space-y-1.5">
-                <Label className="text-sm">¿Quién recibió? *</Label>
-                <Input
-                  placeholder="Escribe tu nombre"
-                  value={registradoPor}
-                  onChange={(e) => setRegistradoPor(e.target.value)}
-                  className="h-11"
-                />
+            <Card className={!registradoPor.trim() || !proveedor.trim() ? "border-amber-300" : ""}>
+              <CardContent className="p-4 space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-sm">¿Quién recibió? *</Label>
+                  <Input
+                    placeholder="Escribe tu nombre"
+                    value={registradoPor}
+                    onChange={(e) => setRegistradoPor(e.target.value)}
+                    className="h-11"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Proveedor *</Label>
+                  <Input
+                    placeholder="Nombre del proveedor que entregó"
+                    value={proveedor}
+                    onChange={(e) => setProveedor(e.target.value)}
+                    className="h-11"
+                  />
+                </div>
               </CardContent>
             </Card>
 
@@ -353,7 +372,7 @@ export default function Recepciones() {
             <Button
               className="w-full h-14 text-lg gap-2"
               onClick={handleConfirmar}
-              disabled={guardando || recibidos.length === 0 || !registradoPor.trim()}
+              disabled={guardando || recibidos.length === 0 || !registradoPor.trim() || !proveedor.trim()}
             >
               {guardando ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
