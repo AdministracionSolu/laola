@@ -35,6 +35,36 @@ export type Database = {
         }
         Relationships: []
       }
+      config_app: {
+        Row: {
+          clave: string
+          valor: string | null
+        }
+        Insert: {
+          clave: string
+          valor?: string | null
+        }
+        Update: {
+          clave?: string
+          valor?: string | null
+        }
+        Relationships: []
+      }
+      config_depuracion: {
+        Row: {
+          id: number
+          token: string
+        }
+        Insert: {
+          id?: number
+          token?: string
+        }
+        Update: {
+          id?: number
+          token?: string
+        }
+        Relationships: []
+      }
       cortes_caja: {
         Row: {
           cobradas: number
@@ -373,6 +403,7 @@ export type Database = {
           categoria: string | null
           contacto: string | null
           created_at: string
+          depurado: boolean
           id: string
           nombre: string
           telefono: string | null
@@ -383,6 +414,7 @@ export type Database = {
           categoria?: string | null
           contacto?: string | null
           created_at?: string
+          depurado?: boolean
           id?: string
           nombre: string
           telefono?: string | null
@@ -393,6 +425,7 @@ export type Database = {
           categoria?: string | null
           contacto?: string | null
           created_at?: string
+          depurado?: boolean
           id?: string
           nombre?: string
           telefono?: string | null
@@ -679,6 +712,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      compras_precios: { Args: { p_pin: string }; Returns: Json }
+      compras_validar_pin: { Args: { p_pin: string }; Returns: boolean }
+      depurar_eliminar: {
+        Args: { p_ids: Json; p_token: string }
+        Returns: number
+      }
+      depurar_listar: { Args: { p_token: string }; Returns: Json }
+      depurar_marcar: {
+        Args: { p_depurado: boolean; p_proveedor_id: string; p_token: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
