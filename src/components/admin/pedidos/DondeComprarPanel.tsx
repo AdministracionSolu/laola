@@ -10,6 +10,7 @@ import type { PedidoDetLite } from "@/hooks/useAnaliticaPedidos";
 const money = (n: number) =>
   new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(n);
 const num = (n: number) => (Math.round(n * 100) / 100).toString();
+const normUnidad = (u: string | null | undefined) => (u ?? "").trim().toLowerCase();
 
 const rpc = (fn: string, args: Record<string, unknown>) =>
   (supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>)(fn, args);
@@ -73,6 +74,11 @@ export function DondeComprarPanel({ pedidosDetalle, insumosOrden, nombreInsumo, 
         const ofs = ofertasPorInsumo.get(ins) || [];
         const mejor = ofs[0] || null;
         const unidad = unidadInsumo.get(ins) || mejor?.unidad || "";
+        // ¿Las ofertas comparadas usan unidades distintas? (no es manzana con manzana)
+        const unidadesMixtas = new Set(ofs.map((o) => normUnidad(o.unidad))).size > 1;
+        // El costo estimado solo es confiable si el precio del proveedor está
+        // en la misma unidad que el pedido (ej. ambos en kg).
+        const costoConfiable = !!mejor && normUnidad(mejor.unidad) === normUnidad(unidad);
         return {
           insumo_id: ins,
           nombre: nombreInsumo.get(ins) || ins,
@@ -81,12 +87,16 @@ export function DondeComprarPanel({ pedidosDetalle, insumosOrden, nombreInsumo, 
           mejor,
           alternativas: ofs.slice(1),
           costo: mejor?.precio != null ? total * mejor.precio : null,
+          unidadesMixtas,
+          costoConfiable,
         };
       })
       .filter((f) => f.total > 0);
   }, [insumosOrden, totalPorInsumo, ofertasPorInsumo, nombreInsumo, unidadInsumo]);
 
-  const totalGasto = filas.reduce((s, f) => s + (f.costo || 0), 0);
+  // Solo sumamos costos confiables (misma unidad); el resto se marca aparte.
+  const totalGasto = filas.reduce((s, f) => s + (f.costoConfiable ? f.costo || 0 : 0), 0);
+  const filasNoConfiables = filas.filter((f) => f.costo != null && !f.costoConfiable).length;
 
   const exportar = () => {
     exportarExcel(
@@ -96,7 +106,9 @@ export function DondeComprarPanel({ pedidosDetalle, insumosOrden, nombreInsumo, 
         Unidad: f.unidad,
         Proveedor: f.mejor?.proveedor ?? "sin precio",
         "Precio unit.": f.mejor?.precio ?? "",
-        "Costo estimado": f.costo ?? "",
+        "Unidad precio": f.mejor?.unidad ?? "",
+        "Costo estimado": f.costoConfiable ? f.costo ?? "" : "",
+        Nota: f.mejor && !f.costoConfiable ? "precio en otra unidad, no comparable" : "",
       })),
       `donde_comprar_${hasta}`,
       "Dónde comprar"
@@ -118,6 +130,12 @@ export function DondeComprarPanel({ pedidosDetalle, insumosOrden, nombreInsumo, 
           <CardTitle className="text-sm">Dónde comprar — {hasta}</CardTitle>
           <CardDescription className="text-xs">
             Lo que hay que pedir y el proveedor más barato. Total estimado: <b>{money(totalGasto)}</b>
+            {filasNoConfiables > 0 && (
+              <span className="block text-amber-600 mt-0.5">
+                ⚠ {filasNoConfiables} insumo(s) con precio en otra unidad: no se suman al total ni se
+                comparan como "más barato". Revisa la unidad con el proveedor.
+              </span>
+            )}
           </CardDescription>
         </div>
         <Button size="sm" variant="outline" className="gap-1" onClick={exportar} disabled={!filas.length}>
@@ -144,9 +162,14 @@ export function DondeComprarPanel({ pedidosDetalle, insumosOrden, nombreInsumo, 
                     <div>
                       <span className="font-medium">{f.mejor.proveedor}</span>
                       <Badge className="ml-2 bg-emerald-500 hover:bg-emerald-500 text-xs">{money(f.mejor.precio!)}/{f.mejor.unidad}</Badge>
+                      {f.unidadesMixtas && (
+                        <Badge variant="outline" className="ml-2 text-[10px] border-amber-400 text-amber-700">
+                          ⚠ unidades distintas
+                        </Badge>
+                      )}
                       {f.alternativas.length > 0 && (
                         <div className="text-[11px] text-muted-foreground mt-0.5">
-                          otros: {f.alternativas.map((a) => `${a.proveedor} ${money(a.precio!)}`).join(" · ")}
+                          otros: {f.alternativas.map((a) => `${a.proveedor} ${money(a.precio!)}/${a.unidad}`).join(" · ")}
                         </div>
                       )}
                     </div>
@@ -154,7 +177,11 @@ export function DondeComprarPanel({ pedidosDetalle, insumosOrden, nombreInsumo, 
                     <span className="text-muted-foreground text-xs">sin precio cargado</span>
                   )}
                 </td>
-                <td className="p-2 text-right tabular-nums">{f.costo != null ? money(f.costo) : "—"}</td>
+                <td className="p-2 text-right tabular-nums">
+                  {f.costo == null ? "—" : f.costoConfiable ? money(f.costo) : (
+                    <span className="text-amber-600" title="Precio en otra unidad: no es comparable">⚠ s/u</span>
+                  )}
+                </td>
               </tr>
             ))}
             {!filas.length && (

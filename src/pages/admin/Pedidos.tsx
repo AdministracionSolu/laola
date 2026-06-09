@@ -322,7 +322,14 @@ export default function AdminPedidos() {
     const porInsumo = new Map<string, { gasto: number; vol: number }>();
     const porSucursal = new Map<string, number>();
     let total = 0;
+    // Cobertura de costo: cuántos renglones (con cantidad) sí tienen costo capturado.
+    let lineasConCosto = 0;
+    let lineasTotales = 0;
     pedidosDetalle.forEach((d) => {
+      if (d.cantidad_pedida > 0) {
+        lineasTotales += 1;
+        if (costoMap.has(`${d.sucursal_id}|${d.insumo_id}`)) lineasConCosto += 1;
+      }
       const costo = costoMap.get(`${d.sucursal_id}|${d.insumo_id}`) || 0;
       const g = d.cantidad_pedida * costo;
       total += g;
@@ -339,7 +346,8 @@ export default function AdminPedidos() {
       sucursal: s.nombre,
       gasto: porSucursal.get(s.id) || 0,
     }));
-    return { insumos, sucs, total };
+    const cobertura = lineasTotales > 0 ? lineasConCosto / lineasTotales : 1;
+    return { insumos, sucs, total, lineasConCosto, lineasTotales, cobertura };
   }, [pedidosDetalle, costoMap, nombreInsumo, sucursales]);
 
   const tieneCostos = lista.some((l) => l.costo != null);
@@ -649,6 +657,15 @@ export default function AdminPedidos() {
                 <Card className="mb-3 border-amber-300 bg-amber-50">
                   <CardContent className="p-3 text-sm text-amber-800">
                     Aún no hay costos capturados. Agrégalos en <strong>Configuración</strong> para ver el gasto.
+                  </CardContent>
+                </Card>
+              )}
+              {tieneCostos && gasto.cobertura < 1 && (
+                <Card className="mb-3 border-amber-300 bg-amber-50">
+                  <CardContent className="p-3 text-sm text-amber-800">
+                    Gasto <strong>parcial</strong>: solo {gasto.lineasConCosto} de {gasto.lineasTotales}{" "}
+                    renglones pedidos tienen costo capturado ({Math.round(gasto.cobertura * 100)}%).
+                    El total real es mayor. Completa los costos faltantes en <strong>Configuración</strong>.
                   </CardContent>
                 </Card>
               )}

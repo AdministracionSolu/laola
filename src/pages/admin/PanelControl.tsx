@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { AdminCorteDialog } from "@/components/admin/AdminCorteDialog";
 import { esProteina, infoProteina } from "@/lib/proteinas";
+import { getFechaCalendario } from "@/lib/fecha";
 
 interface Sucursal {
   id: string;
@@ -88,7 +89,7 @@ export default function PanelControl() {
   const [isLoading, setIsLoading] = useState(true);
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState<string | null>(null);
 
-  const hoy = format(new Date(), "yyyy-MM-dd");
+  const hoy = getFechaCalendario();
 
   useEffect(() => {
     checkAuth();

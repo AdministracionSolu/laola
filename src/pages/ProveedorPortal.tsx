@@ -70,7 +70,7 @@ export default function ProveedorPortal() {
     if (!catalogo) return;
     const items = catalogo.productos
       .map((p) => ({ id: p.id, valor: parseFloat(precios[p.id] ?? "") }))
-      .filter((x) => !isNaN(x.valor) && x.valor >= 0);
+      .filter((x) => !isNaN(x.valor) && x.valor > 0);
     if (items.length === 0) {
       toast.error("Pon al menos un precio");
       return;
@@ -134,7 +134,7 @@ export default function ProveedorPortal() {
 
   const capturados = catalogo.productos.filter((p) => {
     const v = parseFloat(precios[p.id] ?? "");
-    return !isNaN(v) && v >= 0;
+    return !isNaN(v) && v > 0;
   }).length;
 
   return (

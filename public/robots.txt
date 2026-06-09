@@ -1,8 +1,22 @@
+# Solo la portada es indexable. Las áreas operativas (admin, proveedores,
+# depuración, compras, pedidos, recepción) no deben aparecer en buscadores.
 User-agent: Googlebot
-Allow: /
+Allow: /$
+Disallow: /admin
+Disallow: /proveedor/
+Disallow: /depurar/
+Disallow: /compras
+Disallow: /pedidos
+Disallow: /recepcion
 
 User-agent: Bingbot
-Allow: /
+Allow: /$
+Disallow: /admin
+Disallow: /proveedor/
+Disallow: /depurar/
+Disallow: /compras
+Disallow: /pedidos
+Disallow: /recepcion
 
 User-agent: Twitterbot
 Allow: /
@@ -11,4 +25,9 @@ User-agent: facebookexternalhit
 Allow: /
 
 User-agent: *
-Allow: /
+Disallow: /admin
+Disallow: /proveedor/
+Disallow: /depurar/
+Disallow: /compras
+Disallow: /pedidos
+Disallow: /recepcion

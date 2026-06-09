@@ -40,7 +40,6 @@ export default function Recepciones() {
   const [guardando, setGuardando] = useState(false);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [pedidoId, setPedidoId] = useState<string | null>(null);
-  const [pedidoFecha, setPedidoFecha] = useState<string | null>(null);
   const [proveedor, setProveedor] = useState("");
   const [renglones, setRenglones] = useState<Renglon[]>([]);
   // Lo que se está capturando AHORA (vacío por defecto).
@@ -73,13 +72,14 @@ export default function Recepciones() {
       setLoading(true);
       const [catRes, pedidoRes] = await Promise.all([
         supabase.from("categorias_insumos").select("*").order("orden"),
-        // Último pedido enviado de la sucursal (la entrega que se está recibiendo).
+        // Último pedido ENVIADO (o parcial) de la sucursal = la entrega que se recibe.
+        // Se ordena por enviado_at (cuándo se mandó), no por created_at (cuándo se abrió el borrador).
         supabase
           .from("pedidos")
           .select("*")
           .eq("sucursal_id", sucursalId)
-          .neq("estado", "borrador")
-          .order("created_at", { ascending: false })
+          .in("estado", ["enviado", "recibido_parcial"])
+          .order("enviado_at", { ascending: false, nullsFirst: false })
           .limit(1)
           .maybeSingle(),
       ]);
@@ -96,7 +96,6 @@ export default function Recepciones() {
       }
 
       setPedidoId(pedido.id);
-      setPedidoFecha(pedido.fecha);
 
       // Renglones = lo que se pidió (nombres, SIN mostrar cantidades).
       const { data: det } = await supabase
@@ -151,6 +150,7 @@ export default function Recepciones() {
 
   const handleRegistrar = async () => {
     if (!sucursalId || !pedidoId) return;
+    if (guardando) return; // guard anti doble-tap
     if (!registradoPor.trim()) {
       toast.error("Escribe quién recibió");
       return;
@@ -170,7 +170,7 @@ export default function Recepciones() {
         .insert({
           sucursal_id: sucursalId,
           proveedor: proveedor.trim(),
-          fecha: pedidoFecha ?? getFechaCalendario(),
+          fecha: getFechaCalendario(),
           registrado_por: registradoPor.trim(),
         })
         .select()
@@ -294,7 +294,7 @@ export default function Recepciones() {
                             ¿Cuánto llegó?
                             {(yaRecibido[r.insumo_id] || 0) > 0 && (
                               <span className="text-emerald-600">
-                                · ya registrado hoy: {yaRecibido[r.insumo_id]} {r.unidad}
+                                · ya recibido de este pedido: {yaRecibido[r.insumo_id]} {r.unidad}
                               </span>
                             )}
                           </Label>
@@ -322,7 +322,7 @@ export default function Recepciones() {
             <Button
               className="w-full h-14 text-lg gap-2"
               onClick={handleRegistrar}
-              disabled={guardando || capturados.length === 0 || !registradoPor.trim() || !proveedor.trim()}
+              disabled={guardando || !online || capturados.length === 0 || !registradoPor.trim() || !proveedor.trim()}
             >
               {guardando ? <Loader2 className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
               Registrar lo que llegó ({capturados.length})

@@ -87,7 +87,9 @@ export default function Pedidos() {
   const { sucursalId, sucursalNombre, registradoPor, setRegistradoPor } =
     useSucursal();
 
-  const fecha = getFechaNegocio();
+  // Fecha de negocio fijada AL MONTAR: no cambia a media captura al cruzar el
+  // corte de la 1pm (evita perder el borrador en marcha).
+  const [fecha] = useState(getFechaNegocio);
   const draftKey = `laola_pedido_draft_${sucursalId}_${fecha}`;
 
   const [categorias, setCategorias] = useState<Categoria[]>([]);
@@ -304,8 +306,22 @@ export default function Pedidos() {
           })
           .select()
           .single();
-        if (error) throw error;
-        id = data.id;
+        if (error) {
+          // Otro dispositivo/exhibición ya creó el pedido del día (choca el
+          // único sucursal+fecha): reusamos ese en vez de fallar.
+          const { data: existente } = await supabase
+            .from("pedidos")
+            .select("id")
+            .eq("sucursal_id", sucursalId)
+            .eq("fecha", fecha)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (!existente) throw error;
+          id = existente.id;
+        } else {
+          id = data.id;
+        }
         setPedidoId(id);
       }
 
@@ -594,7 +610,7 @@ export default function Pedidos() {
             <Button
               className="w-full h-14 text-lg gap-2"
               onClick={handleEnviar}
-              disabled={enviando || renglonesPedido.length === 0 || !registradoPor.trim()}
+              disabled={enviando || !online || renglonesPedido.length === 0 || !registradoPor.trim()}
             >
               {enviando ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
