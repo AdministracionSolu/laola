@@ -21,6 +21,7 @@ import AdminProveedores from "./pages/admin/Proveedores";
 import QrPedidos from "./pages/admin/QrPedidos";
 import PedidosHome from "./pages/PedidosHome";
 import EntrarSucursal from "./pages/EntrarSucursal";
+import Compras from "./pages/Compras";
 import ProveedorPortal from "./pages/ProveedorPortal";
 import DepurarProveedores from "./pages/DepurarProveedores";
 import OperacionesLayout from "./components/operaciones/OperacionesLayout";
@@ -45,6 +46,7 @@ const App = () => (
           <Route path="/centro-de-operaciones/reservaciones" element={<Reservaciones />} />
           <Route path="/centro-de-operaciones/contadoras" element={<Contadoras />} />
           {/* Liga/QR por sucursal: fija la sucursal (bloqueada) y entra al destino */}
+          <Route path="/compras" element={<Compras />} />
           <Route path="/pedidos/s/:sucursalId" element={<EntrarSucursal destino="/pedidos/hacer" />} />
           <Route path="/recepcion/s/:sucursalId" element={<EntrarSucursal destino="/pedidos/recepcion" />} />
           {/* Pedidos: slug propio con gate de sucursal */}

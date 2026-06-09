@@ -31,6 +31,7 @@ import {
   DollarSign,
   Settings,
   ShieldAlert,
+  ShoppingCart,
 } from "lucide-react";
 import { format, subDays } from "date-fns";
 import {
@@ -50,6 +51,8 @@ import { useAnaliticaPedidos } from "@/hooks/useAnaliticaPedidos";
 import { exportarExcel } from "@/lib/exportar";
 import { getFechaNegocio } from "@/lib/fecha";
 import { ConfiguracionCatalogo } from "@/components/admin/pedidos/ConfiguracionCatalogo";
+import { PedidoDelDiaPanel } from "@/components/admin/pedidos/PedidoDelDiaPanel";
+import { DondeComprarPanel } from "@/components/admin/pedidos/DondeComprarPanel";
 
 const money = (n: number) =>
   new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(n);
@@ -124,118 +127,12 @@ export default function AdminPedidos() {
     );
   }, [lista, nombreInsumo]);
 
-  // Ediciones locales del "pedido real" (admin) por id de detalle.
-  const [pedidoEdits, setPedidoEdits] = useState<Record<string, number>>({});
-  const pedidoRealDe = useCallback(
-    (d: { id: string; cantidad_pedida: number }) =>
-      pedidoEdits[d.id] ?? (d.cantidad_pedida ?? 0),
-    [pedidoEdits]
-  );
-
-  const [guardandoPedido, setGuardandoPedido] = useState(false);
-
-  // Edición local (no guarda hasta dar "Guardar pedido del día").
-  const setPedido = (detalleId: string, value: number) =>
-    setPedidoEdits((prev) => ({ ...prev, [detalleId]: value }));
-
-  // "Trasladar": llena "cuánto les vamos a pedir" con lo que pidió cada sucursal.
-  const copiarSolicitados = () => {
-    const next: Record<string, number> = {};
-    pedidosDetalle
-      .filter((d) => d.fecha === hasta)
-      .forEach((d) => {
-        next[d.id] = d.cantidad_sugerida ?? d.cantidad_pedida ?? 0;
-      });
-    setPedidoEdits((prev) => ({ ...prev, ...next }));
-    toast.success("Copiado lo que pidieron las sucursales");
-  };
-
-  const guardarPedidoDelDia = async () => {
-    const entries = Object.entries(pedidoEdits);
-    if (entries.length === 0) {
-      toast.error("No hay cambios que guardar");
-      return;
-    }
-    setGuardandoPedido(true);
-    const results = await Promise.all(
-      entries.map(([id, value]) =>
-        supabase.from("pedidos_detalle").update({ cantidad_pedida: value }).eq("id", id)
-      )
-    );
-    setGuardandoPedido(false);
-    if (results.find((r) => r.error)) {
-      toast.error("No se pudieron guardar todos los renglones");
-      return;
-    }
-    toast.success("Pedido del día guardado ✓");
-  };
-
-  // ============ 1) Consolidado del día (matriz) ============
-  const consolidado = useMemo(() => {
-    const dia = hasta;
-    const pedMap = new Map<string, (typeof pedidosDetalle)[number]>();
-    pedidosDetalle
-      .filter((d) => d.fecha === dia)
-      .forEach((d) => pedMap.set(`${d.sucursal_id}|${d.insumo_id}`, d));
-    const recMap = new Map<string, number>();
-    recepcionesDetalle
-      .filter((d) => d.fecha === dia)
-      .forEach((d) =>
-        recMap.set(
-          `${d.sucursal_id}|${d.insumo_id}`,
-          (recMap.get(`${d.sucursal_id}|${d.insumo_id}`) || 0) + d.cantidad_recibida
-        )
-      );
-
-    return insumosOrden
-      .map((ins) => {
-        const celdas = sucursales.map((s) => {
-          const det = pedMap.get(`${s.id}|${ins}`);
-          return {
-            sucursal_id: s.id,
-            detalleId: det?.id ?? null,
-            existencia: det?.existencia ?? 0,
-            // Lo que solicitó la sucursal (cantidad_sugerida).
-            solicitado: det?.cantidad_sugerida ?? 0,
-            // Pedido real (editable por el admin) = cantidad_pedida.
-            pedidoReal: det ? pedidoRealDe(det) : null,
-            recibido: recMap.get(`${s.id}|${ins}`) ?? 0,
-          };
-        });
-        const totalPed = celdas.reduce((s, c) => s + (c.pedidoReal ?? 0), 0);
-        const totalRec = celdas.reduce((s, c) => s + c.recibido, 0);
-        return { insumo_id: ins, nombre: nombreInsumo.get(ins) || ins, celdas, totalPed, totalRec };
-      })
-      .filter(
-        (r) =>
-          r.totalPed > 0 ||
-          r.totalRec > 0 ||
-          r.celdas.some((c) => c.solicitado > 0)
-      );
-  }, [hasta, pedidosDetalle, recepcionesDetalle, insumosOrden, sucursales, nombreInsumo, pedidoRealDe]);
-
-  const exportConsolidado = () => {
-    const filas = consolidado.map((r) => {
-      const fila: Record<string, string | number> = { Insumo: r.nombre };
-      r.celdas.forEach((c) => {
-        const s = sucursales.find((x) => x.id === c.sucursal_id)?.nombre || "";
-        fila[`${s} existencia`] = c.existencia;
-        fila[`${s} solicitado`] = c.solicitado;
-        fila[`${s} pedido real`] = c.pedidoReal ?? "";
-        fila[`${s} recibido`] = c.recibido;
-      });
-      fila["Total pedido"] = r.totalPed;
-      fila["Total recibido"] = r.totalRec;
-      return fila;
-    });
-    exportarExcel(filas, `consolidado_${hasta}`, "Consolidado");
-  };
 
   // ============ Fugas: Pedido real (admin) vs Recibido (sucursal) ============
   const fugas = useMemo(() => {
     const ped = new Map<string, number>();
     pedidosDetalle.forEach((d) => {
-      const p = pedidoRealDe(d);
+      const p = d.cantidad_pedida;
       if (p > 0)
         ped.set(`${d.sucursal_id}|${d.insumo_id}`, (ped.get(`${d.sucursal_id}|${d.insumo_id}`) || 0) + p);
     });
@@ -262,7 +159,7 @@ export default function AdminPedidos() {
       })
       .filter((r) => r.pedido > 0 || r.recibido > 0)
       .sort((a, b) => Math.abs(b.diferencia) - Math.abs(a.diferencia));
-  }, [pedidosDetalle, recepcionesDetalle, sucursales, nombreInsumo, pedidoRealDe]);
+  }, [pedidosDetalle, recepcionesDetalle, sucursales, nombreInsumo]);
 
   // ============ 2) Semáforo de estados ============
   const semaforo = useMemo(() => {
@@ -486,6 +383,7 @@ export default function AdminPedidos() {
             <ScrollArea className="w-full whitespace-nowrap">
               <TabsList className="inline-flex w-max mb-4">
                 <TabsTrigger value="consolidado" className="gap-1 text-xs"><Grid3x3 className="h-3.5 w-3.5" />Pedido del día</TabsTrigger>
+                <TabsTrigger value="comprar" className="gap-1 text-xs"><ShoppingCart className="h-3.5 w-3.5" />Dónde comprar</TabsTrigger>
                 <TabsTrigger value="estados" className="gap-1 text-xs"><TrafficCone className="h-3.5 w-3.5" />Estados</TabsTrigger>
                 <TabsTrigger value="tendencia" className="gap-1 text-xs"><TrendingUp className="h-3.5 w-3.5" />Tendencia</TabsTrigger>
                 <TabsTrigger value="sugerido" className="gap-1 text-xs"><GitCompareArrows className="h-3.5 w-3.5" />Sugerido</TabsTrigger>
@@ -500,89 +398,24 @@ export default function AdminPedidos() {
 
             {/* 1) Consolidado */}
             <TabsContent value="consolidado">
-              <Card>
-                <CardHeader className="pb-2 space-y-2">
-                  <div className="flex flex-row items-center justify-between gap-2">
-                    <div>
-                      <CardTitle className="text-sm">Pedido del día — {hasta}</CardTitle>
-                      <CardDescription className="text-xs">
-                        Cada celda: <b>ex</b>istencia · lo que la sucursal <b>pidió</b> · <b>casilla: cuánto les vamos a pedir</b>. Captura y guarda.
-                      </CardDescription>
-                    </div>
-                    <Button size="sm" variant="outline" className="gap-1" onClick={exportConsolidado} disabled={!consolidado.length}>
-                      <Download className="h-4 w-4" /> Excel
-                    </Button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button size="sm" variant="secondary" className="gap-1" onClick={copiarSolicitados} disabled={!consolidado.length}>
-                      <GitCompareArrows className="h-4 w-4" /> Copiar lo que pidieron
-                    </Button>
-                    <Button size="sm" className="gap-1" onClick={guardarPedidoDelDia} disabled={guardandoPedido || Object.keys(pedidoEdits).length === 0}>
-                      {guardandoPedido ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4 rotate-180" />}
-                      Guardar pedido del día
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <ScrollArea className="w-full whitespace-nowrap">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b text-xs text-muted-foreground">
-                          <th className="text-left p-2 sticky left-0 bg-background">Insumo</th>
-                          {sucursales.map((s) => (
-                            <th key={s.id} className="p-2 text-center min-w-[110px]">{s.nombre}</th>
-                          ))}
-                          <th className="p-2 text-center">Total a pedir</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {consolidado.map((r) => (
-                          <tr key={r.insumo_id} className="border-b">
-                            <td className="p-2 sticky left-0 bg-background font-medium">{r.nombre}</td>
-                            {r.celdas.map((c) => (
-                              <td key={c.sucursal_id} className="p-2 text-center tabular-nums align-top">
-                                <div className="text-[11px] text-muted-foreground">
-                                  ex {num(c.existencia)} · pidió {num(c.solicitado)}
-                                </div>
-                                {c.detalleId ? (
-                                  <div className="flex items-center justify-center gap-1 my-1">
-                                    <button
-                                      type="button"
-                                      title="Usar lo que pidió la sucursal"
-                                      onClick={() => setPedido(c.detalleId as string, c.solicitado)}
-                                      className="text-muted-foreground hover:text-primary text-xs px-1"
-                                    >
-                                      ←
-                                    </button>
-                                    <Input
-                                      type="number"
-                                      inputMode="decimal"
-                                      value={c.pedidoReal === null ? "" : String(c.pedidoReal)}
-                                      onChange={(e) =>
-                                        setPedido(
-                                          c.detalleId as string,
-                                          e.target.value === "" ? 0 : parseFloat(e.target.value) || 0
-                                        )
-                                      }
-                                      className="h-8 w-16 text-center font-semibold"
-                                    />
-                                  </div>
-                                ) : (
-                                  <div className="text-muted-foreground/40 my-1">—</div>
-                                )}
-                              </td>
-                            ))}
-                            <td className="p-2 text-center font-semibold">{num(r.totalPed)}</td>
-                          </tr>
-                        ))}
-                        {!consolidado.length && (
-                          <tr><td colSpan={sucursales.length + 2} className="p-6 text-center text-muted-foreground">Sin pedidos ese día.</td></tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
+              <PedidoDelDiaPanel
+                sucursales={sucursales}
+                pedidosDetalle={pedidosDetalle}
+                insumosOrden={insumosOrden}
+                nombreInsumo={nombreInsumo}
+                hasta={hasta}
+                refetch={refetch}
+              />
+            </TabsContent>
+
+            <TabsContent value="comprar">
+              <DondeComprarPanel
+                pedidosDetalle={pedidosDetalle}
+                insumosOrden={insumosOrden}
+                nombreInsumo={nombreInsumo}
+                unidadInsumo={unidadInsumo}
+                hasta={hasta}
+              />
             </TabsContent>
 
             {/* 2) Estados */}
