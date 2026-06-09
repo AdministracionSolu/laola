@@ -18,7 +18,9 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import AdminPanelControl from "./pages/admin/PanelControl";
 import AdminPedidos from "./pages/admin/Pedidos";
 import AdminProveedores from "./pages/admin/Proveedores";
+import QrPedidos from "./pages/admin/QrPedidos";
 import PedidosHome from "./pages/PedidosHome";
+import EntrarSucursal from "./pages/EntrarSucursal";
 import ProveedorPortal from "./pages/ProveedorPortal";
 import DepurarProveedores from "./pages/DepurarProveedores";
 import OperacionesLayout from "./components/operaciones/OperacionesLayout";
@@ -42,6 +44,8 @@ const App = () => (
           <Route path="/centro-de-operaciones/cortes" element={<Corte />} />
           <Route path="/centro-de-operaciones/reservaciones" element={<Reservaciones />} />
           <Route path="/centro-de-operaciones/contadoras" element={<Contadoras />} />
+          {/* Liga/QR por sucursal: fija la sucursal (bloqueada) y entra a /pedidos */}
+          <Route path="/pedidos/s/:sucursalId" element={<EntrarSucursal />} />
           {/* Pedidos: slug propio con gate de sucursal */}
           <Route element={<OperacionesLayout />}>
             <Route path="/pedidos" element={<PedidosHome />} />
@@ -58,6 +62,7 @@ const App = () => (
           <Route path="/admin/panel-control" element={<AdminPanelControl />} />
           <Route path="/admin/pedidos" element={<AdminPedidos />} />
           <Route path="/admin/proveedores" element={<AdminProveedores />} />
+          <Route path="/admin/qr-pedidos" element={<QrPedidos />} />
           {/* Portal público del proveedor (sin login, por token) */}
           <Route path="/proveedor/:token" element={<ProveedorPortal />} />
           {/* Depuración de listas de proveedores (uso único, por token) */}

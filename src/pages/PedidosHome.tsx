@@ -9,7 +9,7 @@ import { getFechaNegocio } from "@/lib/fecha";
 
 export default function PedidosHome() {
   const navigate = useNavigate();
-  const { sucursalId, sucursalNombre, clearSucursal } = useSucursal();
+  const { sucursalId, sucursalNombre, bloqueada, clearSucursal } = useSucursal();
   const [estado, setEstado] = useState<string | null>(null);
 
   useEffect(() => {
@@ -45,9 +45,11 @@ export default function PedidosHome() {
               <MapPin className="h-3.5 w-3.5 text-primary" /> {sucursalNombre}
             </p>
           </div>
-          <Button variant="ghost" size="sm" className="text-xs gap-1" onClick={clearSucursal}>
-            <RefreshCw className="h-3.5 w-3.5" /> Cambiar
-          </Button>
+          {!bloqueada && (
+            <Button variant="ghost" size="sm" className="text-xs gap-1" onClick={clearSucursal}>
+              <RefreshCw className="h-3.5 w-3.5" /> Cambiar
+            </Button>
+          )}
         </div>
 
         {/* 2 acciones — nada más */}
