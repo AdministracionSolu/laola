@@ -1,0 +1,299 @@
+categoria,item,variante,precio_valle,precio_brisas,precio_cerveceria,precio_solares,es_alcohol,descripcion
+Entradas y Especialidades,Paté de camarón,Mediano 200g,218,218,218,208,0,Especialidad de la casa
+Entradas y Especialidades,Paté de camarón,Grande 300g,298,298,298,,0,
+Entradas y Especialidades,Camarones a la Cucaracha,Mediano 200g,218,218,218,208,0,Camarón frito entero
+Entradas y Especialidades,Camarones a la Cucaracha,Grande 300g,298,298,298,,0,
+Entradas y Especialidades,Marlín en estofado,Mediano 200g,208,208,208,228,0,En Solares porción 250g
+Entradas y Especialidades,Marlín en estofado,Grande 300g,278,278,278,,0,
+Entradas y Especialidades,Chicharrón de róbalo,Mediano 350g,268,268,268,228,0,
+Entradas y Especialidades,Chicharrón de róbalo,Grande 500g,358,358,358,,0,
+Entradas y Especialidades,Chicharrón de pulpo,Única,,,,228,0,
+Entradas y Especialidades,Taco gobernador,1 pieza,78,78,78,78,0,Camarón con queso pimiento y cebolla
+Entradas y Especialidades,Taco de atún,1 pieza,,,,49,0,
+Entradas y Especialidades,Taco capeado,1 pieza,,,,78,0,Camarón o pescado
+Entradas y Especialidades,Taquitos La Ola,3 piezas,,,,72,0,Tacos de machaca de camarón
+Entradas y Especialidades,Botana de camarón seco,Única 200g,148,148,,,0,
+Entradas y Especialidades,Carne asada,Única 500g,,,248,,0,Incluye 2 tacos de frijoles salsas y tortillas
+Entradas y Especialidades,Carnitas,Única 500g,,,178,,0,Incluye salsas y tortillas
+Balazos,Balazo de ostión,15g,39,39,39,39,0,Salseado con el marisco de tu preferencia
+Balazos,Balazo de pulpo,15g,39,39,39,39,0,
+Balazos,Balazo de camarón cocido,15g,39,39,39,39,0,
+Balazos,Balazo de camarón curtido en limón,15g,39,39,39,39,0,En Solares: camarón crudo
+Balazos,Balazo de callo de hacha,15g,49,49,49,51,0,
+Balazos,Tabla La Ola,5 balazos,159,159,159,168,0,Arma tu tabla al gusto. Máximo 1 balazo de callo por tabla
+Empanadas,Empanada de queso,1 pieza,62,62,62,62,0,
+Empanadas,Empanada de camarón,1 pieza,74,74,74,72,0,
+Empanadas,Empanada de camarón con queso,1 pieza,82,82,82,82,0,
+Empanadas,Empanada de pulpo,1 pieza,74,74,74,72,0,
+Empanadas,Empanada de pulpo con queso,1 pieza,82,82,82,82,0,
+Empanadas,Empanada de ostión,1 pieza,74,74,74,72,0,
+Empanadas,Empanada de ostión con queso,1 pieza,82,82,82,82,0,
+Empanadas,Empanada de marlín,1 pieza,,,,72,0,
+Empanadas,Empanada de marlín con queso,1 pieza,,,,82,0,
+Empanadas,Empanada gobernador,1 pieza,82,82,82,,0,Camarón con queso pimiento y cebolla
+Empanadas,Empanada La Ola,1 pieza,82,82,82,92,0,Camarón y pulpo con queso pimiento y cebolla. VALIDAR precio Solares s/queso 82 c/queso 92
+Taquitos Montados,Taco dorado con ceviche de sierra,1 pieza 80g,49,49,,,0,
+Taquitos Montados,Taco dorado con marlín en estofado,1 pieza 80g,49,49,,,0,
+Taquitos Montados,Taco dorado con ceviche de camarón,1 pieza 80g,69,69,,,0,
+Taquitos Montados,Taco dorado con paté de camarón,1 pieza 80g,69,69,,,0,
+Taquitos Montados,Taco dorado con aguachile de camarón,1 pieza 80g,69,69,,,0,
+Taquitos Montados,Taco dorado con camarón cocido,1 pieza 80g,69,69,,,0,
+Taquitos Montados,Taco dorado con pulpo,1 pieza 80g,69,69,,,0,
+Taquitos Montados,Taco dorado especial La Ola,1 pieza 80g,99,99,,,0,
+Taquitos Montados,Taco dorado especial de paté de camarón,1 pieza 80g,89,89,,,0,
+Tostadas,Tostada de ceviche de sierra,120g,79,79,79,92,0,
+Tostadas,Tostada de ceviche de camarón,120g,118,118,118,112,0,
+Tostadas,Tostada de ceviche de camarón cocido,120g,118,118,118,112,0,
+Tostadas,Tostada de ceviche de camarón seco,120g,118,118,118,112,0,
+Tostadas,Tostada de ceviche de róbalo en cuadritos,120g,118,118,118,112,0,
+Tostadas,Tostada de aguachile de camarón,120g,118,118,118,112,0,
+Tostadas,Tostada de aguachile de camarón seco,120g,,,,112,0,
+Tostadas,Tostada de aguachile de pulpo,120g,,,,112,0,
+Tostadas,Tostada de camarón cocido,120g,118,118,118,112,0,
+Tostadas,Tostada de pulpo,120g,118,118,118,112,0,
+Tostadas,Tostada de paté de camarón,120g,118,118,118,112,0,
+Tostadas,Tostada de marlín en estofado,120g,118,118,118,112,0,
+Tostadas,Tostada de atún,120g,118,118,118,112,0,
+Tostadas,Tostada de callo de hacha,120g,198,198,198,182,0,
+Tostadas Especiales,Especial de mariscos,2 tostadas 250g,238,238,238,228,0,Camarón cocido camarón curtido en limón y pulpo sobre 2 tostadas. Solares 200g
+Tostadas Especiales,Especial de mariscos con callo de hacha,2 tostadas 250g,268,268,268,248,0,Camarón cocido camarón curtido pulpo y callo de hacha
+Tostadas Especiales,Especial Santa Cruz,2 tostadas 250g,258,258,258,248,0,Mezcla de mariscos con base de ceviche de camarón seco
+Tostadas Especiales,Especial Santa Cruz con callo de hacha,2 tostadas 250g,298,298,298,268,0,
+Tostadas Especiales,Especial La Ola,2 tostadas 250g,248,248,248,248,0,Mezcla de mariscos con base de ceviche de sierra. ESPECIALIDAD
+Tostadas Especiales,Especial La Ola con paté de camarón,2 tostadas 250g,258,258,258,258,0,Mezcla de mariscos con base de paté de camarón
+Tostadas Especiales,Especial de paté de camarón,2 tostadas 250g,258,258,258,228,0,Camarón cocido con base de paté de camarón
+Tostadas Especiales,San Blas,2 tostadas 250g,278,278,278,268,0,Mezcla de mariscos y callo de hacha con base de ceviche de sierra. RECOMENDADA
+Tostadas Especiales,San Blas con paté de camarón,2 tostadas 250g,298,298,298,268,0,
+Tostadas Especiales,Especial de ceviche La Ola,2 tostadas 250g,238,238,238,228,0,Mezcla de ceviches de camarón curtido camarón cocido y pulpo
+Tostadas Especiales,Especial de ceviche San Blas,2 tostadas 250g,268,268,268,248,0,Mezcla de ceviches con callo de hacha
+Tostadas Especiales,Especial Matanchen,2 tostadas 250g,248,248,248,268,0,Mezcla de mariscos sobre tostadas con mayonesa y base de ceviche de sierra. En Solares incluye callo de hacha
+Tostadas Especiales,Especial Matanchen con callo de hacha,2 tostadas 250g,278,278,278,,0,
+Tostadas Especiales,Mexcalteca,2 tostadas 200g,,,,228,0,Camarón seco y camarón en aguachile
+Tostadas Especiales,Especial del Pacífico,2 tostadas 200g,,,,296,0,Ceviche de sierra montado con callo de hacha de Sonora
+Cazuelitas,Cazuelita de camarón cocido,Mediano 200g,198,198,198,228,0,Jugo caliente. Solares porción única 250g
+Cazuelitas,Cazuelita de camarón cocido,Grande 300g,278,278,278,,0,
+Cazuelitas,Cazuelita de pulpo,Mediano 200g,198,198,198,228,0,
+Cazuelitas,Cazuelita de pulpo,Grande 300g,278,278,278,,0,
+Cazuelitas,Cazuelita mixta,Mediano 200g,198,198,198,228,0,Camarón y pulpo
+Cazuelitas,Cazuelita mixta,Grande 300g,278,278,278,,0,
+Cazuelitas,Cazuelita La Ola,Mediano 200g,198,198,198,228,0,Camarón cocido pulpo y ostión
+Cazuelitas,Cazuelita La Ola,Grande 300g,278,278,278,,0,
+Cazuelitas,Cazuelita especial Tanilo,Mediano 200g,198,198,198,228,0,Camarón cocido pulpo y ceviche de sierra
+Cazuelitas,Cazuelita especial Tanilo,Grande 300g,278,278,278,,0,
+Cazuelitas,Cazuelita especial San Blas,Mediano 200g,238,238,238,268,0,Camarón cocido pulpo ostión y callo de hacha
+Cazuelitas,Cazuelita especial San Blas,Grande 300g,298,298,298,,0,
+Cocteles,Vaso loco,Mediano 200g,198,198,198,228,0,Camarón curtido en limón sazonado con salsa huichol. Solares porción única 250g
+Cocteles,Vaso loco,Grande 300g,278,278,278,,0,
+Cocteles,Vaso loco especial,Mediano 200g,238,238,238,268,0,Camarón curtido y callo de hacha con salsa huichol
+Cocteles,Vaso loco especial,Grande 300g,298,298,298,,0,
+Cocteles,Vaso macho,Mediano 200g,198,198,198,228,0,Camarón curtido y ostión con salsa habanera
+Cocteles,Vaso macho,Grande 300g,278,278,278,,0,
+Cocteles,Vaso macho especial,Mediano 200g,238,238,238,268,0,Camarón curtido ostión y callo de hacha con salsa habanera
+Cocteles,Vaso macho especial,Grande 300g,298,298,298,,0,
+Cocteles,Clamariscos,Mediano 200g,198,198,198,268,0,Camarón cocido pulpo y ostión con Clamato preparado. En Solares incluye callo de hacha
+Cocteles,Clamariscos,Grande 300g,278,278,278,,0,
+Cocteles,Clamariscos con callo de hacha,Mediano 200g,238,238,238,,0,
+Cocteles,Clamariscos con callo de hacha,Grande 300g,298,298,298,,0,
+Cocteles,Clamacallo,Única 250g,,,,468,0,Clamato y callo de hacha
+Cocteles,Chilangada,Mediano 200g,198,198,198,268,0,Camarón cocido pulpo y ostión con jugo de camarón frío y catsup. En Solares incluye callo de hacha
+Cocteles,Chilangada,Grande 300g,278,278,278,,0,
+Cocteles,Chilangada con callo de hacha,Mediano 200g,238,238,238,,0,
+Cocteles,Chilangada con callo de hacha,Grande 300g,298,298,298,,0,
+Cocteles,Coctel de camarón,Mediano 200g,198,198,,,0,Camarón cocido con pepino cebolla jugo de camarón frío y catsup
+Cocteles,Coctel de camarón,Grande 300g,278,278,,,0,
+Cocteles,Coctel de pulpo,Mediano 200g,198,198,,,0,
+Cocteles,Coctel de pulpo,Grande 300g,278,278,,,0,
+Cocteles,Coctel de ostión,Mediano 200g,198,198,148,208,0,Ostión de placer sancochado al natural
+Cocteles,Coctel de ostión,Grande 300g,278,278,198,,0,
+Cocteles,Campechana fría,Mediano 200g,198,198,,,0,Camarón cocido pulpo y ostión con aguacate pepino y cebolla
+Cocteles,Campechana fría,Grande 300g,278,278,,,0,
+Ceviches,Ceviche de sierra estilo Nayarit,Mediano 300g,178,178,178,208,0,Solares porción única 300g
+Ceviches,Ceviche de sierra estilo Nayarit,Grande 400g,208,208,208,,0,
+Ceviches,Ceviche de camarón,Mediano 300g,338,338,338,312,0,Camarón curtido en limón con pepino jitomate cebolla cilantro y serrano
+Ceviches,Ceviche de camarón,Grande 400g,398,398,398,,0,
+Ceviches,Ceviche de camarón cocido,Mediano 300g,338,338,338,312,0,
+Ceviches,Ceviche de camarón cocido,Grande 400g,398,398,398,,0,
+Ceviches,Ceviche de pulpo,Única 300g,,,,312,0,
+Ceviches,Ceviche especial La Ola,Mediano 300g,338,338,338,312,0,Camarón cocido camarón curtido y pulpo
+Ceviches,Ceviche especial La Ola,Grande 400g,398,398,398,,0,
+Ceviches,Ceviche de camarón seco,Mediano 300g,338,338,338,312,0,
+Ceviches,Ceviche de camarón seco,Grande 400g,398,398,398,,0,
+Ceviches,Ceviche Mexcalteca,Única 300g,,,,312,0,Camarón crudo y camarón seco
+Ceviches,Ceviche especial Santa Cruz,Mediano 300g,338,338,338,312,0,Camarón cocido camarón curtido pulpo y camarón seco
+Ceviches,Ceviche especial Santa Cruz,Grande 400g,398,398,398,,0,
+Ceviches,Ceviche Santa Cruz + callo de hacha,Mediano 300g,398,398,398,362,0,
+Ceviches,Ceviche Santa Cruz + callo de hacha,Grande 400g,468,468,468,,0,
+Ceviches,Ceviche de róbalo,Mediano 300g,378,378,378,362,0,Filete de róbalo fresco en cuadritos con toque de habanero
+Ceviches,Ceviche de róbalo,Grande 400g,458,458,458,,0,
+Ceviches,Ceviche San Blas,Mediano 300g,398,398,398,362,0,Camarón cocido camarón curtido pulpo y callo de hacha
+Ceviches,Ceviche San Blas,Grande 400g,468,468,468,,0,
+Ceviches,Ceviche de atún,Mediano 300g,378,378,378,362,0,Atún fresco en cubos bañado en salsas negras. En Solares: Negro de atún
+Ceviches,Ceviche de atún,Grande 400g,458,458,458,,0,
+Ensaladas,Ensalada de camarón cocido,Mediano 300g,338,338,338,312,0,Pídela al natural salseada o bañada con chiltepín. Solares porción única 300g
+Ensaladas,Ensalada de camarón cocido,Grande 400g,398,398,398,,0,
+Ensaladas,Ensalada de pulpo,Mediano 300g,338,338,338,312,0,
+Ensaladas,Ensalada de pulpo,Grande 400g,398,398,398,,0,
+Ensaladas,Ensalada mixta,Mediano 300g,338,338,338,312,0,Camarón y pulpo
+Ensaladas,Ensalada mixta,Grande 400g,398,398,398,,0,
+Ensaladas,Ensalada especial La Ola,Mediano 300g,338,338,338,312,0,Camarón cocido camarón curtido y pulpo
+Ensaladas,Ensalada especial La Ola,Grande 400g,398,398,398,,0,
+Ensaladas,Ensalada especial San Blas,Mediano 300g,388,388,388,362,0,Con callo de hacha
+Ensaladas,Ensalada especial San Blas,Grande 400g,468,468,468,,0,
+Ensaladas,Ensalada de callo de hacha,Mediano 300g,598,598,598,688,0,
+Ensaladas,Ensalada de callo de hacha,Grande 400g,798,798,798,,0,
+Aguachiles,Aguachile de camarón,Mediano 300g,338,338,338,312,0,Pídelo tradicional verde rojo de chiltepín o negro salseado. Solares porción única 300g
+Aguachiles,Aguachile de camarón,Grande 400g,398,398,398,,0,
+Aguachiles,Aguachile de camarón cocido,Mediano 300g,338,338,338,312,0,
+Aguachiles,Aguachile de camarón cocido,Grande 400g,398,398,398,,0,
+Aguachiles,Aguachile de pulpo,Mediano 300g,338,338,338,312,0,
+Aguachiles,Aguachile de pulpo,Grande 400g,398,398,398,,0,
+Aguachiles,Aguachile mixto,Mediano 300g,338,338,338,312,0,Camarón y pulpo
+Aguachiles,Aguachile mixto,Grande 400g,398,398,398,,0,
+Aguachiles,Aguachile Mexcalteca,Única 300g,,,,312,0,Camarón crudo y camarón seco
+Aguachiles,Aguachile de camarón seco,Única 300g,,,,332,0,
+Aguachiles,Aguachile especial La Ola,Mediano 300g,338,338,338,332,0,Camarón cocido camarón curtido y pulpo
+Aguachiles,Aguachile especial La Ola,Grande 400g,398,398,398,,0,
+Aguachiles,Aguachile Santa Cruz,Mediano 300g,338,338,338,332,0,Con camarón seco
+Aguachiles,Aguachile Santa Cruz,Grande 400g,398,398,398,,0,
+Aguachiles,Aguachile Santa Cruz + callo de hacha,Mediano 300g,388,388,388,362,0,
+Aguachiles,Aguachile Santa Cruz + callo de hacha,Grande 400g,468,468,468,,0,
+Aguachiles,Aguachile especial de camarón,Mediano 300g,338,338,338,332,0,Camarón cocido curtido y seco
+Aguachiles,Aguachile especial de camarón,Grande 400g,398,398,398,,0,
+Aguachiles,Aguachile especial San Blas,Mediano 300g,388,388,388,362,0,Con callo de hacha
+Aguachiles,Aguachile especial San Blas,Grande 400g,468,468,468,,0,
+Aguachiles,Aguachile de callo de hacha,Mediano 300g,598,598,598,,0,
+Aguachiles,Aguachile de callo de hacha,Grande 400g,798,798,798,,0,
+Aguachiles,Montado con callo de hacha,Mediano 300g,438,438,438,362,0,Callo de hacha montado sobre aguachile de camarón
+Aguachiles,Montado con callo de hacha,Grande 400g,498,498,498,,0,
+Camarones,Camarones a la diabla,300g,308,308,308,312,0,Pídelos suaves normales o picantes. Acompañados de papas arroz y plátano frito
+Camarones,Camarones a la plancha,300g,308,308,308,312,0,
+Camarones,Camarones a la mantequilla,300g,308,308,308,312,0,
+Camarones,Camarones al mojo de ajo,300g,308,308,308,312,0,
+Camarones,Camarones al coco,300g,308,308,308,312,0,
+Camarones,Camarones al ajillo,300g,308,308,308,312,0,
+Camarones,Camarones empanizados,300g,308,308,308,312,0,
+Camarones,Momias Coras,300g,308,308,308,312,0,Camarón con queso envueltos en tocino
+Camarones,Camarones Philadelphia,300g,308,308,308,,0,Rellenos de queso philadelphia empanizados con panko
+Camarones,Camarones a la Frank,300g,308,308,308,312,0,Cremosos con mezcla de philadelphia y cheddar
+Pulpo,Pulpo a la diabla,300g,308,308,308,312,0,Pulpo maya premium. Acompañado de papas arroz y plátano frito
+Pulpo,Pulpo a la plancha,300g,308,308,308,312,0,
+Pulpo,Pulpo a la mantequilla,300g,308,308,308,312,0,
+Pulpo,Pulpo al mojo de ajo,300g,308,308,308,312,0,
+Pulpo,Pulpo al ajillo,300g,308,308,308,312,0,Ajo chile de árbol y aceite de oliva
+Filete de Róbalo,Filete a la diabla,300g,308,308,308,312,0,Acompañado de papas arroz y plátano frito
+Filete de Róbalo,Filete a la plancha,300g,308,308,308,312,0,
+Filete de Róbalo,Filete a la mantequilla,300g,308,308,308,312,0,
+Filete de Róbalo,Filete al mojo de ajo,300g,308,308,308,312,0,
+Filete de Róbalo,Filete empanizado,300g,308,308,308,312,0,
+Filete de Róbalo,Filete al ajillo,300g,308,308,308,312,0,
+Filete de Róbalo,Filete especial del Rey,300g,308,308,308,312,0,Róbalo con camarón pulpo y queso cheddar
+Zarandeados,Pescado zarandeado (róbalo),1/2 kg,228,,,,0,Solo en menú Del Valle. VALIDAR sucursales donde aplica
+Zarandeados,Pescado zarandeado (róbalo),1 kg,428,,,,0,
+Zarandeados,Carne zarandeada (filete de res),1/2 kg,228,,,,0,
+Zarandeados,Carne zarandeada (filete de res),1 kg,428,,,,0,
+Zarandeados,Camarón zarandeado,1/2 kg,228,,,,0,
+Zarandeados,Camarón zarandeado,1 kg,428,,,,0,
+Zarandeados,Costilla zarandeada,1/2 kg,168,,,,0,
+Zarandeados,Costilla zarandeada,1 kg,298,,,,0,
+Zarandeados,Tasajo de cerdo zarandeado,1/2 kg,168,,,,0,
+Zarandeados,Tasajo de cerdo zarandeado,1 kg,298,,,,0,
+Manitas de Jaiba,Manitas de jaiba,350g,,,,490,0,A la diabla plancha mantequilla mojo de ajo ajillo o al vapor
+Hamburguesas,Hamburguesa de camarón,250g,,,,202,0,
+Hamburguesas,Hamburguesa La Ola,250g,,,,202,0,Camarón y pulpo
+Pizza,Pizza de jamón,17 cm,118,118,118,,0,
+Pizza,Pizza de salchicha,17 cm,118,118,118,,0,
+Pizza,Pizza hawaiana,17 cm,118,118,118,,0,
+Pizza,Pizza de camarón,17 cm,148,148,148,,0,
+Pizza,Pizza de camarón con piña,17 cm,148,148,148,,0,
+Pizza,Pizza de camarones a la diabla,17 cm,148,148,148,,0,
+Snacks,Boneless,10 piezas,168,168,168,148,0,BBQ buffalo red hot franks o mango habanero. Con papas a la francesa
+Snacks,Alitas de pollo,10 piezas,,,168,,0,BBQ buffalo red hot franks o mango habanero. Con papas a la francesa
+Snacks,Carnes frías,200g,128,128,128,108,0,Jamón salchicha y queso cheddar en cubos
+Snacks,Papas a la francesa,120g,78,78,78,58,0,
+Menú Infantil,Quesadillas natural jamón o salchicha,2 piezas,78,78,78,78,0,Acompañadas con arroz y papas a la francesa
+Menú Infantil,Quesadillas de camarón o pulpo,2 piezas,98,98,98,109,0,Acompañadas con arroz y papas a la francesa
+Menú Infantil,Mini filete al gusto,100g,128,128,128,152,0,Acompañado con arroz y papas a la francesa
+Postres,Plátanos fritos,150g,64,64,64,78,0,Con lechera
+Postres,Pay,150g,64,64,64,,0,Fresa guayaba o calabaza
+Postres,Flan,150g,64,64,64,,0,Cajeta o caramelo
+Postres,Mini pastel de brownie,150g,64,,64,,0,VALIDAR: aparece en Valle y Cervecería no en Brisas
+Postres,Pastel red velvet,150g,,,,78,0,Marisa
+Postres,Gelatina de cajeta,150g,,,,78,0,Marisa
+Postres,Helados Bök,1 pieza,,,,49,0,Varios sabores
+Bebidas sin alcohol,Refresco,355 ml,39,39,39,42,0,Coca-Cola Light Sin azúcar Sprite Topo Chico Fresca Fanta Mundet
+Bebidas sin alcohol,Squirt,355 ml,39,39,39,,0,
+Bebidas sin alcohol,Boost,235 ml,39,39,39,,0,
+Bebidas sin alcohol,Agua Delixis,500 ml,39,39,39,,0,Té de jazmín jamaica horchata
+Bebidas sin alcohol,Agua de sabor,500 ml,,,,42,0,Tamarindo jamaica pepino-limón horchata de fresa
+Bebidas sin alcohol,Felix,355 ml,,,,42,0,Schorle agua mineral con jugo de frutas
+Bebidas sin alcohol,Fuze tea,600 ml,,,,42,0,
+Bebidas sin alcohol,Agua Ciel embotellada,600 ml,29,29,29,42,0,
+Bebidas sin alcohol,Café americano,300 ml,39,39,39,52,0,
+Bebidas sin alcohol,Limonada / Naranjada,Mediano 450 ml,49,49,49,62,0,
+Bebidas sin alcohol,Limonada / Naranjada,Grande 900 ml,98,98,98,,0,
+Bebidas sin alcohol,Piñada / Fresada,Mediano 450 ml,49,49,49,72,0,
+Bebidas sin alcohol,Piñada / Fresada,Grande 900 ml,98,98,98,,0,
+Bebidas sin alcohol,Agua fresca,Mediano 450 ml,29,,29,,0,VALIDAR: no aparece en menú Brisas
+Bebidas sin alcohol,Agua fresca,Grande 900 ml,58,,58,,0,
+Bebidas sin alcohol,Coco natural,1 pieza,,,50,80,0,
+Bebidas preparadas,Michelada La Ola,120g + 800 ml,178,178,178,,1,Con camarón cocido camarón seco y pulpo
+Bebidas preparadas,Cielo rojo / Chelada / Michelada,Mediano 450 ml,52,52,58,72,1,Solares 500 ml
+Bebidas preparadas,Cielo rojo / Chelada / Michelada,Grande 900 ml,104,104,116,,1,
+Bebidas preparadas,Michelada salseada,Mediano 450 ml,52,52,58,,1,Sin clamato
+Bebidas preparadas,Michelada salseada,Grande 900 ml,104,104,116,,1,
+Bebidas preparadas,Michelada de sabor,Mediano 450 ml,52,52,58,72,1,Mango piña o tamarindo
+Bebidas preparadas,Michelada de sabor,Grande 900 ml,104,104,116,,1,
+Bebidas preparadas,Piña colada,Mediano,78,78,98,98,1,
+Bebidas preparadas,Piña colada,Grande,148,148,178,,1,
+Bebidas preparadas,Cerveza española,Mediano,78,78,98,98,1,
+Bebidas preparadas,Cerveza española,Grande,148,148,178,,1,
+Bebidas preparadas,Sangría,Mediano,78,78,98,,1,
+Bebidas preparadas,Sangría,Grande,148,148,178,,1,
+Bebidas preparadas,Margarita,Mediano,78,78,98,,1,
+Bebidas preparadas,Margarita,Grande,148,148,178,,1,
+Bebidas preparadas,Paloma,300 ml,98,98,98,,1,
+Bebidas preparadas,Mezcalitas,240 ml,98,98,98,98,1,Jamaica pepino mandarina maracuyá mango
+Bebidas preparadas,Aperol,180 ml,98,98,98,,1,Spritz veraniego tropical
+Bebidas preparadas,Mojito,300 ml,78,78,98,98,1,Solares 500 ml
+Bebidas preparadas,Clericot,300 ml,78,78,98,98,1,Solares 355 ml
+Bebidas preparadas,Perla Negra,300 ml,128,128,128,,1,
+Bebidas preparadas,Coco La Ola,1 pieza,,,128,120,1,Agua de coco limón jarabe tequila vodka ron ginebra y controy
+Bebidas preparadas,Cantarito,500 ml,,,,120,1,
+Bebidas preparadas,Tinto de verano,355 ml,,,,98,1,
+Bebidas preparadas,Calimocho,355 ml,,,,98,1,
+Bebidas preparadas,Painkiller,355 ml,,,,98,1,Bacardi crema de coco naranja piña
+Bebidas preparadas,Vaso chelado,Único,10,10,10,12,0,
+Bebidas preparadas,Vaso michelado,Único,20,20,20,22,0,
+Bebidas preparadas,Vaso salseado,Único,15,15,15,,0,
+Cervezas,Pacífico,Media 210 ml,24,24,24,28,1,
+Cervezas,Pacífico,355 ml,48,48,48,56,1,En Solares: Pacífico clara
+Cervezas,Pacífico,Mega 940 ml,108,108,108,,1,
+Cervezas,Pacífico Light,Media 210 ml,24,24,24,,1,
+Cervezas,Pacífico Light,355 ml,48,48,48,,1,
+Cervezas,Pacífico Light,Mega 940 ml,108,108,108,,1,
+Cervezas,Pacífico Suave,355 ml,48,48,48,56,1,
+Cervezas,Corona,Media 210 ml,24,24,24,28,1,
+Cervezas,Corona,355 ml,48,48,48,56,1,
+Cervezas,Corona,Mega 940 ml,108,108,108,,1,
+Cervezas,Corona Light,Media 210 ml,24,24,24,28,1,
+Cervezas,Corona Light,355 ml,48,48,48,56,1,
+Cervezas,Corona Light,Mega 940 ml,108,108,108,,1,
+Cervezas,Corona Ámbar,Media 210 ml,,,,28,1,
+Cervezas,Corona Ámbar,355 ml,,,,56,1,
+Cervezas,Corona Cero,Media 210 ml,,,,28,1,
+Cervezas,Corona Cero,355 ml,48,48,48,56,1,En Valle/Brisas/Cervecería: Coronita Cero
+Cervezas,Victoria,Media 210 ml,24,24,24,28,1,
+Cervezas,Victoria,355 ml,48,48,48,56,1,
+Cervezas,Victoria,Mega 940 ml,108,108,108,,1,
+Cervezas,Ultra,355 ml,58,58,58,62,1,En Solares: Michelob Ultra
+Cervezas,Ultra,Mega 940 ml,108,108,108,,1,
+Cervezas,Modelo Especial,355 ml,58,58,58,62,1,
+Cervezas,Modelo Especial,Mega 940 ml,108,108,108,,1,
+Cervezas,Negra Modelo,355 ml,58,58,58,62,1,
+Cervezas,Stella Artois,355 ml,,,,62,1,
+Cervezas,Corona Light lata,355 ml,48,48,48,,1,
+Cervezas,Corona Cero lata,355 ml,48,48,48,,1,
+Cervezas,Modelo Especial lata,355 ml,,,48,,1,
+Cervezas,Cerveza San Blas Agüita de Mar,Artesanal 355 ml,,,,89,1,
+Cervezas,Cerveza San Blas Beach Lager,Artesanal 355 ml,,,,89,1,
+Cervezas,Cerveza San Blas Negra Tovara,Artesanal 355 ml,,,,89,1,

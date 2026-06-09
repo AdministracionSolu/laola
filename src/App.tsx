@@ -25,6 +25,9 @@ import Compras from "./pages/Compras";
 import ProveedorPortal from "./pages/ProveedorPortal";
 import DepurarProveedores from "./pages/DepurarProveedores";
 import OperacionesLayout from "./components/operaciones/OperacionesLayout";
+import Ordenar from "./pages/Ordenar";
+import SeguimientoPedido from "./pages/SeguimientoPedido";
+import PanelPedidosEnLinea from "./pages/PanelPedidosEnLinea";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +43,10 @@ const App = () => (
           <Route path="/menu" element={<Menu />} />
           <Route path="/sucursales" element={<Sucursales />} />
           <Route path="/contacto" element={<Contacto />} />
+          {/* Pedidos en línea (cliente final, público) */}
+          <Route path="/ordenar" element={<Ordenar />} />
+          <Route path="/ordenar/:slugSucursal" element={<Ordenar />} />
+          <Route path="/pedido/:token" element={<SeguimientoPedido />} />
           {/* Centro de Operaciones: igual que antes (sin gate) */}
           <Route path="/centro-de-operaciones" element={<CentroOperaciones />} />
           <Route path="/centro-de-operaciones/cortes" element={<Corte />} />
@@ -54,6 +61,8 @@ const App = () => (
             <Route path="/pedidos" element={<PedidosHome />} />
             <Route path="/pedidos/hacer" element={<Pedidos />} />
             <Route path="/pedidos/recepcion" element={<Recepciones />} />
+            {/* Panel de pedidos en línea (staff de sucursal) */}
+            <Route path="/pedidos-en-linea" element={<PanelPedidosEnLinea />} />
           </Route>
           {/* Redirects de rutas anteriores */}
           <Route path="/centro-de-operaciones/pedidos" element={<Navigate to="/pedidos/hacer" replace />} />

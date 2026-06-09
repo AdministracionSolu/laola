@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Package, Truck, MapPin, RefreshCw } from "lucide-react";
+import { Package, Truck, MapPin, RefreshCw, Bike } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 import { useSucursal } from "@/contexts/SucursalContext";
@@ -75,6 +75,16 @@ export default function PedidosHome() {
             {yaRecibido && (
               <span className="text-xs font-normal opacity-90">Recibido ✓</span>
             )}
+          </Button>
+
+          <Button
+            variant="outline"
+            className="w-full h-24 flex flex-col gap-1 text-lg"
+            onClick={() => navigate("/pedidos-en-linea")}
+          >
+            <Bike className="w-7 h-7" />
+            <span className="font-bold">PEDIDOS EN LÍNEA</span>
+            <span className="text-xs font-normal opacity-90">Pedidos de clientes (web)</span>
           </Button>
         </div>
       </div>

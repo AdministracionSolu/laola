@@ -8,6 +8,7 @@ import logoLaOla from "@/assets/logo-la-ola.jpeg";
 const navLinks = [
   { href: "/", label: "Inicio" },
   { href: "/menu", label: "Menú" },
+  { href: "/ordenar", label: "Ordenar en línea" },
   { href: "/sucursales", label: "Sucursales" },
   { href: "/contacto", label: "Contacto" },
 ];
