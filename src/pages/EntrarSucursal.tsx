@@ -4,8 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, MapPin } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
-// Liga/QR por sucursal: fija la sucursal (bloqueada) y entra al hub de pedidos.
-export default function EntrarSucursal() {
+// Liga/QR por sucursal: fija la sucursal (bloqueada) y entra al destino.
+export default function EntrarSucursal({ destino = "/pedidos" }: { destino?: string }) {
   const { sucursalId = "" } = useParams();
   const [estado, setEstado] = useState<"cargando" | "ok" | "error">("cargando");
 
@@ -27,7 +27,7 @@ export default function EntrarSucursal() {
       });
   }, [sucursalId]);
 
-  if (estado === "ok") return <Navigate to="/pedidos" replace />;
+  if (estado === "ok") return <Navigate to={destino} replace />;
 
   if (estado === "error") {
     return (

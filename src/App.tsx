@@ -44,8 +44,9 @@ const App = () => (
           <Route path="/centro-de-operaciones/cortes" element={<Corte />} />
           <Route path="/centro-de-operaciones/reservaciones" element={<Reservaciones />} />
           <Route path="/centro-de-operaciones/contadoras" element={<Contadoras />} />
-          {/* Liga/QR por sucursal: fija la sucursal (bloqueada) y entra a /pedidos */}
-          <Route path="/pedidos/s/:sucursalId" element={<EntrarSucursal />} />
+          {/* Liga/QR por sucursal: fija la sucursal (bloqueada) y entra al destino */}
+          <Route path="/pedidos/s/:sucursalId" element={<EntrarSucursal destino="/pedidos/hacer" />} />
+          <Route path="/recepcion/s/:sucursalId" element={<EntrarSucursal destino="/pedidos/recepcion" />} />
           {/* Pedidos: slug propio con gate de sucursal */}
           <Route element={<OperacionesLayout />}>
             <Route path="/pedidos" element={<PedidosHome />} />
