@@ -147,8 +147,12 @@ permite acceso al rol `authenticated`; el PIN por dispositivo no protege la API.
   y el folio diario se calculan con `sucursales.zona_horaria` tanto en la RPC como en el front.
 - **Descripciones "Marisa"** (Pastel red velvet / Gelatina de cajeta en Solares) vienen así
   del CSV; se muestran tal cual. Editar en `menu_items.descripcion` si no se desea.
-- **Carrito por sucursal**: vive en localStorage ligado a la sucursal; cambiar de sucursal
-  pide confirmación y lo vacía (los precios difieren).
+- **Carrito por sucursal**: vive en localStorage ligado a la sucursal. Al cambiar de
+  sucursal NO se pierde el pedido: se ofrece migrarlo (se re-precia con los precios de la
+  nueva sucursal y se descarta, avisando, lo que no se venda ahí) o empezar de cero.
+- **Registro ligero (sin cuentas)**: nombre, teléfono, dirección y referencias se recuerdan
+  en localStorage del dispositivo y se precargan en el checkout. Si la sucursal tiene una
+  sola zona de reparto activa, se selecciona sola (el cliente solo escribe su dirección).
 - **Tipos de Supabase**: `types.ts` es generado por Lovable y aún no conoce las tablas nuevas;
   `src/lib/pedidosEnLinea.ts` expone un cliente con tipos manuales para no tocar ese archivo.
 

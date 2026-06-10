@@ -169,6 +169,40 @@ export interface LineaCarrito {
   agotado?: boolean;
 }
 
+// ---------- Datos del cliente (registro ligero, sin cuentas) ----------
+// Se recuerdan en el dispositivo para precargar el checkout la próxima vez.
+export interface DatosCliente {
+  nombre: string;
+  telefono: string;
+  direccion: string;
+  referencias: string;
+}
+
+const LS_CLIENTE = "laola_datos_cliente";
+
+export function leerDatosCliente(): DatosCliente | null {
+  try {
+    const crudo = localStorage.getItem(LS_CLIENTE);
+    if (!crudo) return null;
+    const datos = JSON.parse(crudo) as DatosCliente;
+    return typeof datos.nombre === "string" ? datos : null;
+  } catch {
+    return null;
+  }
+}
+
+export function guardarDatosCliente(datos: DatosCliente): void {
+  try {
+    localStorage.setItem(LS_CLIENTE, JSON.stringify(datos));
+  } catch {
+    // almacenamiento lleno o bloqueado: no es crítico
+  }
+}
+
+export function olvidarDatosCliente(): void {
+  localStorage.removeItem(LS_CLIENTE);
+}
+
 // ---------- Utilerías ----------
 export function dinero(n: number): string {
   return `$${Number(n).toLocaleString("es-MX", {

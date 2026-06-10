@@ -9,7 +9,8 @@ export interface CarritoGuardado {
   lineas: LineaCarrito[];
 }
 
-function leerCarrito(): CarritoGuardado | null {
+/** Lectura directa (para banners fuera del hook, p. ej. el selector de sucursal). */
+export function leerCarritoGuardado(): CarritoGuardado | null {
   try {
     const crudo = localStorage.getItem(LS_CARRITO);
     if (!crudo) return null;
@@ -20,6 +21,8 @@ function leerCarrito(): CarritoGuardado | null {
     return null;
   }
 }
+
+const leerCarrito = leerCarritoGuardado;
 
 /**
  * Carrito del cliente en localStorage, ligado a UNA sucursal
@@ -33,9 +36,18 @@ export function useCarrito(sucursalId: string | null) {
     else localStorage.removeItem(LS_CARRITO);
   }, [carrito]);
 
-  /** Carrito de OTRA sucursal: hay que confirmar y vaciar antes de agregar aquí. */
+  /** Carrito iniciado en OTRA sucursal (se ofrece migrarlo o vaciarlo). */
   const deOtraSucursal =
     carrito !== null && sucursalId !== null && carrito.sucursalId !== sucursalId && carrito.lineas.length > 0;
+
+  /** Resumen del carrito ajeno, para el diálogo de migración. */
+  const ajeno = deOtraSucursal
+    ? {
+        sucursalNombre: carrito.sucursalNombre,
+        numItems: carrito.lineas.reduce((acc, l) => acc + l.cantidad, 0),
+        lineas: carrito.lineas,
+      }
+    : null;
 
   const lineas = carrito && carrito.sucursalId === sucursalId ? carrito.lineas : [];
   const numItems = lineas.reduce((acc, l) => acc + l.cantidad, 0);
@@ -95,6 +107,35 @@ export function useCarrito(sucursalId: string | null) {
 
   const vaciar = useCallback(() => setCarrito(null), []);
 
+  /**
+   * Pasa el carrito a otra sucursal SIN rehacer el pedido: re-precia cada línea
+   * con los precios de la nueva sucursal y descarta lo que no se venda ahí.
+   * Regresa los nombres de los items descartados (para avisar al cliente).
+   */
+  const migrar = useCallback(
+    (nuevaSucursalId: string, nuevaSucursalNombre: string, precios: Map<string, number>): string[] => {
+      const actual = leerCarritoGuardado();
+      if (!actual) return [];
+      const eliminadas: string[] = [];
+      const lineasNuevas: LineaCarrito[] = [];
+      for (const linea of actual.lineas) {
+        const precio = precios.get(linea.variante_id);
+        if (precio === undefined) {
+          eliminadas.push(linea.nombre_item);
+        } else {
+          lineasNuevas.push({ ...linea, precio, agotado: false });
+        }
+      }
+      setCarrito(
+        lineasNuevas.length === 0
+          ? null
+          : { sucursalId: nuevaSucursalId, sucursalNombre: nuevaSucursalNombre, lineas: lineasNuevas }
+      );
+      return [...new Set(eliminadas)];
+    },
+    []
+  );
+
   /** Marca como agotadas las líneas de un item que la RPC rechazó. */
   const marcarAgotado = useCallback((nombreItem: string) => {
     const limpio = nombreItem.replace(/\s*\(.+\)\s*$/, ""); // sin "(variante)"
@@ -114,10 +155,12 @@ export function useCarrito(sucursalId: string | null) {
     numItems,
     subtotal,
     deOtraSucursal,
+    ajeno,
     agregar,
     cambiarCantidad,
     quitar,
     vaciar,
+    migrar,
     marcarAgotado,
   };
 }

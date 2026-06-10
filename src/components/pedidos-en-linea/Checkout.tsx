@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +16,9 @@ import { toast } from "sonner";
 import {
   db,
   dinero,
+  guardarDatosCliente,
   itemAgotadoDeError,
+  leerDatosCliente,
   mensajeErrorPedido,
   normalizarTelefono,
   type LineaCarrito,
@@ -44,14 +46,21 @@ export default function Checkout({
   onItemAgotado,
 }: Props) {
   const navigate = useNavigate();
+  // Registro ligero: los datos del cliente se recuerdan en este dispositivo
+  const recordado = useMemo(() => leerDatosCliente(), []);
   const [tipo, setTipo] = useState<"recoger" | "reparto">("recoger");
-  const [nombre, setNombre] = useState("");
-  const [telefono, setTelefono] = useState("");
+  const [nombre, setNombre] = useState(recordado?.nombre ?? "");
+  const [telefono, setTelefono] = useState(recordado?.telefono ?? "");
   const [zonaId, setZonaId] = useState("");
-  const [direccion, setDireccion] = useState("");
-  const [referencias, setReferencias] = useState("");
+  const [direccion, setDireccion] = useState(recordado?.direccion ?? "");
+  const [referencias, setReferencias] = useState(recordado?.referencias ?? "");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Una sola zona de reparto: se elige sola, sin preguntar
+  useEffect(() => {
+    if (zonas.length === 1) setZonaId(zonas[0].id);
+  }, [zonas]);
 
   const zona = zonas.find((z) => z.id === zonaId) ?? null;
   const costoEnvio = tipo === "reparto" && zona ? Number(zona.costo_envio) : 0;
@@ -104,6 +113,13 @@ export default function Checkout({
         return;
       }
       const resultado = data as { token: string; folio: string; tiempo_estimado_min: number };
+      // Recuerda los datos para la próxima vez (sin cuentas ni contraseñas)
+      guardarDatosCliente({
+        nombre: nombre.trim(),
+        telefono: telefonoNormalizado,
+        direccion: tipo === "reparto" ? direccion.trim() : (recordado?.direccion ?? ""),
+        referencias: tipo === "reparto" ? referencias.trim() : (recordado?.referencias ?? ""),
+      });
       onPedidoCreado();
       toast.success(`¡Pedido ${resultado.folio} enviado!`);
       navigate(`/pedido/${resultado.token}`, { replace: true });
@@ -119,7 +135,16 @@ export default function Checkout({
         <ArrowLeft className="h-4 w-4" /> Volver al menú
       </Button>
       <h1 className="text-2xl font-bold mb-1">Completa tu pedido</h1>
-      <p className="text-muted-foreground mb-4">{sucursal.nombre}</p>
+      <p className="text-muted-foreground mb-4">
+        Estás ordenando en <span className="font-semibold text-foreground">{sucursal.nombre}</span>
+        {" · "}
+        <Link to="/ordenar" className="text-primary font-semibold underline-offset-2 underline">
+          cambiar sucursal
+        </Link>
+        <span className="block text-xs mt-0.5">
+          Si cambias, tu pedido se pasa solito a la otra sucursal.
+        </span>
+      </p>
 
       {/* Recoger / Reparto */}
       <div className="grid grid-cols-2 gap-3 mb-5">
@@ -178,27 +203,34 @@ export default function Checkout({
 
         {tipo === "reparto" && (
           <>
-            <div>
-              <Label className="text-base">Zona de reparto</Label>
-              <Select value={zonaId} onValueChange={setZonaId}>
-                <SelectTrigger className="h-12 text-base mt-1">
-                  <SelectValue placeholder="Elige tu zona" />
-                </SelectTrigger>
-                <SelectContent>
-                  {zonas.map((z) => (
-                    <SelectItem key={z.id} value={z.id} className="text-base">
-                      {z.nombre} · envío {dinero(Number(z.costo_envio))}
-                      {Number(z.pedido_minimo) > 0 ? ` · mínimo ${dinero(Number(z.pedido_minimo))}` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {faltaMinimo > 0 && (
-                <p className="text-sm text-destructive mt-1">
-                  El pedido mínimo para esta zona es {dinero(Number(zona?.pedido_minimo ?? 0))}. Te faltan {dinero(faltaMinimo)}.
-                </p>
-              )}
-            </div>
+            {zonas.length === 1 ? (
+              <p className="text-sm rounded-lg bg-muted px-3 py-2.5">
+                Envío a domicilio: <span className="font-semibold">{dinero(Number(zonas[0].costo_envio))}</span>
+                {Number(zonas[0].pedido_minimo) > 0 && ` · pedido mínimo ${dinero(Number(zonas[0].pedido_minimo))}`}
+              </p>
+            ) : (
+              <div>
+                <Label className="text-base">Zona de reparto</Label>
+                <Select value={zonaId} onValueChange={setZonaId}>
+                  <SelectTrigger className="h-12 text-base mt-1">
+                    <SelectValue placeholder="Elige tu zona" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {zonas.map((z) => (
+                      <SelectItem key={z.id} value={z.id} className="text-base">
+                        {z.nombre} · envío {dinero(Number(z.costo_envio))}
+                        {Number(z.pedido_minimo) > 0 ? ` · mínimo ${dinero(Number(z.pedido_minimo))}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {faltaMinimo > 0 && (
+              <p className="text-sm text-destructive">
+                El pedido mínimo para esta zona es {dinero(Number(zona?.pedido_minimo ?? 0))}. Te faltan {dinero(faltaMinimo)}.
+              </p>
+            )}
             <div>
               <Label htmlFor="direccion" className="text-base">Dirección</Label>
               <Input
