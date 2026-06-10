@@ -107,21 +107,28 @@ permite acceso al rol `authenticated`; el PIN por dispositivo no protege la API.
 
 ## 6. Checklist de salida a producción
 
-- [ ] Aplicar `db/pedidos-en-linea-consolidado.sql` en el SQL Editor.
+> **Estado 2026-06-09:** SQL aplicado y auditado end-to-end. Direcciones y teléfonos
+> reales ya cargados en `sucursales` (tomados de la landing). Las 4 sucursales están
+> **ACTIVAS con horario 24/7 DE PRUEBA**; al terminar las pruebas, aplicar
+> `db/horarios-reales.sql` en el SQL Editor para restaurar los horarios reales
+> (Del Valle 10–23:59 · Brisas 10–18 · Solares 11–20 · Cervecería 11–23:59 y
+> Jue–Sáb hasta las 2 a.m.).
+
+- [x] Aplicar `db/pedidos-en-linea-consolidado.sql` en el SQL Editor.
+- [ ] Al terminar pruebas: aplicar `db/horarios-reales.sql` (quita el 24/7).
 - [ ] **Validar los precios del CSV** con el dueño (en particular las notas `VALIDAR` del CSV:
       Empanada La Ola en Solares, Mini pastel de brownie en Brisas, Agua fresca en Brisas,
       Zarandeados fuera de Del Valle). Las notas `VALIDAR` no se muestran al cliente
       (el seed las recorta de la descripción).
 - [ ] Capturar **zonas de reparto reales** por sucursal (panel → Configuración → Zonas).
       Las 2 'ZONA PENDIENTE' del seed están inactivas; edítalas o bórralas.
-- [ ] Capturar **horarios reales** (el seed deja 11:00–21:00 todos los días).
-- [ ] Capturar **teléfono de contacto** por sucursal (`sucursales.telefono_contacto`) — se usa
-      en tarjetas, fallbacks de error y página de seguimiento. Hoy está vacío (la UI lo oculta).
+- [x] Capturar **horarios reales** → listos en `db/horarios-reales.sql` (aplicar al cerrar pruebas).
+- [x] Capturar **teléfono de contacto** y **direcciones reales** por sucursal (cargados de la landing).
 - [ ] Crear/confirmar usuario de Supabase Auth para el staff e iniciar sesión en las tablets.
 - [ ] Probar un pedido de punta a punta por sucursal (sonido del panel incluido: el navegador
       necesita una interacción previa para reproducir audio).
-- [ ] Activar el **toggle "Recibir pedidos en línea"** por sucursal (panel → Configuración).
-      Todo nace apagado: nadie puede ordenar hasta este paso.
+- [x] Activar el **toggle "Recibir pedidos en línea"** por sucursal — las 4 quedaron activas
+      en modo prueba (apagar desde el panel si se quiere pausar mientras tanto).
 - [ ] Alcohol: dejar `venta_alcohol_en_linea` apagado hasta confirmar permisos por municipio.
 - [ ] Cuando Lovable regenere `types.ts`, opcionalmente migrar `src/lib/pedidosEnLinea.ts`
       al cliente tipado oficial.
