@@ -10,6 +10,9 @@ export interface CatalogoItem {
   nombre: string;
   unidad: string;
   categoria: string;
+  // Producto de talla variable: el proveedor captura hasta 4 gramajes con su
+  // precio (ej. "Camarón fresco"), en vez de un solo precio.
+  porGramaje?: boolean;
 }
 
 export const CATALOGO_PRODUCTOS: CatalogoItem[] = [
@@ -18,17 +21,14 @@ export const CATALOGO_PRODUCTOS: CatalogoItem[] = [
   { nombre: "Camarón 51-60", unidad: "kg", categoria: "Camarón" },
   { nombre: "Camarón 31-35", unidad: "kg", categoria: "Camarón" },
   { nombre: "Camarón 21-25", unidad: "kg", categoria: "Camarón" },
-  { nombre: "Camarón 19g", unidad: "kg", categoria: "Camarón" },
-  { nombre: "Camarón 12-25", unidad: "kg", categoria: "Camarón" },
-  { nombre: "Camarón 7-11", unidad: "kg", categoria: "Camarón" },
-  { nombre: "Camarón vapor 25-30", unidad: "kg", categoria: "Camarón" },
-  { nombre: "Camarón fresco", unidad: "kg", categoria: "Camarón" },
+  { nombre: "Camarón 20-30", unidad: "kg", categoria: "Camarón" },
+  { nombre: "Camarón fresco", unidad: "kg", categoria: "Camarón", porGramaje: true },
   { nombre: "Camarón seco", unidad: "kg", categoria: "Camarón" },
 
   // Pescado y marisco
   { nombre: "Pulpo 2-4", unidad: "kg", categoria: "Pescado y marisco" },
   { nombre: "Marlin ahumado", unidad: "kg", categoria: "Pescado y marisco" },
-  { nombre: "Atún medallón", unidad: "pz", categoria: "Pescado y marisco" },
+  { nombre: "Medallón de atún", unidad: "pz", categoria: "Pescado y marisco" },
   { nombre: "Atún steak", unidad: "kg", categoria: "Pescado y marisco" },
   { nombre: "Róbalo chico", unidad: "kg", categoria: "Pescado y marisco" },
   { nombre: "Róbalo filete", unidad: "kg", categoria: "Pescado y marisco" },

@@ -24,9 +24,9 @@ interface Proveedor {
   contacto: string | null; telefono: string | null; token: string; activo: boolean;
 }
 interface Producto {
-  id: string; proveedor_id: string; nombre: string; unidad: string | null; insumo_id: string | null; activo: boolean;
+  id: string; proveedor_id: string; nombre: string; unidad: string | null; insumo_id: string | null; activo: boolean; por_gramaje: boolean;
 }
-interface PrecioRow { proveedor_producto_id: string; precio: number; created_at: string; }
+interface PrecioRow { proveedor_producto_id: string; precio: number; created_at: string; gramaje: string | null; }
 
 // Etiqueta de frescura del precio: hoy / ayer / hace N días.
 function frescura(fecha: string | null): { hoy: boolean; label: string } | null {
@@ -48,8 +48,8 @@ export default function AdminProveedores() {
     setLoading(true);
     const [provRes, prodRes, preRes] = await Promise.all([
       supabase.from("proveedores").select("*").order("categoria").order("nombre"),
-      supabase.from("proveedor_productos").select("id, proveedor_id, nombre, unidad, insumo_id, activo"),
-      supabase.from("proveedor_precios").select("proveedor_producto_id, precio, created_at").order("created_at", { ascending: false }),
+      supabase.from("proveedor_productos").select("id, proveedor_id, nombre, unidad, insumo_id, activo, por_gramaje"),
+      supabase.from("proveedor_precios").select("proveedor_producto_id, precio, created_at, gramaje").order("created_at", { ascending: false }),
     ]);
     setProveedores((provRes.data ?? []) as Proveedor[]);
     setProductos((prodRes.data ?? []) as Producto[]);
@@ -74,6 +74,17 @@ export default function AdminProveedores() {
     return m;
   }, [precios]);
 
+  // Todas las filas de precio por producto (para los por-gramaje mostramos todas).
+  const preciosPorProducto = useMemo(() => {
+    const m = new Map<string, PrecioRow[]>();
+    precios.forEach((p) => {
+      const arr = m.get(p.proveedor_producto_id) || [];
+      arr.push(p);
+      m.set(p.proveedor_producto_id, arr);
+    });
+    return m;
+  }, [precios]);
+
   const provById = useMemo(() => new Map(proveedores.map((p) => [p.id, p])), [proveedores]);
 
   // ---- Comparativa: agrupa por nombre de producto (sin mapeo manual) ----
@@ -83,15 +94,33 @@ export default function AdminProveedores() {
     productos.forEach((prod) => {
       if (!prod.activo) return;
       const clave = claveProducto(prod.nombre);
-      const vig = vigentePorProducto.get(prod.id);
+      const provNombre = provById.get(prod.proveedor_id)?.nombre || "—";
+      const unidad = prod.unidad || "kg";
       const g = grupos.get(clave) ?? { label: etiquetaProducto(prod.nombre), ofertas: [] };
-      g.ofertas.push({
-        proveedor: provById.get(prod.proveedor_id)?.nombre || "—",
-        producto: prod.nombre,
-        precio: vig ? vig.precio : null,
-        unidad: prod.unidad || "kg",
-        fecha: vig ? vig.fecha : null,
-      });
+      if (prod.por_gramaje) {
+        // Una línea por cada gramaje que capturó el proveedor.
+        const rows = preciosPorProducto.get(prod.id) || [];
+        if (rows.length === 0) {
+          g.ofertas.push({ proveedor: provNombre, producto: prod.nombre, precio: null, unidad, fecha: null });
+        } else {
+          rows.forEach((r) => g.ofertas.push({
+            proveedor: provNombre,
+            producto: r.gramaje ? `${prod.nombre} · ${r.gramaje}` : prod.nombre,
+            precio: Number(r.precio),
+            unidad,
+            fecha: r.created_at,
+          }));
+        }
+      } else {
+        const vig = vigentePorProducto.get(prod.id);
+        g.ofertas.push({
+          proveedor: provNombre,
+          producto: prod.nombre,
+          precio: vig ? vig.precio : null,
+          unidad,
+          fecha: vig ? vig.fecha : null,
+        });
+      }
       grupos.set(clave, g);
     });
     return Array.from(grupos.values())
@@ -108,7 +137,7 @@ export default function AdminProveedores() {
       })
       // Primero los que se pueden comparar (2+ proveedores), luego alfabético.
       .sort((a, b) => (b.numProveedores > 1 ? 1 : 0) - (a.numProveedores > 1 ? 1 : 0) || a.label.localeCompare(b.label));
-  }, [productos, vigentePorProducto, provById]);
+  }, [productos, vigentePorProducto, preciosPorProducto, provById]);
 
   const exportComparativa = () => {
     const filas = comparativa.flatMap((c) =>
@@ -171,7 +200,7 @@ export default function AdminProveedores() {
       } else {
         const { data, error } = await supabase
           .from("proveedor_productos")
-          .insert({ proveedor_id: provSel, nombre: item.nombre, unidad: item.unidad })
+          .insert({ proveedor_id: provSel, nombre: item.nombre, unidad: item.unidad, por_gramaje: item.porGramaje ?? false })
           .select()
           .single();
         if (error || !data) { toast.error("No se pudo agregar"); return; }

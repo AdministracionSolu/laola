@@ -16,7 +16,7 @@ export const PROTEINAS: ProteinaDef[] = [
   { variantes: ["CAMARON 31-35", "Camarón 31-35"], display: "Camarón 31-35", unidad: "kg", orden: 2 },
   { variantes: ["CAMARON 21-25", "Camarón 21-25"], display: "Camarón 21-25", unidad: "kg", orden: 3 },
   { variantes: ["PULPO 2-4", "Pulpo 2-4"], display: "Pulpo 2-4", unidad: "kg", orden: 4 },
-  { variantes: ["ATÚN MEDALLON pz", "ATUN MEDALLON pz", "Atún medallón"], display: "Atún medallón", unidad: "pz", orden: 5 },
+  { variantes: ["ATÚN MEDALLON pz", "ATUN MEDALLON pz", "Atún medallón", "Medallón de atún"], display: "Medallón de atún", unidad: "pz", orden: 5 },
   { variantes: ["MARLIN AHUMADO K.", "Marlin ahumado"], display: "Marlin ahumado", unidad: "kg", orden: 6 },
   { variantes: ["ROBALO (chicharrón)", "ROBALO (chicharron)", "Robalo chico"], display: "Robalo chico", unidad: "kg", orden: 7 },
   { variantes: ["ROBALO (filete)", "Robalo filete"], display: "Robalo filete", unidad: "kg", orden: 8 },
