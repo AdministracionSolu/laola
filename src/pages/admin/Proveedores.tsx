@@ -11,8 +11,9 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, RefreshCw, Copy, Loader2, Scale, Link2, GitMerge, Download, Package, Plus, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, RefreshCw, Copy, Loader2, Scale, Link2, Download, Package, Plus, Eye, EyeOff, Wand2 } from "lucide-react";
 import { toast } from "sonner";
+import { differenceInCalendarDays, parseISO } from "date-fns";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 import { infoProteina, esProteina } from "@/lib/proteinas";
 import { exportarExcel } from "@/lib/exportar";
@@ -29,6 +30,15 @@ interface Producto {
 }
 interface PrecioRow { proveedor_producto_id: string; precio: number; created_at: string; }
 interface InsumoLite { id: string; nombre: string; }
+
+// Etiqueta de frescura del precio: hoy / hace N días.
+function frescura(fecha: string | null): { hoy: boolean; label: string } | null {
+  if (!fecha) return null;
+  const dias = differenceInCalendarDays(new Date(), parseISO(fecha));
+  if (dias <= 0) return { hoy: true, label: "hoy" };
+  if (dias === 1) return { hoy: false, label: "ayer" };
+  return { hoy: false, label: `hace ${dias} días` };
+}
 
 export default function AdminProveedores() {
   const navigate = useNavigate();
@@ -76,28 +86,45 @@ export default function AdminProveedores() {
     return i ? (infoProteina(i.nombre)?.display ?? i.nombre) : "—";
   };
 
-  // ---- Comparativa por insumo interno ----
+  // Sugerencia de mapeo por coincidencia de nombre (proteína reconocida).
+  const sugerirInsumo = useCallback(
+    (prodNombre: string): string | null => {
+      const info = infoProteina(prodNombre);
+      if (!info) return null;
+      const match = insumos.find((i) => infoProteina(i.nombre) === info);
+      return match?.id ?? null;
+    },
+    [insumos]
+  );
+
+  // ---- Comparativa por insumo interno (incluye pendientes sin precio) ----
   const comparativa = useMemo(() => {
-    const porInsumo = new Map<string, { proveedor: string; producto: string; precio: number; unidad: string }[]>();
+    interface Oferta { proveedor: string; producto: string; precio: number | null; unidad: string; fecha: string | null; }
+    const porInsumo = new Map<string, Oferta[]>();
     productos.forEach((prod) => {
       if (!prod.insumo_id || !prod.activo) return;
       const vig = vigentePorProducto.get(prod.id);
-      if (!vig) return;
       const arr = porInsumo.get(prod.insumo_id) || [];
       arr.push({
         proveedor: provById.get(prod.proveedor_id)?.nombre || "—",
         producto: prod.nombre,
-        precio: vig.precio,
+        precio: vig ? vig.precio : null,
         unidad: prod.unidad || "kg",
+        fecha: vig ? vig.fecha : null,
       });
       porInsumo.set(prod.insumo_id, arr);
     });
     return Array.from(porInsumo.entries())
-      .map(([insumoId, ofertas]) => ({
-        insumo: nombreInterno(insumoId),
-        ofertas: ofertas.sort((a, b) => a.precio - b.precio),
-        masBarato: Math.min(...ofertas.map((o) => o.precio)),
-      }))
+      .map(([insumoId, ofertas]) => {
+        const conPrecio = ofertas.filter((o) => o.precio != null) as (Oferta & { precio: number })[];
+        const pendientes = ofertas.filter((o) => o.precio == null);
+        return {
+          insumo: nombreInterno(insumoId),
+          ofertas: conPrecio.sort((a, b) => a.precio - b.precio),
+          pendientes,
+          masBarato: conPrecio.length ? Math.min(...conPrecio.map((o) => o.precio)) : null,
+        };
+      })
       .sort((a, b) => a.insumo.localeCompare(b.insumo));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productos, vigentePorProducto, provById, insumos]);
@@ -106,16 +133,13 @@ export default function AdminProveedores() {
     const filas = comparativa.flatMap((c) =>
       c.ofertas.map((o) => ({
         Insumo: c.insumo, Proveedor: o.proveedor, Producto: o.producto,
-        Precio: o.precio, Unidad: o.unidad, "Más barato": o.precio === c.masBarato ? "SÍ" : "",
+        Precio: o.precio, Unidad: o.unidad,
+        "Más barato": o.precio === c.masBarato ? "SÍ" : "",
+        Actualizado: frescura(o.fecha)?.label ?? "",
       }))
     );
     exportarExcel(filas, "comparativa_precios");
   };
-
-  const sinMapeo = useMemo(
-    () => productos.filter((p) => !p.insumo_id),
-    [productos]
-  );
 
   const setMapeo = async (productoId: string, insumoId: string | null) => {
     const { error } = await supabase
@@ -172,6 +196,49 @@ export default function AdminProveedores() {
     );
   };
 
+  // Resumen por proveedor para la pestaña Ligas: # productos activos + último precio.
+  const resumenProveedor = useCallback(
+    (provId: string) => {
+      const prods = productos.filter((p) => p.proveedor_id === provId && p.activo);
+      let ultima: string | null = null;
+      prods.forEach((p) => {
+        const vig = vigentePorProducto.get(p.id);
+        if (vig && (!ultima || vig.fecha > ultima)) ultima = vig.fecha;
+      });
+      return { total: prods.length, ultima };
+    },
+    [productos, vigentePorProducto]
+  );
+
+  const sinMapeoProv = useMemo(
+    () => productos.filter((p) => p.proveedor_id === provSel && !p.insumo_id && p.activo),
+    [productos, provSel]
+  );
+
+  const autoMapearProveedor = async () => {
+    const cambios = sinMapeoProv
+      .map((p) => ({ id: p.id, insumo: sugerirInsumo(p.nombre) }))
+      .filter((x) => x.insumo) as { id: string; insumo: string }[];
+    if (cambios.length === 0) { toast.info("No hay sugerencias automáticas"); return; }
+    const results = await Promise.all(
+      cambios.map((c) =>
+        supabase.from("proveedor_productos").update({ insumo_id: c.insumo }).eq("id", c.id)
+      )
+    );
+    const ok = results.filter((r) => !r.error).length;
+    if (ok > 0) {
+      setProductos((prev) =>
+        prev.map((p) => {
+          const c = cambios.find((x) => x.id === p.id);
+          return c ? { ...p, insumo_id: c.insumo } : p;
+        })
+      );
+      toast.success(`${ok} producto(s) mapeados automáticamente`);
+    } else {
+      toast.error("No se pudo mapear");
+    }
+  };
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
@@ -194,14 +261,16 @@ export default function AdminProveedores() {
         <Tabs defaultValue="comparativa">
           <TabsList className="mb-4">
             <TabsTrigger value="comparativa" className="gap-1 text-xs"><Scale className="h-3.5 w-3.5" />Comparativa</TabsTrigger>
-            <TabsTrigger value="productos" className="gap-1 text-xs"><Package className="h-3.5 w-3.5" />Productos</TabsTrigger>
-            <TabsTrigger value="proveedores" className="gap-1 text-xs"><Link2 className="h-3.5 w-3.5" />Proveedores</TabsTrigger>
-            <TabsTrigger value="mapeo" className="gap-1 text-xs"><GitMerge className="h-3.5 w-3.5" />Mapeo</TabsTrigger>
+            <TabsTrigger value="listas" className="gap-1 text-xs"><Package className="h-3.5 w-3.5" />Listas</TabsTrigger>
+            <TabsTrigger value="ligas" className="gap-1 text-xs"><Link2 className="h-3.5 w-3.5" />Ligas</TabsTrigger>
           </TabsList>
 
-          {/* Comparativa */}
+          {/* ============ Comparativa ============ */}
           <TabsContent value="comparativa" className="space-y-3">
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                Precio de hoy por producto. En verde, el más barato.
+              </p>
               <Button size="sm" variant="outline" className="gap-1" onClick={exportComparativa} disabled={!comparativa.length}>
                 <Download className="h-4 w-4" /> Excel
               </Button>
@@ -213,36 +282,49 @@ export default function AdminProveedores() {
                   <div className="divide-y">
                     {c.ofertas.map((o, i) => {
                       const barato = o.precio === c.masBarato;
+                      const fr = frescura(o.fecha);
                       return (
                         <div key={i} className={`flex items-center justify-between px-4 py-2 text-sm ${barato ? "bg-emerald-50" : ""}`}>
-                          <div>
+                          <div className="min-w-0">
                             <span className="font-medium">{o.proveedor}</span>
                             <span className="text-muted-foreground"> · {o.producto}</span>
+                            {fr && !fr.hoy && (
+                              <span className="text-[11px] text-amber-600 ml-1">({fr.label})</span>
+                            )}
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 shrink-0">
                             <span className="font-semibold tabular-nums">{money(o.precio)} / {o.unidad}</span>
                             {barato && <Badge className="bg-emerald-500 hover:bg-emerald-500">más barato</Badge>}
                           </div>
                         </div>
                       );
                     })}
+                    {c.pendientes.map((o, i) => (
+                      <div key={`p-${i}`} className="flex items-center justify-between px-4 py-2 text-sm opacity-60">
+                        <div className="min-w-0">
+                          <span className="font-medium">{o.proveedor}</span>
+                          <span className="text-muted-foreground"> · {o.producto}</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground shrink-0">sin precio aún</span>
+                      </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
             ))}
             {!comparativa.length && (
               <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">
-                Aún no hay precios cargados con productos mapeados. Comparte las ligas a los proveedores y mapea sus productos.
+                Aún no hay productos mapeados a un insumo interno. Ve a <b>Listas</b>, mapea los productos de cada proveedor y comparte sus ligas.
               </CardContent></Card>
             )}
           </TabsContent>
 
-          {/* Productos por proveedor (agregar/quitar; el enlace se adapta) */}
-          <TabsContent value="productos">
+          {/* ============ Listas (productos + mapeo por proveedor) ============ */}
+          <TabsContent value="listas">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center justify-between gap-2">
-                  <span>Productos de</span>
+                  <span>Lista de</span>
                   <Select value={provSel} onValueChange={setProvSel}>
                     <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -252,12 +334,17 @@ export default function AdminProveedores() {
                     </SelectContent>
                   </Select>
                 </CardTitle>
-                <CardDescription className="text-xs">
-                  Lo que tenga “Activo” es lo que verá ese proveedor en su liga. “Quitar” lo oculta sin borrar el histórico.
+                <CardDescription className="text-xs flex items-center justify-between gap-2">
+                  <span>Lo que esté “Activo” es lo que verá el proveedor en su liga. Mapea a un insumo para que entre a la comparativa.</span>
+                  {sinMapeoProv.length > 0 && (
+                    <Button size="sm" variant="outline" className="gap-1 h-7 text-xs shrink-0" onClick={autoMapearProveedor}>
+                      <Wand2 className="h-3.5 w-3.5" /> Auto-mapear ({sinMapeoProv.length})
+                    </Button>
+                  )}
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                {/* Agregar producto */}
+                {/* Agregar producto (solo admin) */}
                 <div className="p-3 border-b bg-muted/30 grid grid-cols-12 gap-2 items-end">
                   <div className="col-span-5 space-y-1">
                     <Label className="text-xs">Nuevo producto</Label>
@@ -331,90 +418,51 @@ export default function AdminProveedores() {
             </Card>
           </TabsContent>
 
-          {/* Proveedores + ligas */}
-          <TabsContent value="proveedores">
+          {/* ============ Ligas ============ */}
+          <TabsContent value="ligas">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Proveedores</CardTitle>
-                <CardDescription className="text-xs">Cada uno tiene una liga única para subir sus precios (sin login).</CardDescription>
+                <CardTitle className="text-sm">Ligas de proveedores</CardTitle>
+                <CardDescription className="text-xs">Cada uno tiene una liga única para subir sus precios (sin login). El envío se hace por fuera.</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 <ScrollArea className="max-h-[65vh]">
                   <div className="divide-y">
-                    {proveedores.map((p) => (
-                      <div key={p.id} className="p-3">
-                        <div className="flex items-center justify-between gap-2">
-                          <div>
-                            <span className="font-medium text-sm">{p.nombre}</span>
-                            {p.categoria && <Badge variant="outline" className="ml-2 text-xs">{p.categoria}</Badge>}
-                            <p className="text-xs text-muted-foreground">
-                              {[p.contacto, p.telefono].filter(Boolean).join(" · ") || "—"}
-                            </p>
+                    {proveedores.map((p) => {
+                      const r = resumenProveedor(p.id);
+                      const fr = frescura(r.ultima);
+                      return (
+                        <div key={p.id} className="p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <span className="font-medium text-sm">{p.nombre}</span>
+                              {p.categoria && <Badge variant="outline" className="ml-2 text-xs">{p.categoria}</Badge>}
+                              <p className="text-xs text-muted-foreground">
+                                {[p.contacto, p.telefono].filter(Boolean).join(" · ") || "—"}
+                              </p>
+                            </div>
+                            <Button size="sm" variant="outline" className="gap-1 shrink-0" onClick={() => copiarLiga(p.token)}>
+                              <Copy className="h-3.5 w-3.5" /> Copiar liga
+                            </Button>
                           </div>
-                          <Button size="sm" variant="outline" className="gap-1 shrink-0" onClick={() => copiarLiga(p.token)}>
-                            <Copy className="h-3.5 w-3.5" /> Copiar liga
-                          </Button>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <p className="text-[11px] text-muted-foreground truncate">/proveedor/{p.token}</p>
+                            <Badge variant="secondary" className="text-[10px]">{r.total} productos</Badge>
+                            {fr ? (
+                              <Badge variant="outline" className={`text-[10px] ${fr.hoy ? "text-emerald-600 border-emerald-300" : "text-amber-600 border-amber-300"}`}>
+                                precio {fr.label}
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px] text-muted-foreground">sin precio</Badge>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-[11px] text-muted-foreground mt-1 truncate">
-                          /proveedor/{p.token}
-                        </p>
-                      </div>
-                    ))}
+                      );
+                    })}
                     {!proveedores.length && (
                       <div className="p-8 text-center text-sm text-muted-foreground">
                         No hay proveedores. Aplica la migración de proveedores.
                       </div>
-                    )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Mapeo */}
-          <TabsContent value="mapeo">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Mapeo de productos → insumo interno</CardTitle>
-                <CardDescription className="text-xs">
-                  Sin mapeo, el producto no entra a la comparativa. {sinMapeo.length} sin mapear.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="max-h-[65vh]">
-                  <div className="divide-y">
-                    {productos
-                      .slice()
-                      .sort((a, b) => Number(!!a.insumo_id) - Number(!!b.insumo_id))
-                      .map((prod) => (
-                        <div key={prod.id} className="grid grid-cols-12 items-center gap-2 px-4 py-2">
-                          <div className="col-span-6 text-sm">
-                            {prod.nombre}
-                            <span className="text-xs text-muted-foreground"> · {provById.get(prod.proveedor_id)?.nombre}</span>
-                          </div>
-                          <div className="col-span-6">
-                            <Select
-                              value={prod.insumo_id ?? "none"}
-                              onValueChange={(v) => setMapeo(prod.id, v === "none" ? null : v)}
-                            >
-                              <SelectTrigger className="h-9"><SelectValue placeholder="Sin mapeo" /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">Sin mapeo</SelectItem>
-                                {insumos
-                                  .slice()
-                                  .sort((a, b) => (infoProteina(a.nombre)?.display ?? a.nombre).localeCompare(infoProteina(b.nombre)?.display ?? b.nombre))
-                                  .map((i) => (
-                                    <SelectItem key={i.id} value={i.id}>
-                                      {infoProteina(i.nombre)?.display ?? i.nombre}
-                                    </SelectItem>
-                                  ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      ))}
-                    {!productos.length && (
-                      <div className="p-8 text-center text-sm text-muted-foreground">Sin productos de proveedor.</div>
                     )}
                   </div>
                 </ScrollArea>

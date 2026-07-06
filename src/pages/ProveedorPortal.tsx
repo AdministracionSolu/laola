@@ -5,8 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Save, Plus, Tag, CheckCircle2 } from "lucide-react";
+import { Loader2, Save, Tag, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 
 interface Producto {
@@ -29,37 +31,23 @@ export default function ProveedorPortal() {
   const [loading, setLoading] = useState(true);
   const [catalogo, setCatalogo] = useState<Catalogo | null>(null);
   const [valido, setValido] = useState(true);
+  // Los precios SIEMPRE arrancan en blanco: el proveedor escribe el de hoy.
+  // No se pre-llena ni se muestra el precio anterior.
   const [precios, setPrecios] = useState<Record<string, string>>({});
   const [guardando, setGuardando] = useState(false);
-  const [nuevoNombre, setNuevoNombre] = useState("");
-  const [nuevaUnidad, setNuevaUnidad] = useState("kg");
-  const [agregando, setAgregando] = useState(false);
 
-  const cargar = useCallback(
-    async (prefill = true) => {
-      setLoading(true);
-      const { data, error } = await rpc("prov_catalogo", { p_token: token });
-      if (error || !data) {
-        setValido(false);
-        setCatalogo(null);
-      } else {
-        setValido(true);
-        const c = data as Catalogo;
-        setCatalogo(c);
-        setPrecios((prev) => {
-          const next: Record<string, string> = prefill ? {} : { ...prev };
-          c.productos.forEach((p) => {
-            if (prefill || !(p.id in next)) {
-              next[p.id] = p.precio_vigente != null ? String(p.precio_vigente) : (next[p.id] ?? "");
-            }
-          });
-          return next;
-        });
-      }
-      setLoading(false);
-    },
-    [token]
-  );
+  const cargar = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await rpc("prov_catalogo", { p_token: token });
+    if (error || !data) {
+      setValido(false);
+      setCatalogo(null);
+    } else {
+      setValido(true);
+      setCatalogo(data as Catalogo);
+    }
+    setLoading(false);
+  }, [token]);
 
   useEffect(() => {
     cargar();
@@ -81,30 +69,12 @@ export default function ProveedorPortal() {
     );
     setGuardando(false);
     const ok = results.filter((r) => !r.error && r.data !== false).length;
-    if (ok === items.length) toast.success(`${ok} precios guardados ✓`);
-    else toast.error(`Se guardaron ${ok} de ${items.length}. Reintenta.`);
-    cargar(true);
-  };
-
-  const agregarProducto = async () => {
-    if (!nuevoNombre.trim()) {
-      toast.error("Escribe el nombre del producto");
-      return;
+    if (ok === items.length) {
+      toast.success(`${ok} precios guardados ✓`);
+      setPrecios({}); // Vuelve a dejar todo en blanco.
+    } else {
+      toast.error(`Se guardaron ${ok} de ${items.length}. Reintenta.`);
     }
-    setAgregando(true);
-    const { data, error } = await rpc("prov_add_producto", {
-      p_token: token,
-      p_nombre: nuevoNombre.trim(),
-      p_unidad: nuevaUnidad,
-    });
-    setAgregando(false);
-    if (error || !data) {
-      toast.error("No se pudo agregar");
-      return;
-    }
-    setNuevoNombre("");
-    toast.success("Producto agregado");
-    cargar(false);
   };
 
   if (loading) {
@@ -137,28 +107,38 @@ export default function ProveedorPortal() {
     return !isNaN(v) && v > 0;
   }).length;
 
+  const hoy = format(new Date(), "EEEE d 'de' MMMM", { locale: es });
+  const hoyCap = hoy.charAt(0).toUpperCase() + hoy.slice(1);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/10 pb-28">
+      {/* Encabezado personalizado */}
       <div className="bg-background border-b sticky top-0 z-10">
         <div className="container mx-auto px-3 py-3 flex items-center gap-3 max-w-2xl">
-          <img src={logoLaOla} alt="La Ola" className="w-9 h-9 rounded-full object-cover" />
-          <div className="flex-1">
-            <h1 className="text-base font-semibold leading-tight">
-              Precios · {catalogo.proveedor.nombre}
+          <img src={logoLaOla} alt="La Ola" className="w-10 h-10 rounded-full object-cover shrink-0" />
+          <div className="flex-1 min-w-0">
+            <h1 className="text-base font-semibold leading-tight truncate">
+              Hola, {catalogo.proveedor.nombre}
             </h1>
             <p className="text-xs text-muted-foreground">
-              Pon el precio de hoy y dale Guardar. Toma menos de 1 minuto.
+              Precios para La Ola · {hoyCap}
             </p>
           </div>
-          <Badge variant="secondary">{capturados}/{catalogo.productos.length}</Badge>
+          <Badge variant="secondary" className="shrink-0">
+            {capturados}/{catalogo.productos.length}
+          </Badge>
         </div>
       </div>
 
       <div className="container mx-auto px-3 py-3 max-w-2xl">
+        <p className="text-sm text-muted-foreground px-1 mb-3">
+          Escribe el precio de <b>hoy</b> de cada producto y dale Guardar. Toma menos de 1 minuto.
+        </p>
+
         {catalogo.productos.length === 0 ? (
           <Card>
             <CardContent className="p-6 text-center text-sm text-muted-foreground">
-              Aún no tienes productos. Agrégalos abajo.
+              Aún no tienes productos asignados. El restaurante los configura.
             </CardContent>
           </Card>
         ) : (
@@ -167,7 +147,7 @@ export default function ProveedorPortal() {
               {catalogo.productos.map((p) => {
                 const lleno = !isNaN(parseFloat(precios[p.id] ?? ""));
                 return (
-                  <div key={p.id} className="flex items-center gap-3 px-3 py-2.5">
+                  <div key={p.id} className="flex items-center gap-3 px-3 py-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         {lleno ? (
@@ -186,7 +166,7 @@ export default function ProveedorPortal() {
                       placeholder="0"
                       value={precios[p.id] ?? ""}
                       onChange={(e) => setPrecios((prev) => ({ ...prev, [p.id]: e.target.value }))}
-                      className="h-11 w-24 text-center text-base font-semibold"
+                      className="h-12 w-24 text-center text-base font-semibold"
                     />
                     <span className="text-xs text-muted-foreground w-10 shrink-0">/{p.unidad}</span>
                   </div>
@@ -195,34 +175,6 @@ export default function ProveedorPortal() {
             </CardContent>
           </Card>
         )}
-
-        {/* Agregar producto (secundario) */}
-        <details className="mt-3">
-          <summary className="text-sm text-muted-foreground cursor-pointer px-1">
-            ¿Falta un producto? Agregarlo
-          </summary>
-          <Card className="mt-2">
-            <CardContent className="p-3 flex items-end gap-2">
-              <div className="flex-1">
-                <Input
-                  placeholder="Ej. Camarón U-15"
-                  value={nuevoNombre}
-                  onChange={(e) => setNuevoNombre(e.target.value)}
-                  className="h-10"
-                />
-              </div>
-              <Input
-                placeholder="kg"
-                value={nuevaUnidad}
-                onChange={(e) => setNuevaUnidad(e.target.value)}
-                className="h-10 w-20"
-              />
-              <Button variant="outline" className="h-10 gap-1" onClick={agregarProducto} disabled={agregando}>
-                {agregando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-              </Button>
-            </CardContent>
-          </Card>
-        </details>
       </div>
 
       {/* Un solo botón: guarda TODO */}
@@ -234,7 +186,7 @@ export default function ProveedorPortal() {
             disabled={guardando || capturados === 0}
           >
             {guardando ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-            Guardar precios ({capturados})
+            Guardar precios de hoy ({capturados})
           </Button>
         </div>
       </div>

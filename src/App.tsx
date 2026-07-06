@@ -23,7 +23,6 @@ import PedidosHome from "./pages/PedidosHome";
 import EntrarSucursal from "./pages/EntrarSucursal";
 import Compras from "./pages/Compras";
 import ProveedorPortal from "./pages/ProveedorPortal";
-import DepurarProveedores from "./pages/DepurarProveedores";
 import OperacionesLayout from "./components/operaciones/OperacionesLayout";
 import Ordenar from "./pages/Ordenar";
 import SeguimientoPedido from "./pages/SeguimientoPedido";
@@ -77,8 +76,6 @@ const App = () => (
           <Route path="/admin/qr-pedidos" element={<QrPedidos />} />
           {/* Portal público del proveedor (sin login, por token) */}
           <Route path="/proveedor/:token" element={<ProveedorPortal />} />
-          {/* Depuración de listas de proveedores (uso único, por token) */}
-          <Route path="/depurar/:token" element={<DepurarProveedores />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
