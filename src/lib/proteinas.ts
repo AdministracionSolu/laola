@@ -57,3 +57,17 @@ export function infoProteina(nombre: string): ProteinaDef | undefined {
 export function esProteina(nombre: string): boolean {
   return INDEX.has(norm(nombre));
 }
+
+// Clave para agrupar en la comparativa los productos de distintos proveedores
+// que son "lo mismo": usa el nombre canónico de la proteína si se reconoce
+// (así "Camarón 21/25" y "Camarón 21-25" caen juntos); si no, el nombre
+// normalizado. Sin mapeo manual a insumo interno.
+export function claveProducto(nombre: string): string {
+  const info = infoProteina(nombre);
+  return info ? `p:${info.orden}` : `n:${norm(nombre)}`;
+}
+
+// Etiqueta bonita para un grupo de la comparativa.
+export function etiquetaProducto(nombre: string): string {
+  return infoProteina(nombre)?.display ?? nombre;
+}
