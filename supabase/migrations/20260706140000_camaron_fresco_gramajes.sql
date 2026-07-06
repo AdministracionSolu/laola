@@ -102,4 +102,4 @@ END $camaron$;
 REVOKE ALL ON FUNCTION public.prov_set_camaron(text, uuid, jsonb) FROM public;
 GRANT EXECUTE ON FUNCTION public.prov_set_camaron(text, uuid, jsonb) TO anon, authenticated;
 
-NOTIFY pgrst, 'reload schema';
+SELECT pg_notify('pgrst', 'reload schema');
