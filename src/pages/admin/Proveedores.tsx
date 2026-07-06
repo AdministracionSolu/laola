@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -371,7 +370,7 @@ export default function AdminProveedores() {
                   </div>
                 </div>
                 {/* Lista de productos del proveedor */}
-                <ScrollArea className="max-h-[60vh]">
+                <div>
                   <div className="divide-y">
                     {productos
                       .filter((p) => p.proveedor_id === provSel)
@@ -413,7 +412,7 @@ export default function AdminProveedores() {
                       <div className="p-8 text-center text-sm text-muted-foreground">Este proveedor no tiene productos. Agrégalos arriba.</div>
                     )}
                   </div>
-                </ScrollArea>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -426,7 +425,7 @@ export default function AdminProveedores() {
                 <CardDescription className="text-xs">Cada uno tiene una liga única para subir sus precios (sin login). El envío se hace por fuera.</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                <ScrollArea className="max-h-[65vh]">
+                <div>
                   <div className="divide-y">
                     {proveedores.map((p) => {
                       const r = resumenProveedor(p.id);
@@ -465,7 +464,7 @@ export default function AdminProveedores() {
                       </div>
                     )}
                   </div>
-                </ScrollArea>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
