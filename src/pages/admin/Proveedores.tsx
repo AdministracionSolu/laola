@@ -8,9 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, RefreshCw, Copy, Loader2, Scale, Link2, Download, Package, Check, X } from "lucide-react";
+import { ArrowLeft, RefreshCw, Copy, Loader2, Scale, Link2, Download, Package, Check, X, ChevronLeft, ChevronRight, CalendarDays, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import { differenceInCalendarDays, parseISO } from "date-fns";
+import { differenceInCalendarDays, parseISO, format, addDays, subDays, isSameDay } from "date-fns";
+import { es } from "date-fns/locale";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 import { claveProducto, etiquetaProducto } from "@/lib/proteinas";
 import { CATALOGO_PRODUCTOS, CATEGORIAS_CATALOGO, CLAVES_CATALOGO, type CatalogoItem } from "@/lib/catalogoProductos";
@@ -87,9 +88,14 @@ export default function AdminProveedores() {
 
   const provById = useMemo(() => new Map(proveedores.map((p) => [p.id, p])), [proveedores]);
 
-  // ---- Comparativa: agrupa por nombre de producto (sin mapeo manual) ----
+  // ---- Comparativa: RÍGIDA POR DÍA. Default = hoy. Solo precios de ese día ----
+  const [fechaComparativa, setFechaComparativa] = useState<Date>(() => new Date());
+  const diaSel = format(fechaComparativa, "yyyy-MM-dd");
+  const esHoy = isSameDay(fechaComparativa, new Date());
+
   const comparativa = useMemo(() => {
-    interface Oferta { proveedor: string; producto: string; precio: number | null; unidad: string; fecha: string | null; }
+    interface Oferta { proveedor: string; producto: string; precio: number | null; unidad: string; }
+    const mismoDia = (iso: string) => format(parseISO(iso), "yyyy-MM-dd") === diaSel;
     const grupos = new Map<string, { label: string; ofertas: Oferta[] }>();
     productos.forEach((prod) => {
       if (!prod.activo) return;
@@ -97,29 +103,23 @@ export default function AdminProveedores() {
       const provNombre = provById.get(prod.proveedor_id)?.nombre || "—";
       const unidad = prod.unidad || "kg";
       const g = grupos.get(clave) ?? { label: etiquetaProducto(prod.nombre), ofertas: [] };
+      // Solo las filas de precio capturadas EN el día seleccionado.
+      const rowsDia = (preciosPorProducto.get(prod.id) || []).filter((r) => mismoDia(r.created_at));
       if (prod.por_gramaje) {
-        // Una línea por cada gramaje que capturó el proveedor.
-        const rows = preciosPorProducto.get(prod.id) || [];
-        if (rows.length === 0) {
-          g.ofertas.push({ proveedor: provNombre, producto: prod.nombre, precio: null, unidad, fecha: null });
+        if (rowsDia.length === 0) {
+          g.ofertas.push({ proveedor: provNombre, producto: prod.nombre, precio: null, unidad });
         } else {
-          rows.forEach((r) => g.ofertas.push({
+          rowsDia.forEach((r) => g.ofertas.push({
             proveedor: provNombre,
             producto: r.gramaje ? `${prod.nombre} · ${r.gramaje}` : prod.nombre,
             precio: Number(r.precio),
             unidad,
-            fecha: r.created_at,
           }));
         }
       } else {
-        const vig = vigentePorProducto.get(prod.id);
-        g.ofertas.push({
-          proveedor: provNombre,
-          producto: prod.nombre,
-          precio: vig ? vig.precio : null,
-          unidad,
-          fecha: vig ? vig.fecha : null,
-        });
+        // El más reciente de ese día (precios viene ordenado desc por created_at).
+        const r = rowsDia[0];
+        g.ofertas.push({ proveedor: provNombre, producto: prod.nombre, precio: r ? Number(r.precio) : null, unidad });
       }
       grupos.set(clave, g);
     });
@@ -137,7 +137,7 @@ export default function AdminProveedores() {
       })
       // Primero los que se pueden comparar (2+ proveedores), luego alfabético.
       .sort((a, b) => (b.numProveedores > 1 ? 1 : 0) - (a.numProveedores > 1 ? 1 : 0) || a.label.localeCompare(b.label));
-  }, [productos, vigentePorProducto, preciosPorProducto, provById]);
+  }, [productos, preciosPorProducto, provById, diaSel]);
 
   const exportComparativa = () => {
     const filas = comparativa.flatMap((c) =>
@@ -145,10 +145,9 @@ export default function AdminProveedores() {
         Producto: c.label, Proveedor: o.proveedor, "Nombre en su lista": o.producto,
         Precio: o.precio, Unidad: o.unidad,
         "Más barato": o.precio === c.masBarato ? "SÍ" : "",
-        Actualizado: frescura(o.fecha)?.label ?? "",
       }))
     );
-    exportarExcel(filas, "comparativa_precios");
+    exportarExcel(filas, `comparativa_precios_${diaSel}`);
   };
 
   // ---- Listas por proveedor: se arman con BOTONES del catálogo interno ----
@@ -264,16 +263,60 @@ export default function AdminProveedores() {
             <TabsTrigger value="ligas" className="gap-1 text-xs"><Link2 className="h-3.5 w-3.5" />Ligas</TabsTrigger>
           </TabsList>
 
-          {/* ============ Comparativa ============ */}
+          {/* ============ Comparativa (por día, default hoy) ============ */}
           <TabsContent value="comparativa" className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
-                Mismo producto entre proveedores. En verde, el más barato.
-              </p>
-              <Button size="sm" variant="outline" className="gap-1" onClick={exportComparativa} disabled={!comparativa.length}>
-                <Download className="h-4 w-4" /> Excel
-              </Button>
-            </div>
+            {/* Selector de día */}
+            <Card>
+              <CardContent className="py-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="icon" onClick={() => setFechaComparativa((d) => subDays(d, 1))} aria-label="Día anterior">
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <div className="min-w-[190px] text-center">
+                      <p className="font-semibold leading-tight text-sm">
+                        {(() => { const t = format(fechaComparativa, "EEEE d 'de' MMMM", { locale: es }); return t.charAt(0).toUpperCase() + t.slice(1); })()}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{esHoy ? "Hoy" : "Día en consulta"}</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setFechaComparativa((d) => addDays(d, 1))}
+                      disabled={esHoy}
+                      aria-label="Día siguiente"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="relative inline-flex items-center">
+                      <CalendarDays className="h-4 w-4 text-muted-foreground pointer-events-none absolute left-2" />
+                      <input
+                        type="date"
+                        value={diaSel}
+                        max={format(new Date(), "yyyy-MM-dd")}
+                        onChange={(e) => { if (e.target.value) setFechaComparativa(parseISO(e.target.value)); }}
+                        className="h-9 rounded-md border border-input bg-background pl-8 pr-2 text-sm"
+                      />
+                    </label>
+                    {!esHoy && (
+                      <Button variant="ghost" size="sm" className="gap-1" onClick={() => setFechaComparativa(new Date())}>
+                        <RotateCcw className="h-4 w-4" /> Hoy
+                      </Button>
+                    )}
+                    <Button size="sm" variant="outline" className="gap-1" onClick={exportComparativa} disabled={!comparativa.length}>
+                      <Download className="h-4 w-4" /> Excel
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <p className="text-xs text-muted-foreground px-1">
+              Precios capturados {esHoy ? "hoy" : "ese día"}. En verde, el más barato.
+            </p>
+
             {comparativa.map((c) => (
               <Card key={c.label}>
                 <CardHeader className="pb-2"><CardTitle className="text-sm">{c.label}</CardTitle></CardHeader>
@@ -281,15 +324,11 @@ export default function AdminProveedores() {
                   <div className="divide-y">
                     {c.ofertas.map((o, i) => {
                       const barato = o.precio === c.masBarato && c.ofertas.length > 1;
-                      const fr = frescura(o.fecha);
                       return (
                         <div key={i} className={`flex items-center justify-between px-4 py-2 text-sm ${barato ? "bg-emerald-50" : ""}`}>
                           <div className="min-w-0">
                             <span className="font-medium">{o.proveedor}</span>
                             <span className="text-muted-foreground"> · {o.producto}</span>
-                            {fr && !fr.hoy && (
-                              <span className="text-[11px] text-amber-600 ml-1">({fr.label})</span>
-                            )}
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <span className="font-semibold tabular-nums">{money(o.precio)} / {o.unidad}</span>
@@ -304,7 +343,9 @@ export default function AdminProveedores() {
                           <span className="font-medium">{o.proveedor}</span>
                           <span className="text-muted-foreground"> · {o.producto}</span>
                         </div>
-                        <span className="text-xs text-muted-foreground shrink-0">sin precio aún</span>
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          {esHoy ? "sin precio hoy" : "sin precio ese día"}
+                        </span>
                       </div>
                     ))}
                   </div>
