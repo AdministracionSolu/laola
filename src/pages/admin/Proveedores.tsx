@@ -5,16 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, RefreshCw, Copy, Loader2, Scale, Link2, Download, Package, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, RefreshCw, Copy, Loader2, Scale, Link2, Download, Package, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { differenceInCalendarDays, parseISO } from "date-fns";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 import { claveProducto, etiquetaProducto } from "@/lib/proteinas";
+import { CATALOGO_PRODUCTOS, CATEGORIAS_CATALOGO, CLAVES_CATALOGO, type CatalogoItem } from "@/lib/catalogoProductos";
 import { exportarExcel } from "@/lib/exportar";
 
 const money = (n: number) =>
@@ -123,61 +122,69 @@ export default function AdminProveedores() {
     exportarExcel(filas, "comparativa_precios");
   };
 
-  // ---- Edición de productos por proveedor ----
+  // ---- Listas por proveedor: se arman con BOTONES del catálogo interno ----
   const [provSel, setProvSel] = useState<string>("");
-  const [nuevoNombre, setNuevoNombre] = useState("");
-  const [nuevaUnidad, setNuevaUnidad] = useState("kg");
   useEffect(() => {
     if (!provSel && proveedores.length) setProvSel(proveedores[0].id);
   }, [proveedores, provSel]);
 
-  const productosProv = useMemo(
-    () => productos
-      .filter((p) => p.proveedor_id === provSel && p.activo)
-      .sort((a, b) => a.nombre.localeCompare(b.nombre)),
+  const productosProvTodos = useMemo(
+    () => productos.filter((p) => p.proveedor_id === provSel),
     [productos, provSel]
   );
+  // Claves de catálogo que este proveedor ya tiene activas.
+  const clavesActivasProv = useMemo(
+    () => new Set(productosProvTodos.filter((p) => p.activo).map((p) => claveProducto(p.nombre))),
+    [productosProvTodos]
+  );
+  // Precio vigente por clave (para mostrar en el botón activo).
+  const vigentePorClaveProv = useMemo(() => {
+    const m = new Map<string, number>();
+    productosProvTodos.filter((p) => p.activo).forEach((p) => {
+      const vig = vigentePorProducto.get(p.id);
+      if (vig) m.set(claveProducto(p.nombre), vig.precio);
+    });
+    return m;
+  }, [productosProvTodos, vigentePorProducto]);
+  // Productos activos que NO están en el catálogo (nombres viejos/raros a limpiar).
+  const fueraCatalogo = useMemo(
+    () => productosProvTodos.filter((p) => p.activo && !CLAVES_CATALOGO.has(claveProducto(p.nombre))),
+    [productosProvTodos]
+  );
 
-  const agregarProducto = async () => {
-    if (!provSel || !nuevoNombre.trim()) { toast.error("Escribe el nombre del producto"); return; }
-    const { data, error } = await supabase
-      .from("proveedor_productos")
-      .insert({
-        proveedor_id: provSel,
-        nombre: nuevoNombre.trim(),
-        unidad: nuevaUnidad.trim() || "kg",
-      })
-      .select()
-      .single();
-    if (error || !data) { toast.error("No se pudo agregar (¿nombre repetido?)"); return; }
-    setProductos((prev) => [...prev, data as Producto]);
-    setNuevoNombre("");
-    toast.success("Producto agregado");
+  // Prende/apaga un producto del catálogo para el proveedor seleccionado.
+  const toggleCatalogo = async (item: CatalogoItem) => {
+    const clave = claveProducto(item.nombre);
+    const existentes = productosProvTodos.filter((p) => claveProducto(p.nombre) === clave);
+    if (clavesActivasProv.has(clave)) {
+      // Quitar: desactiva los activos con esa clave (conserva histórico).
+      const ids = existentes.filter((p) => p.activo).map((p) => p.id);
+      const { error } = await supabase.from("proveedor_productos").update({ activo: false }).in("id", ids);
+      if (error) { toast.error("No se pudo quitar"); return; }
+      setProductos((prev) => prev.map((p) => (ids.includes(p.id) ? { ...p, activo: false } : p)));
+    } else {
+      const inactivo = existentes.find((p) => !p.activo);
+      if (inactivo) {
+        const { error } = await supabase.from("proveedor_productos").update({ activo: true }).eq("id", inactivo.id);
+        if (error) { toast.error("No se pudo agregar"); return; }
+        setProductos((prev) => prev.map((p) => (p.id === inactivo.id ? { ...p, activo: true } : p)));
+      } else {
+        const { data, error } = await supabase
+          .from("proveedor_productos")
+          .insert({ proveedor_id: provSel, nombre: item.nombre, unidad: item.unidad })
+          .select()
+          .single();
+        if (error || !data) { toast.error("No se pudo agregar"); return; }
+        setProductos((prev) => [...prev, data as Producto]);
+      }
+    }
   };
 
-  // Guarda nombre/unidad si cambiaron (al salir del campo).
-  const actualizarProducto = async (prod: Producto, campos: { nombre?: string; unidad?: string }) => {
-    const nombre = campos.nombre?.trim() ?? prod.nombre;
-    const unidad = campos.unidad?.trim() ?? prod.unidad;
-    if (nombre === prod.nombre && unidad === prod.unidad) return;
-    if (!nombre) { toast.error("El nombre no puede quedar vacío"); return; }
-    const { error } = await supabase
-      .from("proveedor_productos")
-      .update({ nombre, unidad })
-      .eq("id", prod.id);
-    if (error) { toast.error("No se pudo guardar (¿nombre repetido?)"); return; }
-    setProductos((prev) => prev.map((p) => (p.id === prod.id ? { ...p, nombre, unidad } : p)));
-  };
-
-  // "Quitar" = ocultar (activo=false); conserva el histórico de precios.
-  const quitarProducto = async (prod: Producto) => {
-    const { error } = await supabase
-      .from("proveedor_productos")
-      .update({ activo: false })
-      .eq("id", prod.id);
+  // Quita (oculta) un producto que quedó fuera del catálogo.
+  const quitarFueraCatalogo = async (prod: Producto) => {
+    const { error } = await supabase.from("proveedor_productos").update({ activo: false }).eq("id", prod.id);
     if (error) { toast.error("No se pudo quitar"); return; }
     setProductos((prev) => prev.map((p) => (p.id === prod.id ? { ...p, activo: false } : p)));
-    toast.success("Producto quitado de la liga");
   };
 
   const copiarLiga = (token: string) => {
@@ -298,59 +305,64 @@ export default function AdminProveedores() {
                   </Select>
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Esto es lo que verá este proveedor en su liga. Puedes editar el nombre y la unidad, agregar o quitar.
+                  Toca un producto para agregarlo o quitarlo de este proveedor. Los verdes son los que sí le pedimos.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="p-0">
-                {/* Agregar producto */}
-                <div className="p-3 border-b bg-muted/30 grid grid-cols-12 gap-2 items-end">
-                  <div className="col-span-7 space-y-1">
-                    <Label className="text-xs">Nuevo producto</Label>
-                    <Input value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") agregarProducto(); }}
-                      placeholder="Ej. Camarón 21/25" className="h-9" />
-                  </div>
-                  <div className="col-span-3 space-y-1">
-                    <Label className="text-xs">Unidad</Label>
-                    <Input value={nuevaUnidad} onChange={(e) => setNuevaUnidad(e.target.value)} placeholder="kg" className="h-9" />
-                  </div>
-                  <div className="col-span-2">
-                    <Button className="w-full gap-1 h-9" onClick={agregarProducto}><Plus className="h-4 w-4" />Agregar</Button>
-                  </div>
-                </div>
-                {/* Lista de productos del proveedor */}
-                <div className="divide-y">
-                  {productosProv.map((prod) => {
-                    const vig = vigentePorProducto.get(prod.id);
-                    return (
-                      <div key={prod.id} className="grid grid-cols-12 items-center gap-2 px-3 py-2">
-                        <Input
-                          defaultValue={prod.nombre}
-                          onBlur={(e) => actualizarProducto(prod, { nombre: e.target.value })}
-                          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-                          className="col-span-6 h-9 text-sm"
-                        />
-                        <Input
-                          defaultValue={prod.unidad ?? ""}
-                          onBlur={(e) => actualizarProducto(prod, { unidad: e.target.value })}
-                          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-                          className="col-span-2 h-9 text-sm text-center"
-                        />
-                        <div className="col-span-2 text-xs text-right">
-                          {vig ? <span className="text-emerald-600 font-medium">{money(vig.precio)}</span> : <span className="text-muted-foreground">sin precio</span>}
-                        </div>
-                        <div className="col-span-2 text-right">
-                          <Button size="sm" variant="ghost" className="gap-1 text-xs text-destructive hover:text-destructive" onClick={() => quitarProducto(prod)}>
-                            <Trash2 className="h-3.5 w-3.5" />Quitar
-                          </Button>
-                        </div>
+              <CardContent className="space-y-4 pt-4">
+                {CATEGORIAS_CATALOGO.map((cat) => {
+                  const items = CATALOGO_PRODUCTOS.filter((c) => c.categoria === cat);
+                  return (
+                    <div key={cat} className="space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground">{cat}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {items.map((item) => {
+                          const clave = claveProducto(item.nombre);
+                          const activo = clavesActivasProv.has(clave);
+                          const precio = vigentePorClaveProv.get(clave);
+                          return (
+                            <button
+                              key={item.nombre}
+                              onClick={() => toggleCatalogo(item)}
+                              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                                activo
+                                  ? "bg-emerald-500 border-emerald-500 text-white hover:bg-emerald-600"
+                                  : "bg-background border-input text-foreground hover:bg-accent"
+                              }`}
+                            >
+                              {activo && <Check className="h-3.5 w-3.5" />}
+                              <span>{item.nombre}</span>
+                              {activo && precio != null && (
+                                <span className="text-[11px] opacity-90">· {money(precio)}</span>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
-                    );
-                  })}
-                  {productosProv.length === 0 && (
-                    <div className="p-8 text-center text-sm text-muted-foreground">Este proveedor no tiene productos. Agrégalos arriba.</div>
-                  )}
-                </div>
+                    </div>
+                  );
+                })}
+
+                {/* Productos activos que no están en el catálogo (a limpiar) */}
+                {fueraCatalogo.length > 0 && (
+                  <div className="space-y-2 border-t pt-3">
+                    <p className="text-xs font-semibold text-amber-600">
+                      Fuera del catálogo ({fueraCatalogo.length}) — nombres viejos, conviene quitarlos y usar el botón correcto
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {fueraCatalogo.map((prod) => (
+                        <button
+                          key={prod.id}
+                          onClick={() => quitarFueraCatalogo(prod)}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm text-amber-800 hover:bg-amber-100"
+                          title="Quitar"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                          <span>{prod.nombre}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
