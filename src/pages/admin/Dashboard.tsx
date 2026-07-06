@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, RefreshCw, Store, Camera, BarChart3, History, LayoutDashboard, ClipboardCheck, FileUp, CalendarDays, Package, QrCode, ShoppingCart } from "lucide-react";
+import { LogOut, RefreshCw, Store, Camera, BarChart3, History, LayoutDashboard, ClipboardCheck, FileUp, Package, QrCode, ShoppingCart, Sunrise } from "lucide-react";
 import { useEffect } from "react";
 
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
@@ -22,11 +22,12 @@ import { AnalisisVentas } from "@/components/admin/AnalisisVentas";
 import { DesgloseTerminales } from "@/components/admin/DesgloseTerminales";
 import { InformeCumplimiento } from "@/components/admin/InformeCumplimiento";
 import { CargaHistorica } from "@/components/admin/CargaHistorica";
-import { ResumenAnual } from "@/components/admin/ResumenAnual";
+import { PestanaApertura } from "@/components/admin/PestanaApertura";
+import { HerramientasDialog } from "@/components/admin/HerramientasDialog";
 export default function AdminDashboard() {
   const [filtroSucursal, setFiltroSucursal] = useState<string>("todas");
   const [filtroTipo, setFiltroTipo] = useState<string>("todos");
-  const [vistaActiva, setVistaActiva] = useState<string>("estado");
+  const [vistaActiva, setVistaActiva] = useState<string>("apertura");
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -136,6 +137,7 @@ export default function AdminDashboard() {
               <ShoppingCart className="w-4 h-4" />
               <span className="hidden sm:inline">Pedido del día</span>
             </Button>
+            <HerramientasDialog />
             <Button variant="outline" size="icon" onClick={handleRefresh}>
               <RefreshCw className="w-4 h-4" />
             </Button>
@@ -151,6 +153,11 @@ export default function AdminDashboard() {
         {/* Tabs principales: Estado Actual vs Análisis */}
         <Tabs value={vistaActiva} onValueChange={setVistaActiva} className="space-y-6">
           <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+            <TabsTrigger value="apertura" className="gap-2">
+              <Sunrise className="w-4 h-4" />
+              <span className="hidden sm:inline">Apertura</span>
+              <span className="sm:hidden">Apertura</span>
+            </TabsTrigger>
             <TabsTrigger value="estado" className="gap-2">
               <Camera className="w-4 h-4" />
               <span className="hidden sm:inline">Estado Actual</span>
@@ -161,17 +168,17 @@ export default function AdminDashboard() {
               <span className="hidden sm:inline">Análisis</span>
               <span className="sm:hidden">Ventas</span>
             </TabsTrigger>
-            <TabsTrigger value="anual" className="gap-2">
-              <CalendarDays className="w-4 h-4" />
-              <span className="hidden sm:inline">Resumen Anual</span>
-              <span className="sm:hidden">Anual</span>
-            </TabsTrigger>
             <TabsTrigger value="cumplimiento" className="gap-2">
               <ClipboardCheck className="w-4 h-4" />
               <span className="hidden sm:inline">Cumplimiento</span>
               <span className="sm:hidden">Cumpl.</span>
             </TabsTrigger>
           </TabsList>
+
+          {/* Vista: Apertura de caja (con cuánto amanecimos) */}
+          <TabsContent value="apertura" className="space-y-6">
+            <PestanaApertura formatMoney={formatMoney} />
+          </TabsContent>
 
           {/* Vista: Estado Actual */}
           <TabsContent value="estado" className="space-y-6">
@@ -333,10 +340,6 @@ export default function AdminDashboard() {
                 />
               </TabsContent>
             </Tabs>
-          </TabsContent>
-          {/* Vista: Resumen Anual */}
-          <TabsContent value="anual" className="space-y-6">
-            <ResumenAnual />
           </TabsContent>
           {/* Vista: Cumplimiento de Cierres */}
           <TabsContent value="cumplimiento" className="space-y-6">
