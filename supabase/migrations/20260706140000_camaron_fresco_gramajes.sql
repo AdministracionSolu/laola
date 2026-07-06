@@ -40,7 +40,7 @@ ON CONFLICT (proveedor_id, nombre) DO UPDATE SET activo = true, por_gramaje = tr
 CREATE OR REPLACE FUNCTION public.prov_catalogo(p_token text)
 RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
-AS $$
+AS $catalogo$
 DECLARE v_prov public.proveedores; v_result jsonb;
 BEGIN
   SELECT * INTO v_prov FROM public.proveedores WHERE token = p_token AND activo;
@@ -68,7 +68,7 @@ BEGIN
     ), '[]'::jsonb)
   ) INTO v_result;
   RETURN v_result;
-END $$;
+END $catalogo$;
 
 -- ---------------------------------------------------------------------
 -- 7) prov_set_camaron: reemplaza el set de gramajes+precios de un producto.
@@ -77,7 +77,7 @@ END $$;
 CREATE OR REPLACE FUNCTION public.prov_set_camaron(p_token text, p_producto_id uuid, p_items jsonb)
 RETURNS boolean
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
-AS $$
+AS $camaron$
 DECLARE v_prov_id uuid; v_item jsonb; v_precio numeric;
 BEGIN
   SELECT id INTO v_prov_id FROM public.proveedores WHERE token = p_token AND activo;
@@ -97,7 +97,7 @@ BEGIN
     END IF;
   END LOOP;
   RETURN true;
-END $$;
+END $camaron$;
 
 REVOKE ALL ON FUNCTION public.prov_set_camaron(text, uuid, jsonb) FROM public;
 GRANT EXECUTE ON FUNCTION public.prov_set_camaron(text, uuid, jsonb) TO anon, authenticated;
