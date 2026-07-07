@@ -11,6 +11,7 @@ import {
   AlertCircle,
   Clock,
   RotateCcw,
+  MapPin,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
@@ -22,7 +23,7 @@ interface PestanaAperturaProps {
 
 export function PestanaApertura({ formatMoney }: PestanaAperturaProps) {
   const {
-    porSucursal,
+    porPlaza,
     totalCaja,
     totalVendido,
     reportadas,
@@ -131,61 +132,95 @@ export function PestanaApertura({ formatMoney }: PestanaAperturaProps) {
         </CardContent>
       </Card>
 
-      {/* Tarjetas por sucursal */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {porSucursal.map((s) => (
-          <Card
-            key={s.sucursal_id}
-            className={
-              s.reportado
-                ? "border-green-500/40"
-                : "border-dashed border-amber-500/40 bg-muted/30"
-            }
-          >
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Store className="w-4 h-4" />
-                  {s.nombre}
-                </CardTitle>
-                {s.reportado ? (
-                  <Badge className="bg-green-600">Cerró</Badge>
-                ) : (
-                  <Badge variant="secondary">Sin dato</Badge>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {s.reportado ? (
-                <div className="space-y-2">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Amaneció con (Corte X)</p>
-                    <p className="text-2xl font-bold text-primary">{formatMoney(s.corte_x || 0)}</p>
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
-                    <span>Vendió {formatMoney(s.total || 0)}</span>
-                    {s.hora_cierre && (
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {format(parseISO(s.hora_cierre), "HH:mm", { locale: es })}
-                      </span>
+      {/* Desglose por plaza (ciudad): la operación no es la misma en cada una */}
+      {porPlaza.length > 1 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {porPlaza.map((p) => (
+            <Card key={p.plaza}>
+              <CardContent className="pt-6">
+                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-primary" />
+                  Efectivo en {p.plaza}
+                </p>
+                <p className="text-3xl font-bold mt-1">{formatMoney(p.totalCaja)}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {p.sucursales.map((s) => s.nombre).join(" · ")}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {p.reportadas} de {p.sucursales.length} reportaron
+                  {p.sinReporte > 0 ? ` · ${p.sinReporte} sin dato` : ""}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Tarjetas por sucursal, agrupadas por plaza */}
+      {porPlaza.map((p) => (
+        <div key={p.plaza} className="space-y-3">
+          <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+            <MapPin className="w-4 h-4" />
+            {p.plaza}
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {p.sucursales.map((s) => (
+              <Card
+                key={s.sucursal_id}
+                className={
+                  s.reportado
+                    ? "border-green-500/40"
+                    : "border-dashed border-amber-500/40 bg-muted/30"
+                }
+              >
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Store className="w-4 h-4" />
+                      {s.nombre}
+                    </CardTitle>
+                    {s.reportado ? (
+                      <Badge className="bg-green-600">Cerró</Badge>
+                    ) : (
+                      <Badge variant="secondary">Sin dato</Badge>
                     )}
                   </div>
-                </div>
-              ) : (
-                <div className="py-3">
-                  <p className="text-sm font-medium text-amber-600 dark:text-amber-500">
-                    Dato no reportado
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    No hay corte de cierre registrado para este día.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                </CardHeader>
+                <CardContent>
+                  {s.reportado ? (
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Amaneció con (Corte X)</p>
+                        <p className="text-2xl font-bold text-primary">
+                          {formatMoney(s.corte_x || 0)}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
+                        <span>Vendió {formatMoney(s.total || 0)}</span>
+                        {s.hora_cierre && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {format(parseISO(s.hora_cierre), "HH:mm", { locale: es })}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-3">
+                      <p className="text-sm font-medium text-amber-600 dark:text-amber-500">
+                        Dato no reportado
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        No hay corte de cierre registrado para este día.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

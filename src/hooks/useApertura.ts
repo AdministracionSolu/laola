@@ -18,6 +18,7 @@ import { format, subDays, addDays, isSameDay, isAfter } from "date-fns";
 export interface AperturaSucursal {
   sucursal_id: string;
   nombre: string;
+  plaza: string;
   reportado: boolean;
   corte_x: number | null;
   total: number | null;
@@ -25,6 +26,39 @@ export interface AperturaSucursal {
   tarjetas: number | null;
   hora_cierre: string | null; // created_at del cierre (hora real de registro)
 }
+
+export interface AperturaPlaza {
+  plaza: string;
+  sucursales: AperturaSucursal[];
+  totalCaja: number;
+  totalVendido: number;
+  reportadas: number;
+  sinReporte: number;
+}
+
+/**
+ * Plaza (ciudad) de cada sucursal. La operación no es la misma por ciudad:
+ * en Guadalajara no disponemos del efectivo (lo usan allá para otras cosas),
+ * pero sí queremos verlo por separado para saber cuánto usa cada plaza.
+ *
+ * Tepic: Cervecería, Del Valle, Las Brisas. Todo lo demás cae en Guadalajara.
+ */
+const TEPIC = new Set(["cerveceria", "del valle", "las brisas"]);
+
+function normaliza(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // quita acentos
+    .trim();
+}
+
+function plazaDeSucursal(nombre: string): string {
+  return TEPIC.has(normaliza(nombre)) ? "Tepic" : "Guadalajara";
+}
+
+// Orden en que se muestran las plazas (las conocidas primero).
+const ORDEN_PLAZAS = ["Tepic", "Guadalajara"];
 
 // El día de negocio "rueda" a las 4 AM (igual que el trigger de la BD).
 // Antes de las 4 AM seguimos operando el día anterior.
@@ -35,6 +69,7 @@ function diaDeNegocioHoy(): Date {
 
 export interface UseAperturaReturn {
   porSucursal: AperturaSucursal[];
+  porPlaza: AperturaPlaza[];
   totalCaja: number;
   totalVendido: number;
   reportadas: number;
@@ -104,6 +139,7 @@ export function useApertura(): UseAperturaReturn {
         return {
           sucursal_id: s.id,
           nombre: s.nombre,
+          plaza: plazaDeSucursal(s.nombre),
           reportado: false,
           corte_x: null,
           total: null,
@@ -115,6 +151,7 @@ export function useApertura(): UseAperturaReturn {
       return {
         sucursal_id: s.id,
         nombre: s.nombre,
+        plaza: plazaDeSucursal(s.nombre),
         reportado: true,
         corte_x: Number(c.corte_x),
         total: Number(c.total),
@@ -124,6 +161,31 @@ export function useApertura(): UseAperturaReturn {
       };
     });
   }, [sucursales, cierres]);
+
+  // Agrupado por plaza (ciudad). Tepic y Guadalajara operan por separado.
+  const porPlaza = useMemo<AperturaPlaza[]>(() => {
+    const grupos = new Map<string, AperturaSucursal[]>();
+    for (const s of porSucursal) {
+      const arr = grupos.get(s.plaza) || [];
+      arr.push(s);
+      grupos.set(s.plaza, arr);
+    }
+    return Array.from(grupos.entries())
+      .map(([plaza, sucs]) => ({
+        plaza,
+        sucursales: sucs,
+        totalCaja: sucs.reduce((acc, s) => acc + (s.corte_x || 0), 0),
+        totalVendido: sucs.reduce((acc, s) => acc + (s.total || 0), 0),
+        reportadas: sucs.filter((s) => s.reportado).length,
+        sinReporte: sucs.filter((s) => !s.reportado).length,
+      }))
+      .sort((a, b) => {
+        // Plazas conocidas primero en su orden; el resto alfabético al final.
+        const ia = ORDEN_PLAZAS.indexOf(a.plaza);
+        const ib = ORDEN_PLAZAS.indexOf(b.plaza);
+        return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib) || a.plaza.localeCompare(b.plaza);
+      });
+  }, [porSucursal]);
 
   const totalCaja = useMemo(
     () => porSucursal.reduce((acc, s) => acc + (s.corte_x || 0), 0),
@@ -147,6 +209,7 @@ export function useApertura(): UseAperturaReturn {
 
   return {
     porSucursal,
+    porPlaza,
     totalCaja,
     totalVendido,
     reportadas,
