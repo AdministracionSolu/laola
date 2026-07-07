@@ -139,6 +139,26 @@ export default function AdminProveedores() {
       .sort((a, b) => (b.numProveedores > 1 ? 1 : 0) - (a.numProveedores > 1 ? 1 : 0) || a.label.localeCompare(b.label));
   }, [productos, preciosPorProducto, provById, diaSel]);
 
+  // Reporte del día: qué proveedores subieron precio ese día y cuáles no.
+  // "Reportó" = tiene al menos un precio capturado en el día seleccionado.
+  // Solo contamos proveedores activos (a los que sí les pedimos precio).
+  const reporteDia = useMemo(() => {
+    const prodProv = new Map(productos.map((p) => [p.id, p.proveedor_id]));
+    const reportaronIds = new Set<string>();
+    precios.forEach((r) => {
+      if (format(parseISO(r.created_at), "yyyy-MM-dd") === diaSel) {
+        const pid = prodProv.get(r.proveedor_producto_id);
+        if (pid) reportaronIds.add(pid);
+      }
+    });
+    const activos = proveedores.filter((p) => p.activo);
+    return {
+      reportaron: activos.filter((p) => reportaronIds.has(p.id)),
+      faltan: activos.filter((p) => !reportaronIds.has(p.id)),
+      total: activos.length,
+    };
+  }, [precios, productos, proveedores, diaSel]);
+
   const exportComparativa = () => {
     const filas = comparativa.flatMap((c) =>
       c.ofertas.map((o) => ({
@@ -312,6 +332,50 @@ export default function AdminProveedores() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Reporte del día: quién subió precio y quién no */}
+            {reporteDia.total > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center justify-between gap-2">
+                    <span>Reporte del día</span>
+                    <span className="text-xs font-normal text-muted-foreground">
+                      {reporteDia.reportaron.length} de {reporteDia.total} {esHoy ? "reportaron hoy" : "reportaron"}
+                    </span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <p className="text-xs font-semibold text-emerald-600 flex items-center gap-1 mb-1.5">
+                      <Check className="h-3.5 w-3.5" /> Reportaron ({reporteDia.reportaron.length})
+                    </p>
+                    {reporteDia.reportaron.length ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {reporteDia.reportaron.map((p) => (
+                          <Badge key={p.id} className="bg-emerald-500 hover:bg-emerald-500 text-xs">{p.nombre}</Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Nadie ha subido precio {esHoy ? "hoy" : "ese día"} todavía.</p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-amber-600 flex items-center gap-1 mb-1.5">
+                      <X className="h-3.5 w-3.5" /> Sin reportar ({reporteDia.faltan.length})
+                    </p>
+                    {reporteDia.faltan.length ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {reporteDia.faltan.map((p) => (
+                          <Badge key={p.id} variant="outline" className="text-xs text-amber-700 border-amber-300">{p.nombre}</Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Todos reportaron. 🎉</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             <p className="text-xs text-muted-foreground px-1">
               Precios capturados {esHoy ? "hoy" : "ese día"}. En verde, el más barato.
