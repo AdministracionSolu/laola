@@ -22,8 +22,11 @@ const d = png.data;
 let keyed = 0;
 for (let i = 0; i < d.length; i += 4) {
   const r = d[i], g = d[i + 1], b = d[i + 2];
-  // Solo el fondo casi-blanco puro: el centro crema del logo (b más bajo) se conserva.
-  if (r > 238 && g > 238 && b > 238) { d[i + 3] = 0; keyed++; }
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  // Solo el fondo blanco NEUTRO (#f7f7f7): claro y sin matiz. Los pixeles del
+  // logo son cálidos/saturados (mx-mn grande) y se conservan aunque sean claros,
+  // así no se "recorta" el logo.
+  if (r > 240 && g > 240 && b > 240 && (mx - mn) < 6) { d[i + 3] = 0; keyed++; }
 }
 writeFileSync(out, PNG.sync.write(png));
 console.log(`Logo transparente -> .logo.png (${png.width}x${png.height}, ${keyed} px recortados)`);
