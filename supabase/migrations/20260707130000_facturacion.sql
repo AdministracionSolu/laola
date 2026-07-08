@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS public.factura_folios (
 );
 
 CREATE OR REPLACE FUNCTION public.factura_touch_updated_at()
-RETURNS trigger LANGUAGE plpgsql AS $$
+RETURNS trigger LANGUAGE plpgsql AS $touch$
 BEGIN
   NEW.updated_at := now();
   IF NEW.estado = 'timbrada' AND OLD.estado IS DISTINCT FROM 'timbrada' THEN
@@ -59,7 +59,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$$;
+$touch$;
 DROP TRIGGER IF EXISTS trg_factura_touch ON public.factura_solicitudes;
 CREATE TRIGGER trg_factura_touch
   BEFORE UPDATE ON public.factura_solicitudes
@@ -95,7 +95,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $fac$
 DECLARE
   v_rfc text;
   v_cp text;
@@ -154,7 +154,7 @@ BEGIN
 
   RETURN jsonb_build_object('ok', true, 'folio', v_folio);
 END;
-$$;
+$fac$;
 
 GRANT EXECUTE ON FUNCTION public.factura_solicitar(text, text, text, text, text, text, text, text, numeric, date)
   TO anon, authenticated;

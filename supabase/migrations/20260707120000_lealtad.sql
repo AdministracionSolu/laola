@@ -31,12 +31,12 @@ CREATE INDEX IF NOT EXISTS lealtad_clientes_created_idx
 
 -- updated_at automático
 CREATE OR REPLACE FUNCTION public.lealtad_touch_updated_at()
-RETURNS trigger LANGUAGE plpgsql AS $$
+RETURNS trigger LANGUAGE plpgsql AS $ltouch$
 BEGIN
   NEW.updated_at := now();
   RETURN NEW;
 END;
-$$;
+$ltouch$;
 DROP TRIGGER IF EXISTS trg_lealtad_touch ON public.lealtad_clientes;
 CREATE TRIGGER trg_lealtad_touch
   BEFORE UPDATE ON public.lealtad_clientes
@@ -69,7 +69,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $leal$
 DECLARE
   v_tel text;
   v_nombre text;
@@ -135,7 +135,7 @@ BEGIN
     'sucursal', v_suc_nombre
   );
 END;
-$$;
+$leal$;
 
 GRANT EXECUTE ON FUNCTION public.lealtad_registrar(text, text, text, date, boolean)
   TO anon, authenticated;
