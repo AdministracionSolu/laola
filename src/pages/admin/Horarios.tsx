@@ -321,9 +321,11 @@ function GridHorarios({ sucursalId, empleados }: { sucursalId: string; empleados
   }, [sucursalId]);
   useEffect(() => { cargar(); }, [cargar]);
 
-  // Empleados que se muestran: los que ya tienen turno aquí + los que tienen esta sucursal como base
+  // Empleados que se muestran: los que ya tienen turno aquí, los que tienen esta
+  // sucursal como base, y los "flotantes" (sin sucursal base) para poder agendarlos.
   const empIds = new Set(turnos.map((t) => t.empleado_id));
-  const visibles = empleados.filter((e) => e.activo && (empIds.has(e.id) || e.sucursal_principal_id === sucursalId));
+  const visibles = empleados.filter((e) =>
+    e.activo && (empIds.has(e.id) || e.sucursal_principal_id === sucursalId || e.sucursal_principal_id === null));
 
   const turnosDe = (empId: string, dow: number) =>
     turnos.filter((t) => t.empleado_id === empId && t.dia_semana === dow)
