@@ -33,6 +33,8 @@ import Factura from "./pages/Factura";
 import AdminFacturacion from "./pages/admin/Facturacion";
 import MenuSucursal from "./pages/MenuSucursal";
 import AdminMenus from "./pages/admin/Menus";
+import AdminHorarios from "./pages/admin/Horarios";
+import Checador from "./pages/Checador";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -62,6 +64,7 @@ const App = () => (
           <Route path="/centro-de-operaciones/cortes" element={<Corte />} />
           <Route path="/centro-de-operaciones/reservaciones" element={<Reservaciones />} />
           <Route path="/centro-de-operaciones/contadoras" element={<Contadoras />} />
+          <Route path="/centro-de-operaciones/checador" element={<Checador />} />
           {/* Liga/QR por sucursal: fija la sucursal (bloqueada) y entra al destino */}
           <Route path="/compras" element={<Compras />} />
           <Route path="/pedidos/s/:sucursalId" element={<EntrarSucursal destino="/pedidos/hacer" />} />
@@ -88,6 +91,7 @@ const App = () => (
           <Route path="/admin/lealtad" element={<AdminLealtad />} />
           <Route path="/admin/facturacion" element={<AdminFacturacion />} />
           <Route path="/admin/menus" element={<AdminMenus />} />
+          <Route path="/admin/horarios" element={<AdminHorarios />} />
           {/* Portal público del proveedor (sin login, por token) */}
           <Route path="/proveedor/:token" element={<ProveedorPortal />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
