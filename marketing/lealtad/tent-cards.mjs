@@ -1,4 +1,4 @@
-// TENT CARDS — La Ola. Tarjeta rígida 100x150 mm, DOS CARAS distintas:
+// TENT CARDS — La Ola. Tarjeta rígida 80x120 mm (portador ranura 6 cm), DOS CARAS distintas:
 //   Cara A (página 1): MEMBRESÍA  -> QR a /lealtad  (con nudge de conversión)
 //   Cara B (página 2): FACTURACIÓN -> QR a /factura  (limpia, minimal)
 // para base de madera con ranura (la franja inferior queda oculta).
@@ -48,7 +48,7 @@ const qr = async (url) =>
   })).replace(/<svg /, '<svg style="width:100%;height:100%;display:block" ');
 
 const cara = (f) => `
-    <section class="card">
+    <section class="page"><div class="card">
       <div class="frame"></div>
       <img class="logo" src="${logo}" alt="La Ola">
       <div class="rule"><i></i></div>
@@ -60,30 +60,35 @@ const cara = (f) => `
         ${f.qlabel ? `<span class="qlabel">${f.qlabel}</span>` : ""}
         <div class="qr">${f.svg}</div>
       </div>
-    </section>`;
+    </div></section>`;
 
 const style = `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Jost:wght@300;400;500&display=swap');
-  @page { size: 100mm 150mm; margin: 0; }
+  /* Tarjeta física 80x120 mm. El diseño se compone en 100x150 y se escala a 0.8
+     para que embone en el portador (ranura 6 cm) sin reposicionar nada. */
+  @page { size: 80mm 120mm; margin: 0; }
   *{margin:0;padding:0;box-sizing:border-box}
-  html,body{width:100mm}
+  html,body{width:80mm}
   body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .card{position:relative;width:100mm;height:150mm;background:${PAPER};overflow:hidden;
-    page-break-after:always;font-family:'Jost',sans-serif;color:${INK}}
-  .card:last-child{page-break-after:auto}
+  .page{position:relative;width:80mm;height:120mm;background:${PAPER};overflow:hidden;
+    page-break-after:always}
+  .page:last-child{page-break-after:auto}
+  .card{position:absolute;top:0;left:0;width:100mm;height:150mm;background:${PAPER};
+    overflow:hidden;transform:scale(0.8);transform-origin:top left;
+    font-family:'Jost',sans-serif;color:${INK}}
   .frame{position:absolute;inset:6mm;border:0.4mm solid ${INK};opacity:.4;z-index:1}
   .logo{position:absolute;top:12mm;left:50%;transform:translateX(-50%);z-index:2;
-    height:23mm;width:auto;mix-blend-mode:${logoBlend}}
-  .rule{position:absolute;top:39mm;left:50%;transform:translateX(-50%);z-index:2;
+    height:27mm;width:auto;mix-blend-mode:${logoBlend}}
+  .rule{position:absolute;top:44mm;left:50%;transform:translateX(-50%);z-index:2;
     display:flex;align-items:center;justify-content:center;width:24mm}
   .rule::before,.rule::after{content:"";height:0.5mm;flex:1;background:${ORANGE}}
   .rule i{width:1.8mm;height:1.8mm;margin:0 2mm;background:${ORANGE};transform:rotate(45deg)}
-  h1{position:absolute;top:45mm;left:8mm;right:8mm;text-align:center;z-index:2;
+  h1{position:absolute;top:50mm;left:8mm;right:8mm;text-align:center;z-index:2;
     font-family:'Playfair Display',serif;font-weight:900;font-size:21pt;
     letter-spacing:.08em;color:${BLUE}}
-  .sub{position:absolute;top:59mm;left:9mm;right:9mm;text-align:center;z-index:2;
+  .sub{position:absolute;top:64mm;left:9mm;right:9mm;text-align:center;z-index:2;
     font-weight:400;font-size:7.5pt;letter-spacing:.22em;color:${INK};opacity:.7}
-  .suc{position:absolute;top:69mm;left:8mm;right:8mm;text-align:center;z-index:2;
+  .suc{position:absolute;top:74mm;left:8mm;right:8mm;text-align:center;z-index:2;
     font-weight:400;font-size:9.5pt;letter-spacing:.28em;color:${INK}}
 
   .qrbox{position:absolute;right:12mm;bottom:23mm;z-index:2;text-align:center}
@@ -109,7 +114,7 @@ const style = `
     font-weight:400;font-size:6pt;letter-spacing:.26em;color:${INK};opacity:.55}
 
   /* Gancho centrado (cara membresía, sobre los dos QR) */
-  .hook{position:absolute;left:8mm;right:8mm;top:80mm;z-index:2;text-align:center;
+  .hook{position:absolute;left:8mm;right:8mm;top:84mm;z-index:2;text-align:center;
     font-family:'Playfair Display',serif;font-style:italic;font-weight:700;
     font-size:12.5pt;line-height:1.15;color:${INK}}`;
 

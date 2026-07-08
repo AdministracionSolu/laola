@@ -11,7 +11,7 @@ atribución para saber dónde se captó (sin fragmentar el perfil). Las comunica
 - `generar.mjs` — genera los 4 QR y el HTML imprimible. Único archivo que se edita.
 - `qr/laola-VAL.svg|.png` … — QR por sucursal (VAL, BRI, CER, SOL). Úsalos sueltos en menús, redes, etc.
 - `flyers.html` — carpas de mesa A5 imprimibles, una por sucursal. Abre y "Imprimir / Guardar PDF".
-- `tent-cards.mjs` + `tent/laola-tent-<CODE>.html` — tarjetas rígidas (tent cards) 100×150 mm
+- `tent-cards.mjs` + `tent/laola-tent-<CODE>.html` — tarjetas rígidas (tent cards) 80×120 mm
   para base de madera con ranura, a DOBLE CARA:
   - Cara A (página 1): MEMBRESÍA → QR a `/lealtad`
   - Cara B (página 2): FACTURACIÓN → QR a `/factura`
@@ -26,7 +26,7 @@ atribución para saber dónde se captó (sin fragmentar el perfil). Las comunica
 ```sh
 node marketing/lealtad/prep-logo.mjs    # 1) logo transparente (.logo.png) — solo macOS
 node marketing/lealtad/tent-cards.mjs   # 2) regenera los HTML (tent/)
-# 3) Render a PDF con Chrome headless (tamaño exacto 100x150 mm, 2 páginas c/u):
+# 3) Render a PDF con Chrome headless (tamaño exacto 80x120 mm, 2 páginas c/u):
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 for C in VAL BRI CER SOL; do
   "$CHROME" --headless=new --no-pdf-header-footer \
