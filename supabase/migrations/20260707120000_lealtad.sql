@@ -10,7 +10,7 @@
 -- ---------- 1. Tabla ----------
 CREATE TABLE IF NOT EXISTS public.lealtad_clientes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  telefono text NOT NULL UNIQUE CHECK (telefono ~ '^[0-9]{10}$'),
+  telefono text NOT NULL UNIQUE CHECK (char_length(telefono) = 10 AND telefono !~ '[^0-9]'),
   nombre text NOT NULL,
   cumpleanos date, -- opcional (enriquecimiento)
   -- Dónde se captó al cliente. Se fija en el PRIMER registro y no se sobrescribe
@@ -77,9 +77,9 @@ DECLARE
   v_suc_nombre text;
   v_nuevo boolean;
 BEGIN
-  -- Normaliza teléfono a 10 dígitos
+  -- Normaliza teléfono a 10 dígitos (char_length en vez de ancla de fin)
   v_tel := regexp_replace(COALESCE(p_telefono, ''), '\D', '', 'g');
-  IF v_tel !~ '^[0-9]{10}$' THEN
+  IF char_length(v_tel) <> 10 THEN
     RAISE EXCEPTION 'TELEFONO_INVALIDO';
   END IF;
 
