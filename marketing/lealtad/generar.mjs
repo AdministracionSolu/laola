@@ -25,8 +25,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // ─────────────────────────────────────────────────────────────
 
 // Dominio del sitio de La Ola (sin slash final). El QR abre <SITE_URL>/lealtad?suc=CODE.
-// PLACEHOLDER: cámbialo por el dominio real antes de imprimir.
-const SITE_URL = "https://ejemplo-laola.mx";
+const SITE_URL = "https://laola.mx";
 
 // El código de cada sucursal reutiliza el prefijo de folio que ya vive en la BD
 // (VAL, BRI, CER, SOL). El bot de Makatea lo parsea del texto entre corchetes
