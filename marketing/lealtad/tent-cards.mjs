@@ -1,11 +1,12 @@
-// Genera las TENT CARDS del programa de lealtad de La Ola: una tarjeta rígida
-// vertical por sucursal, con el QR en la esquina inferior derecha. Pensada para
-// insertarse en una base de madera con ranura: la franja inferior (~16 mm) queda
-// oculta dentro de la base, por eso ahí no va contenido importante.
+// TENT CARDS — Programa de membresía de La Ola.
+// Dirección de arte: mínima y editorial. La "ola" se expresa como ondas
+// concéntricas (geometría de agua), no como ícono. Paleta reducida: tinta
+// océano sobre papel arena, un solo acento coral. Tipografía curada:
+// Didone en versalitas (wordmark) + geométrica tracked (labels).
 //
-// Tamaño: 100 x 150 mm (con @page para que el PDF salga exacto).
-// Salida: marketing/lealtad/tent/laola-tent-<CODE>.html
-// El PDF se genera aparte con Chrome headless (ver render-pdf en el flujo).
+// Formato: tarjeta rígida 100 x 150 mm, DOBLE CARA (dos páginas idénticas).
+// La franja inferior entra en la ranura de la base de madera.
+// Salida: tent/laola-tent-<CODE>.html  (PDF con Chrome headless, ver README).
 
 import QRCode from "qrcode";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
@@ -25,90 +26,84 @@ const SUCURSALES = [
 ];
 const registroLink = (c) => `${SITE_URL}/lealtad?suc=${c}`;
 
-const logoJpeg = readFileSync(join(__dirname, "..", "..", "src", "assets", "logo-la-ola.jpeg"));
-const logo = "data:image/jpeg;base64," + logoJpeg.toString("base64");
+// Paleta
+const PAPER = "#EFE7D6"; // papel arena
+const INK = "#0C3A52";   // tinta océano
+const INKQR = "#0A2E42"; // navy para el QR (contraste de escaneo)
+const CORAL = "#D8623A"; // acento (usado una sola vez)
 
-const qrOpts = {
-  errorCorrectionLevel: "M",
-  margin: 1,
-  color: { dark: "#0d5a86", light: "#ffffff" },
-  type: "svg",
-  width: 600,
+// Ondas concéntricas ancladas a una esquina; el marco recorta el cuarto visible.
+const ripples = (cx, cy) => {
+  let arcs = "";
+  for (let r = 8; r <= 78; r += 6.5) {
+    arcs += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${INK}" stroke-width="0.35" opacity="0.16"/>`;
+  }
+  return `<svg viewBox="0 0 100 150" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;z-index:0">${arcs}</svg>`;
 };
 
 for (const s of SUCURSALES) {
-  const svg = (await QRCode.toString(registroLink(s.codigo), qrOpts))
-    .replace(/<svg /, '<svg style="width:100%;height:100%;display:block" ');
+  const svg = (await QRCode.toString(registroLink(s.codigo), {
+    errorCorrectionLevel: "M",
+    margin: 1, // zona de silencio mínima para escaneo fiable
+    color: { dark: INKQR, light: PAPER },
+    type: "svg",
+    width: 600,
+  })).replace(/<svg /, '<svg style="width:100%;height:100%;display:block" ');
 
-  const html = `<!doctype html>
-<html lang="es"><head><meta charset="utf-8">
+  const cara = `
+    <section class="card">
+      ${ripples(2, 148)}
+      <div class="frame"></div>
+
+      <header class="mark">
+        <h1>LA OLA</h1>
+        <div class="rule"><i></i></div>
+        <p class="tag">S E A F O O D</p>
+      </header>
+
+      <div class="suc">${s.nombre.toUpperCase()}</div>
+
+      <p class="lede">PROGRAMA&nbsp;&nbsp;DE&nbsp;&nbsp;MEMBRESÍA</p>
+
+      <div class="qrbox">
+        <span class="qlabel">ESCANEA</span>
+        <div class="qr">${svg}</div>
+      </div>
+    </section>`;
+
+  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Jost:wght@300;400;500&display=swap');
   @page { size: 100mm 150mm; margin: 0; }
-  :root{ --ocean:#0d5a86; --ocean2:#2a93c7; --coral:#f97316; --coral2:#fb9a4b; --sand:#f5efe2; --ink:#0e2a3a; }
   *{margin:0;padding:0;box-sizing:border-box}
-  html,body{width:100mm;height:150mm}
-  body{font-family:Inter,system-ui,sans-serif;color:var(--ink);position:relative;overflow:hidden;background:#fff;
-    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  html,body{width:100mm}
+  body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .card{position:relative;width:100mm;height:150mm;background:${PAPER};overflow:hidden;
+    page-break-after:always;font-family:'Jost',sans-serif;color:${INK}}
+  .card:last-child{page-break-after:auto}
 
-  /* Ola superior */
-  .header{position:absolute;top:0;left:0;right:0;height:45mm;
-    background:linear-gradient(135deg,var(--ocean),var(--ocean2));
-    border-radius:0 0 55% 55% / 0 0 100% 100%}
-  .logo{position:absolute;top:8.5mm;left:50%;transform:translateX(-50%);z-index:3;
-    height:23mm;background:#fff;padding:2mm 4mm;border-radius:12px;box-shadow:0 3px 10px rgba(0,0,0,.15)}
-  .badge{position:absolute;top:39mm;left:50%;transform:translateX(-50%);z-index:3;
-    background:var(--coral);color:#fff;font-weight:700;font-size:11.5pt;letter-spacing:.02em;
-    padding:4px 18px;border-radius:999px;box-shadow:0 3px 8px rgba(249,115,22,.35);white-space:nowrap}
+  .frame{position:absolute;inset:6mm;border:0.4mm solid ${INK};opacity:.55;z-index:1}
 
-  /* Hero */
-  .hero{position:absolute;top:52mm;left:8mm;right:8mm;text-align:center;z-index:2}
-  .hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:23pt;line-height:1.02;color:var(--ocean)}
-  .hero p{font-size:10.5pt;color:#33556a;margin-top:2mm}
-  .hero p b{color:var(--coral)}
+  .mark{position:absolute;top:20mm;left:0;right:0;text-align:center;z-index:2}
+  .mark h1{font-family:'Playfair Display',serif;font-weight:900;font-size:33pt;
+    letter-spacing:.14em;line-height:1;margin-left:.14em}
+  .rule{display:flex;align-items:center;justify-content:center;gap:0;margin:4.5mm auto 3.5mm;width:26mm}
+  .rule::before,.rule::after{content:"";height:0.5mm;flex:1;background:${CORAL};opacity:.85}
+  .rule i{width:1.8mm;height:1.8mm;margin:0 2mm;background:${CORAL};transform:rotate(45deg)}
+  .tag{font-weight:400;font-size:8pt;letter-spacing:.12em}
 
-  /* Bloque de abajo: texto a la izquierda, QR en la esquina derecha */
-  .cta{position:absolute;left:8mm;bottom:30mm;width:44mm;z-index:2}
-  .cta .n{display:inline-flex;align-items:center;gap:2mm;font-size:9pt;color:#33556a;margin-bottom:2mm}
-  .cta .n span{width:5.4mm;height:5.4mm;flex:none;background:var(--ocean);color:#fff;border-radius:50%;
-    font-weight:700;font-size:7.5pt;display:flex;align-items:center;justify-content:center}
+  .suc{position:absolute;top:64mm;left:0;right:0;text-align:center;z-index:2;
+    font-weight:400;font-size:10.5pt;letter-spacing:.42em;margin-left:.42em}
+  .lede{position:absolute;top:74mm;left:0;right:0;text-align:center;z-index:2;
+    font-weight:300;font-size:7.5pt;letter-spacing:.34em;opacity:.62;margin-left:.34em}
 
-  .qrwrap{position:absolute;right:7mm;bottom:26mm;width:37mm;text-align:center;z-index:2}
-  .qrtag{display:inline-block;background:var(--coral);color:#fff;font-weight:700;font-size:8.5pt;
-    padding:2px 12px;border-radius:999px;margin-bottom:2mm}
-  .qr{width:37mm;height:37mm;padding:2.4mm;background:#fff;border:2px solid var(--sand);
-    border-radius:12px;box-shadow:0 4px 12px rgba(13,42,58,.12)}
-
-  /* Franja inferior: entra en la ranura de la base (contenido no crítico) */
-  .slot{position:absolute;left:0;right:0;bottom:0;height:16mm;
-    background:linear-gradient(135deg,var(--coral),var(--coral2));
-    border-radius:55% 55% 0 0 / 100% 100% 0 0;
-    display:flex;align-items:flex-end;justify-content:center;padding-bottom:3mm}
-  .slot span{color:#fff;font-weight:600;font-size:8pt;opacity:.9;letter-spacing:.03em}
+  .qrbox{position:absolute;right:12mm;bottom:23mm;z-index:2;text-align:center}
+  .qlabel{display:block;font-weight:400;font-size:6.5pt;letter-spacing:.42em;
+    margin:0 0 2.5mm .42em;opacity:.75}
+  .qr{width:31mm;height:31mm;background:${PAPER};padding:2mm;
+    border:0.3mm solid rgba(12,58,82,.4)}
 </style></head>
-<body>
-  <div class="header"></div>
-  <img class="logo" src="${logo}" alt="La Ola">
-  <div class="badge">${s.nombre}</div>
-
-  <div class="hero">
-    <h1>Únete a La&nbsp;Ola</h1>
-    <p>Escanea y recibe tu <b>regalo de bienvenida</b> 🦐</p>
-  </div>
-
-  <div class="cta">
-    <div class="n"><span>1</span> Apunta tu cámara</div>
-    <div class="n"><span>2</span> Deja tus datos (30&nbsp;seg)</div>
-    <div class="n"><span>3</span> Listo, eres parte de La&nbsp;Ola 🌊</div>
-  </div>
-
-  <div class="qrwrap">
-    <div class="qrtag">Escanéame</div>
-    <div class="qr">${svg}</div>
-  </div>
-
-  <div class="slot"><span>laola.mx</span></div>
-</body></html>`;
+<body>${cara}${cara}</body></html>`;
 
   writeFileSync(join(OUT, `laola-tent-${s.codigo}.html`), html);
   console.log(`Tent card ${s.codigo} (${s.nombre}) -> tent/laola-tent-${s.codigo}.html`);
