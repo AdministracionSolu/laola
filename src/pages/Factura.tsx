@@ -26,7 +26,12 @@ const USOS = [
   { v: "CP01", l: "CP01 · Pagos" },
 ];
 
+const FORMAS_PAGO = ["Efectivo", "Tarjeta de débito", "Tarjeta de crédito", "Transferencia"];
+
 const RFC_RE = /^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/;
+
+// Fecha de hoy en horario local (YYYY-MM-DD), para pre-llenar el campo.
+const hoyLocal = () => new Date().toLocaleDateString("en-CA");
 
 export default function Factura() {
   const [params] = useSearchParams();
@@ -39,9 +44,11 @@ export default function Factura() {
   const [cp, setCp] = useState("");
   const [uso, setUso] = useState("G03");
   const [email, setEmail] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [formaPago, setFormaPago] = useState("");
   const [ticket, setTicket] = useState("");
   const [total, setTotal] = useState("");
-  const [fecha, setFecha] = useState("");
+  const [fecha, setFecha] = useState(hoyLocal);
   const [enviando, setEnviando] = useState(false);
   const [folio, setFolio] = useState<string | null>(null);
 
@@ -52,10 +59,15 @@ export default function Factura() {
   }, [suc]);
 
   const rfcUpper = useMemo(() => rfc.toUpperCase().replace(/\s/g, ""), [rfc]);
+  const telLimpio = useMemo(() => telefono.replace(/\D/g, ""), [telefono]);
   const rfcOk = RFC_RE.test(rfcUpper);
   const cpOk = /^\d{5}$/.test(cp);
   const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
-  const puedeEnviar = rfcOk && razon.trim().length >= 3 && regimen && cpOk && uso && emailOk && !enviando;
+  const telOk = telLimpio.length === 10;
+  const consumoOk = ticket.trim().length > 0 && Number(total) > 0 && !!fecha;
+  const puedeEnviar =
+    rfcOk && razon.trim().length >= 3 && regimen && cpOk && uso && emailOk &&
+    telOk && formaPago && consumoOk && !enviando;
 
   const solicitar = async () => {
     if (!puedeEnviar) return;
@@ -67,10 +79,12 @@ export default function Factura() {
       p_codigo_postal: cp,
       p_uso_cfdi: uso,
       p_email: email.trim().toLowerCase(),
+      p_telefono: telLimpio,
+      p_forma_pago: formaPago,
       p_sucursal_codigo: suc || null,
-      p_ticket_folio: ticket.trim() || null,
-      p_ticket_total: total ? Number(total) : null,
-      p_ticket_fecha: fecha || null,
+      p_ticket_folio: ticket.trim(),
+      p_ticket_total: Number(total),
+      p_ticket_fecha: fecha,
     });
     setEnviando(false);
     if (error) {
@@ -78,6 +92,8 @@ export default function Factura() {
       if (m.includes("RFC_INVALIDO")) toast.error("Revisa tu RFC.");
       else if (m.includes("CP_INVALIDO")) toast.error("El código postal debe tener 5 dígitos.");
       else if (m.includes("EMAIL_INVALIDO")) toast.error("Revisa tu correo.");
+      else if (m.includes("TELEFONO_INVALIDO")) toast.error("El teléfono debe tener 10 dígitos.");
+      else if (m.includes("TICKET") || m.includes("TOTAL") || m.includes("FECHA")) toast.error("Faltan datos de tu consumo (ticket, total y fecha).");
       else toast.error("No pudimos registrar tu solicitud. Intenta de nuevo.");
       return;
     }
@@ -169,27 +185,56 @@ export default function Factura() {
             </Select>
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Correo</Label>
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                placeholder="tu@correo.com" className="h-12 text-base" autoComplete="email" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="tel">Teléfono (10 dígitos)</Label>
+              <Input id="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)}
+                placeholder="311 123 4567" inputMode="numeric" autoComplete="tel" className="h-12 text-base" />
+              {telefono.length > 0 && !telOk && <p className="text-xs text-destructive">Deben ser 10 dígitos.</p>}
+            </div>
+          </div>
+
           <div className="space-y-1.5">
-            <Label htmlFor="email">Correo (para enviarte la factura)</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="tu@correo.com" className="h-12 text-base" autoComplete="email" />
+            <Label>Forma de pago</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {FORMAS_PAGO.map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setFormaPago(f)}
+                  className={`h-12 rounded-xl border text-sm font-semibold transition-all active:scale-[0.98] ${
+                    formaPago === f
+                      ? "bg-primary text-primary-foreground border-primary shadow"
+                      : "bg-card text-foreground/80 hover:border-primary/60"
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="pt-2 border-t">
-            <p className="text-xs font-semibold text-muted-foreground mb-2">Tu consumo (opcional, agiliza el proceso)</p>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1.5 col-span-1">
-                <Label htmlFor="ticket" className="text-xs">Ticket</Label>
-                <Input id="ticket" value={ticket} onChange={(e) => setTicket(e.target.value)} placeholder="Folio" className="h-11" />
+            <p className="text-sm font-semibold mb-2">Tu consumo</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="ticket" className="text-xs">Número de ticket</Label>
+                <Input id="ticket" value={ticket} onChange={(e) => setTicket(e.target.value)} placeholder="Ej. 0154" className="h-12 text-base" />
               </div>
-              <div className="space-y-1.5 col-span-1">
+              <div className="space-y-1.5">
                 <Label htmlFor="total" className="text-xs">Total $</Label>
-                <Input id="total" value={total} onChange={(e) => setTotal(e.target.value.replace(/[^\d.]/g, ""))} placeholder="0.00" inputMode="decimal" className="h-11" />
+                <Input id="total" value={total} onChange={(e) => setTotal(e.target.value.replace(/[^\d.]/g, ""))} placeholder="0.00" inputMode="decimal" className="h-12 text-base" />
               </div>
-              <div className="space-y-1.5 col-span-1">
-                <Label htmlFor="fecha" className="text-xs">Fecha</Label>
-                <Input id="fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="h-11" />
-              </div>
+            </div>
+            <div className="space-y-1.5 mt-3">
+              <Label htmlFor="fecha" className="text-xs">Fecha de tu visita</Label>
+              <Input id="fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="h-12 text-base" />
+              <p className="text-[11px] text-muted-foreground">Ya pusimos la fecha de hoy. Cámbiala solo si tu consumo fue otro día.</p>
             </div>
           </div>
 
@@ -199,7 +244,7 @@ export default function Factura() {
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-4">
-          Solicita tu factura el mismo día de tu consumo. Cualquier duda, con tu mesero.
+          Solicita tu factura el mismo mes de tu consumo. Cualquier duda, con tu mesero.
         </p>
       </div>
     </div>

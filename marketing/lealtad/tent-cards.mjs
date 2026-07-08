@@ -21,7 +21,7 @@ mkdirSync(OUT, { recursive: true });
 
 const SITE_URL = "https://laola.mx";
 const SUCURSALES = [
-  { codigo: "VAL", nombre: "Del Valle" },
+  { codigo: "VAL", nombre: "Valle" },
   { codigo: "BRI", nombre: "Las Brisas" },
   { codigo: "CER", nombre: "Cervecería" },
   { codigo: "SOL", nombre: "Solares" },

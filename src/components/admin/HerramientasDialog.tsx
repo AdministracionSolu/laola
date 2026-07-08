@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -9,9 +10,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Wrench, CalendarDays, Lock, ChevronRight } from "lucide-react";
+import { Wrench, CalendarDays, Lock, ChevronRight, Package, QrCode, ShoppingCart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ResumenAnual } from "./ResumenAnual";
+
+// Accesos parkeados (fuera del bar principal en lo que se define su uso).
+const ACCESOS = [
+  { label: "Insumos & Pedidos", to: "/admin/pedidos", icon: Package },
+  { label: "QR de pedidos", to: "/admin/qr-pedidos", icon: QrCode },
+  { label: "Pedido del día", to: "/compras", icon: ShoppingCart },
+];
 
 // Contraseña de nivel administrador dueño (no visible para contadoras).
 const CLAVE_HERRAMIENTAS = "Coctel Danilo";
@@ -19,6 +27,7 @@ const STORAGE_KEY = "laola_herramientas_ok";
 
 export function HerramientasDialog() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [abierto, setAbierto] = useState(false);
   const [desbloqueado, setDesbloqueado] = useState(
     () => sessionStorage.getItem(STORAGE_KEY) === "1"
@@ -57,9 +66,32 @@ export function HerramientasDialog() {
               Herramientas
             </DialogTitle>
             <DialogDescription>
-              Reportes avanzados de uso ocasional. Acceso protegido.
+              Accesos parkeados y reportes avanzados.
             </DialogDescription>
           </DialogHeader>
+
+          {/* Accesos rápidos (sin candado) */}
+          <div className="space-y-2">
+            {ACCESOS.map(({ label, to, icon: Icon }) => (
+              <button
+                key={to}
+                onClick={() => { setAbierto(false); navigate(to); }}
+                className="w-full flex items-center justify-between rounded-lg border p-3 text-left hover:bg-accent transition-colors"
+              >
+                <span className="flex items-center gap-3">
+                  <Icon className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{label}</span>
+                </span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+            ))}
+          </div>
+
+          <div className="pt-2 mt-1 border-t">
+            <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
+              <Lock className="w-3 h-3" /> Reportes del dueño
+            </p>
+          </div>
 
           {!desbloqueado ? (
             <div className="space-y-3">

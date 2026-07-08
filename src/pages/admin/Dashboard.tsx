@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, RefreshCw, Store, Camera, BarChart3, History, LayoutDashboard, ClipboardCheck, FileUp, Package, QrCode, ShoppingCart, Sunrise, Heart, FileText } from "lucide-react";
+import { LogOut, RefreshCw, Store, Camera, BarChart3, History, LayoutDashboard, ClipboardCheck, Sunrise, Heart, FileText } from "lucide-react";
 import { useEffect } from "react";
 
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
@@ -108,30 +108,16 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-card border-b sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <img src={logoLaOla} alt="La Ola" className="w-10 h-10 rounded-full object-cover" />
-            <div>
-              <h1 className="text-xl font-bold">Dashboard de Cortes</h1>
-              <p className="text-sm text-muted-foreground">Panel Administrativo</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-2">
+          <img src={logoLaOla} alt="La Ola" className="w-10 h-10 rounded-full object-cover shrink-0" />
+          <div className="flex items-center flex-wrap justify-end gap-2">
             <Button variant="default" onClick={() => navigate("/admin/panel-control")} className="gap-2">
               <LayoutDashboard className="w-4 h-4" />
               <span className="hidden sm:inline">Panel Control</span>
             </Button>
-            <Button variant="outline" onClick={() => navigate("/admin/pedidos")} className="gap-2">
-              <Package className="w-4 h-4" />
-              <span className="hidden sm:inline">Insumos &amp; Pedidos</span>
-            </Button>
             <Button variant="outline" onClick={() => navigate("/admin/proveedores")} className="gap-2">
               <Store className="w-4 h-4" />
               <span className="hidden sm:inline">Proveedores</span>
-            </Button>
-            <Button variant="outline" onClick={() => navigate("/admin/qr-pedidos")} className="gap-2">
-              <QrCode className="w-4 h-4" />
-              <span className="hidden sm:inline">QR Pedidos</span>
             </Button>
             <Button variant="outline" onClick={() => navigate("/admin/lealtad")} className="gap-2">
               <Heart className="w-4 h-4" />
@@ -141,17 +127,13 @@ export default function AdminDashboard() {
               <FileText className="w-4 h-4" />
               <span className="hidden sm:inline">Facturación</span>
             </Button>
-            <Button variant="outline" onClick={() => navigate("/compras")} className="gap-2">
-              <ShoppingCart className="w-4 h-4" />
-              <span className="hidden sm:inline">Pedido del día</span>
-            </Button>
             <HerramientasDialog />
             <Button variant="outline" size="icon" onClick={handleRefresh}>
               <RefreshCw className="w-4 h-4" />
             </Button>
             <Button variant="outline" onClick={handleLogout}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Salir
+              <LogOut className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Salir</span>
             </Button>
           </div>
         </div>
