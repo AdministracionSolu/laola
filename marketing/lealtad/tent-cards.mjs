@@ -106,18 +106,24 @@ const style = `
   .menuqr .qlabel{display:block;font-weight:400;font-size:6.5pt;letter-spacing:.3em;margin:0 0 2.5mm .3em;color:${INK};opacity:.75}
   .qr2{width:27mm;height:27mm;background:${PAPER};padding:1.8mm;border:0.3mm solid ${INK}66}
   .diaonly{position:absolute;left:8mm;right:8mm;bottom:13mm;z-index:2;text-align:center;
-    font-weight:400;font-size:6pt;letter-spacing:.26em;color:${INK};opacity:.55}`;
+    font-weight:400;font-size:6pt;letter-spacing:.26em;color:${INK};opacity:.55}
+
+  /* Gancho centrado (cara membresía, sobre los dos QR) */
+  .hook{position:absolute;left:8mm;right:8mm;top:80mm;z-index:2;text-align:center;
+    font-family:'Playfair Display',serif;font-style:italic;font-weight:700;
+    font-size:12.5pt;line-height:1.15;color:${INK}}`;
 
 for (const s of SUCURSALES) {
   const caraA = {
     titulo: "MEMBRESÍA",
     sub: "BENEFICIOS EN CADA VISITA",
     suc: s.nombre.toUpperCase(),
-    qlabel: "",
+    qlabel: "REGÍSTRATE",
     svg: await qr(`${SITE_URL}/lealtad?suc=${s.codigo}`),
-    extra: `<div class="nudge">
-      <p class="hook">Tu regalo de<br>bienvenida<br>te espera.</p>
-      <p class="cue">Escanéame <b>&rarr;</b></p>
+    extra: `<div class="hook">Tu regalo de bienvenida te espera.</div>
+    <div class="menuqr">
+      <span class="qlabel">MENÚ</span>
+      <div class="qr2">${await qr(`${SITE_URL}/menu/s/${s.codigo}`)}</div>
     </div>`,
   };
   const caraB = {
