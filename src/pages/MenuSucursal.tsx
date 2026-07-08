@@ -4,6 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, FileText, UtensilsCrossed } from "lucide-react";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 
+// "Del Valle" se muestra como "Valle".
+const nombreCorto = (n: string) => n.replace(/^Del\s+/i, "");
+
 // Ruta estable del QR: /menu/s/<codigo> (codigo = prefijo_folio, ej. VAL).
 // Busca el menú vigente de la sucursal y redirige al PDF. Si no hay menú
 // cargado, muestra un aviso amable con liga al menú general.
@@ -58,7 +61,7 @@ export default function MenuSucursal() {
               <UtensilsCrossed className="h-7 w-7" />
             </div>
             <h1 className="text-2xl font-bold font-display text-primary">
-              Menú {sucursal ? `de ${sucursal}` : ""}
+              Menú {sucursal ? `de ${nombreCorto(sucursal)}` : ""}
             </h1>
             <p className="text-muted-foreground mt-2">
               Aún no hay un menú cargado para esta sucursal. Mientras, revisa el menú general.
