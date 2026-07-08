@@ -99,7 +99,14 @@ const style = `
 
   /* Micro-nota útil (cara factura) */
   .foot{position:absolute;left:12mm;bottom:31mm;width:34mm;z-index:2;text-align:left;
-    font-weight:400;font-size:6.5pt;letter-spacing:.24em;line-height:1.7;color:${INK};opacity:.55}`;
+    font-weight:400;font-size:6.5pt;letter-spacing:.24em;line-height:1.7;color:${INK};opacity:.55}
+
+  /* QR secundario de MENÚ (cara utilidades): presente, sin robar protagonismo */
+  .menuqr{position:absolute;left:12mm;bottom:24mm;z-index:2;text-align:center}
+  .menuqr .qlabel{display:block;font-weight:400;font-size:6.5pt;letter-spacing:.3em;margin:0 0 2.5mm .3em;color:${INK};opacity:.75}
+  .qr2{width:27mm;height:27mm;background:${PAPER};padding:1.8mm;border:0.3mm solid ${INK}66}
+  .diaonly{position:absolute;left:8mm;right:8mm;bottom:13mm;z-index:2;text-align:center;
+    font-weight:400;font-size:6pt;letter-spacing:.26em;color:${INK};opacity:.55}`;
 
 for (const s of SUCURSALES) {
   const caraA = {
@@ -114,12 +121,16 @@ for (const s of SUCURSALES) {
     </div>`,
   };
   const caraB = {
-    titulo: "FACTURACIÓN",
-    sub: "SOLICITA TU FACTURA",
+    titulo: "FACTURA Y MENÚ",
+    sub: "ESCANEA LO QUE NECESITES",
     suc: s.nombre.toUpperCase(),
-    qlabel: "ESCANEA · FACTURA",
+    qlabel: "FACTURA",
     svg: await qr(`${SITE_URL}/factura?suc=${s.codigo}`),
-    extra: `<div class="foot">EL MISMO MES<br>DE TU CONSUMO</div>`,
+    extra: `<div class="menuqr">
+      <span class="qlabel">MENÚ</span>
+      <div class="qr2">${await qr(`${SITE_URL}/menu/s/${s.codigo}`)}</div>
+    </div>
+    <div class="diaonly">FACTURA EL MISMO DÍA DE TU CONSUMO</div>`,
   };
 
   const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><style>${style}</style></head>

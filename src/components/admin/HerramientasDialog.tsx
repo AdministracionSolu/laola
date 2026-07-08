@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Wrench, CalendarDays, Lock, ChevronRight, Package, QrCode, ShoppingCart } from "lucide-react";
+import { Wrench, CalendarDays, Lock, ChevronRight, Package, QrCode, ShoppingCart, UtensilsCrossed } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ResumenAnual } from "./ResumenAnual";
 
@@ -18,6 +18,7 @@ import { ResumenAnual } from "./ResumenAnual";
 const ACCESOS = [
   { label: "Insumos & Pedidos", to: "/admin/pedidos", icon: Package },
   { label: "QR de pedidos", to: "/admin/qr-pedidos", icon: QrCode },
+  { label: "Menús por sucursal", to: "/admin/menus", icon: UtensilsCrossed },
   { label: "Pedido del día", to: "/compras", icon: ShoppingCart },
 ];
 

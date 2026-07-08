@@ -31,6 +31,8 @@ import Lealtad from "./pages/Lealtad";
 import AdminLealtad from "./pages/admin/Lealtad";
 import Factura from "./pages/Factura";
 import AdminFacturacion from "./pages/admin/Facturacion";
+import MenuSucursal from "./pages/MenuSucursal";
+import AdminMenus from "./pages/admin/Menus";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +46,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/menu" element={<Menu />} />
+          <Route path="/menu/s/:codigo" element={<MenuSucursal />} />
           <Route path="/sucursales" element={<Sucursales />} />
           <Route path="/contacto" element={<Contacto />} />
           {/* Pedidos en línea (cliente final, público) */}
@@ -84,6 +87,7 @@ const App = () => (
           <Route path="/admin/qr-pedidos" element={<QrPedidos />} />
           <Route path="/admin/lealtad" element={<AdminLealtad />} />
           <Route path="/admin/facturacion" element={<AdminFacturacion />} />
+          <Route path="/admin/menus" element={<AdminMenus />} />
           {/* Portal público del proveedor (sin login, por token) */}
           <Route path="/proveedor/:token" element={<ProveedorPortal />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

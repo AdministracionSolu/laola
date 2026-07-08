@@ -1,25 +1,14 @@
+import { useEffect, useState } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, ExternalLink, Scale } from "lucide-react";
-const branches = [{
-  id: "del-valle",
-  name: "Del Valle",
-  pdfUrl: "/menus/menu-del-valle.pdf"
-}, {
-  id: "insurgentes",
-  name: "Insurgentes",
-  pdfUrl: "/menus/menu-insurgentes.pdf"
-}, {
-  id: "solares",
-  name: "Solares",
-  pdfUrl: "/menus/menu-solares.pdf"
-}, {
-  id: "las-brisas",
-  name: "Las Brisas",
-  pdfUrl: "/menus/menu-las-brisas.pdf"
-}];
+import { supabase } from "@/integrations/supabase/client";
+
+// "Del Valle" se muestra como "Valle".
+const nombreCorto = (n: string) => n.replace(/^Del\s+/i, "");
+type Branch = { id: string; name: string; menuUrl: string };
 const menuKilos = [{
   name: "Marlín en estofado",
   precio500g: 95,
@@ -147,6 +136,22 @@ const menuHighlights = [{
   }]
 }];
 export default function Menu() {
+  const [branches, setBranches] = useState<Branch[]>([]);
+
+  useEffect(() => {
+    (supabase as any)
+      .from("sucursales")
+      .select("id,nombre,menu_url")
+      .order("nombre")
+      .then(({ data }: { data: any[] | null }) => {
+        setBranches(
+          (data ?? [])
+            .filter((s) => s.menu_url)
+            .map((s) => ({ id: s.id, name: nombreCorto(s.nombre), menuUrl: s.menu_url as string }))
+        );
+      });
+  }, []);
+
   return <Layout>
       {/* Hero */}
       <section className="bg-gradient-ocean py-16 md:py-24">
@@ -184,21 +189,23 @@ export default function Menu() {
       </section>
 
       {/* Branch Selector & Download */}
-      <section className="py-8 bg-secondary border-b border-border">
-        <div className="container mx-auto px-4">
-          <h2 className="text-center text-lg font-semibold text-foreground mb-4">
-            Descarga el menú de tu sucursal
-          </h2>
-          <div className="flex flex-wrap justify-center gap-3">
-            {branches.map(branch => <Button key={branch.id} asChild variant="outline" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground">
-                <a href={branch.pdfUrl} target="_blank" rel="noopener noreferrer">
-                  <Download className="w-4 h-4 mr-2" />
-                  {branch.name}
-                </a>
-              </Button>)}
+      {branches.length > 0 && (
+        <section className="py-8 bg-secondary border-b border-border">
+          <div className="container mx-auto px-4">
+            <h2 className="text-center text-lg font-semibold text-foreground mb-4">
+              Descarga el menú de tu sucursal
+            </h2>
+            <div className="flex flex-wrap justify-center gap-3">
+              {branches.map(branch => <Button key={branch.id} asChild variant="outline" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground">
+                  <a href={branch.menuUrl} target="_blank" rel="noopener noreferrer">
+                    <Download className="w-4 h-4 mr-2" />
+                    {branch.name}
+                  </a>
+                </Button>)}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Menu Highlights */}
       
