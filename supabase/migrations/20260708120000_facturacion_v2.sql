@@ -37,23 +37,26 @@ DECLARE
   v_consecutivo integer;
   v_folio text;
 BEGIN
+  -- Nota: sin anclas de fin de regex para no confundir editores SQL que
+  -- parsean dollar-quoting; se usa char_length para el largo exacto.
   v_rfc := upper(regexp_replace(COALESCE(p_rfc, ''), '\s', '', 'g'));
-  IF v_rfc !~ '^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$' THEN
+  IF char_length(v_rfc) < 12 OR char_length(v_rfc) > 13
+     OR v_rfc !~ '^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}' THEN
     RAISE EXCEPTION 'RFC_INVALIDO';
   END IF;
 
   v_cp := regexp_replace(COALESCE(p_codigo_postal, ''), '\D', '', 'g');
-  IF v_cp !~ '^[0-9]{5}$' THEN
+  IF char_length(v_cp) <> 5 THEN
     RAISE EXCEPTION 'CP_INVALIDO';
   END IF;
 
   v_email := lower(trim(COALESCE(p_email, '')));
-  IF v_email !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' THEN
+  IF v_email !~ '^[^@[:space:]]+@[^@[:space:]]+[.][^@[:space:]]+' THEN
     RAISE EXCEPTION 'EMAIL_INVALIDO';
   END IF;
 
   v_tel := regexp_replace(COALESCE(p_telefono, ''), '\D', '', 'g');
-  IF v_tel !~ '^[0-9]{10}$' THEN
+  IF char_length(v_tel) <> 10 THEN
     RAISE EXCEPTION 'TELEFONO_INVALIDO';
   END IF;
 
