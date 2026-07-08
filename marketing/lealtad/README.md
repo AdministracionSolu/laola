@@ -12,14 +12,21 @@ atribución para saber dónde se captó (sin fragmentar el perfil). Las comunica
 - `qr/laola-VAL.svg|.png` … — QR por sucursal (VAL, BRI, CER, SOL). Úsalos sueltos en menús, redes, etc.
 - `flyers.html` — carpas de mesa A5 imprimibles, una por sucursal. Abre y "Imprimir / Guardar PDF".
 - `tent-cards.mjs` + `tent/laola-tent-<CODE>.html` — tarjetas rígidas (tent cards) 100×150 mm
-  para base de madera con ranura. QR en la esquina inferior derecha; la franja coral de abajo
-  (~16 mm) queda oculta dentro de la ranura, por eso ahí no va contenido crítico.
+  para base de madera con ranura, a DOBLE CARA:
+  - Cara A (página 1): MEMBRESÍA → QR a `/lealtad`
+  - Cara B (página 2): FACTURACIÓN → QR a `/factura`
+  Dirección de arte editorial: logo real (fondo recortado), ondas concéntricas geométricas
+  (propias, sin íconos de librería), Didone + Jost, tinta océano sobre papel arena y un
+  acento coral. La franja inferior entra en la ranura de la base.
+- `prep-logo.mjs` — deja el logo con fondo transparente en `.logo.png` (usa `sips` de macOS +
+  pngjs). `tent-cards.mjs` lo usa si existe; si no, cae al JPEG con `multiply`.
 
 ## Generar los PDF de las tent cards
 
 ```sh
-node marketing/lealtad/tent-cards.mjs   # regenera los HTML (tent/)
-# Render a PDF con Chrome headless (tamaño exacto 100x150 mm):
+node marketing/lealtad/prep-logo.mjs    # 1) logo transparente (.logo.png) — solo macOS
+node marketing/lealtad/tent-cards.mjs   # 2) regenera los HTML (tent/)
+# 3) Render a PDF con Chrome headless (tamaño exacto 100x150 mm, 2 páginas c/u):
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 for C in VAL BRI CER SOL; do
   "$CHROME" --headless=new --no-pdf-header-footer \

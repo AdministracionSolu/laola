@@ -29,6 +29,8 @@ import SeguimientoPedido from "./pages/SeguimientoPedido";
 import PanelPedidosEnLinea from "./pages/PanelPedidosEnLinea";
 import Lealtad from "./pages/Lealtad";
 import AdminLealtad from "./pages/admin/Lealtad";
+import Factura from "./pages/Factura";
+import AdminFacturacion from "./pages/admin/Facturacion";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +52,8 @@ const App = () => (
           <Route path="/pedido/:token" element={<SeguimientoPedido />} />
           {/* Programa de lealtad (cliente final, público, atribución por ?suc=) */}
           <Route path="/lealtad" element={<Lealtad />} />
+          {/* Facturación self-serve (cliente final, público, atribución por ?suc=) */}
+          <Route path="/factura" element={<Factura />} />
           {/* Centro de Operaciones: igual que antes (sin gate) */}
           <Route path="/centro-de-operaciones" element={<CentroOperaciones />} />
           <Route path="/centro-de-operaciones/cortes" element={<Corte />} />
@@ -79,6 +83,7 @@ const App = () => (
           <Route path="/admin/proveedores" element={<AdminProveedores />} />
           <Route path="/admin/qr-pedidos" element={<QrPedidos />} />
           <Route path="/admin/lealtad" element={<AdminLealtad />} />
+          <Route path="/admin/facturacion" element={<AdminFacturacion />} />
           {/* Portal público del proveedor (sin login, por token) */}
           <Route path="/proveedor/:token" element={<ProveedorPortal />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
