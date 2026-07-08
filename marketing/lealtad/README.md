@@ -11,6 +11,22 @@ atribución para saber dónde se captó (sin fragmentar el perfil). Las comunica
 - `generar.mjs` — genera los 4 QR y el HTML imprimible. Único archivo que se edita.
 - `qr/laola-VAL.svg|.png` … — QR por sucursal (VAL, BRI, CER, SOL). Úsalos sueltos en menús, redes, etc.
 - `flyers.html` — carpas de mesa A5 imprimibles, una por sucursal. Abre y "Imprimir / Guardar PDF".
+- `tent-cards.mjs` + `tent/laola-tent-<CODE>.html` — tarjetas rígidas (tent cards) 100×150 mm
+  para base de madera con ranura. QR en la esquina inferior derecha; la franja coral de abajo
+  (~16 mm) queda oculta dentro de la ranura, por eso ahí no va contenido crítico.
+
+## Generar los PDF de las tent cards
+
+```sh
+node marketing/lealtad/tent-cards.mjs   # regenera los HTML (tent/)
+# Render a PDF con Chrome headless (tamaño exacto 100x150 mm):
+CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+for C in VAL BRI CER SOL; do
+  "$CHROME" --headless=new --no-pdf-header-footer \
+    --print-to-pdf="laola-tent-$C.pdf" \
+    "file://$PWD/marketing/lealtad/tent/laola-tent-$C.html"
+done
+```
 
 Guía de dónde va cada pieza en piso: [`docs/lealtad-colocacion.md`](../../docs/lealtad-colocacion.md).
 
