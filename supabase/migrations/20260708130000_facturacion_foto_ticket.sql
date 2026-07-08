@@ -1,6 +1,6 @@
 -- ============================================================
--- FACTURACIÓN v3 — foto del ticket obligatoria
--- El cliente sube una foto de su ticket junto con sus datos fiscales.
+-- FACTURACIÓN v3 — foto del ticket (opcional)
+-- El cliente puede subir una foto de su ticket junto con sus datos fiscales.
 -- La imagen vive en un bucket privado; solo las contadoras (authenticated)
 -- pueden verla. El público sube vía policy de storage, pero no lee.
 -- ============================================================
@@ -111,19 +111,23 @@ BEGIN
     RAISE EXCEPTION 'FECHA_REQUERIDA';
   END IF;
 
-  -- Foto del ticket (obligatoria). Debe caer en el bucket correcto.
+  -- Foto del ticket (opcional). Puede quedar NULL.
   v_foto := NULLIF(trim(COALESCE(p_ticket_foto_path,'')), '');
-  IF v_foto IS NULL THEN
-    RAISE EXCEPTION 'FOTO_REQUERIDA';
-  END IF;
 
   v_suc_codigo := upper(trim(COALESCE(p_sucursal_codigo, 'GEN')));
   SELECT id INTO v_suc_id FROM sucursales WHERE upper(prefijo_folio) = v_suc_codigo LIMIT 1;
 
+  -- Folio consecutivo diario por sucursal. Se parte el upsert y la lectura en
+  -- dos sentencias: 'INSERT ... RETURNING ... INTO' pone dos INTO en una misma
+  -- sentencia y algunos runners de SQL lo rechazan (42601).
   INSERT INTO factura_folios (sucursal_codigo, fecha, ultimo)
   VALUES (v_suc_codigo, current_date, 1)
-  ON CONFLICT (sucursal_codigo, fecha) DO UPDATE SET ultimo = factura_folios.ultimo + 1
-  RETURNING ultimo INTO v_consecutivo;
+  ON CONFLICT (sucursal_codigo, fecha) DO UPDATE SET ultimo = factura_folios.ultimo + 1;
+
+  SELECT ultimo INTO v_consecutivo
+  FROM factura_folios
+  WHERE sucursal_codigo = v_suc_codigo AND fecha = current_date;
+
   v_folio := 'FAC-' || v_suc_codigo || '-' || lpad(v_consecutivo::text, 5, '0');
 
   INSERT INTO factura_solicitudes (

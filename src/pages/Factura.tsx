@@ -80,29 +80,32 @@ export default function Factura() {
   const cpOk = /^\d{5}$/.test(cp);
   const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
   const telOk = telLimpio.length === 10;
-  const consumoOk = ticket.trim().length > 0 && Number(total) > 0 && !!fecha && !!foto;
+  const consumoOk = ticket.trim().length > 0 && Number(total) > 0 && !!fecha;
   const puedeEnviar =
     rfcOk && razon.trim().length >= 3 && regimen && cpOk && uso && emailOk &&
     telOk && formaPago && consumoOk && !enviando;
 
   const solicitar = async () => {
-    if (!puedeEnviar || !foto) return;
+    if (!puedeEnviar) return;
     setEnviando(true);
 
-    // 1) Sube la foto del ticket al bucket privado.
-    const ext = (foto.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-    const path = `${suc || "GEN"}/${crypto.randomUUID()}.${ext}`;
-    const up = await supabase.storage.from("factura-tickets").upload(path, foto, {
-      contentType: foto.type || "image/jpeg",
-      upsert: false,
-    });
-    if (up.error) {
-      setEnviando(false);
-      toast.error("No pudimos subir la foto del ticket. Intenta de nuevo.");
-      return;
+    // 1) Si adjuntó foto (opcional), la sube al bucket privado.
+    let path: string | null = null;
+    if (foto) {
+      const ext = (foto.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+      path = `${suc || "GEN"}/${crypto.randomUUID()}.${ext}`;
+      const up = await supabase.storage.from("factura-tickets").upload(path, foto, {
+        contentType: foto.type || "image/jpeg",
+        upsert: false,
+      });
+      if (up.error) {
+        setEnviando(false);
+        toast.error("No pudimos subir la foto del ticket. Intenta de nuevo.");
+        return;
+      }
     }
 
-    // 2) Registra la solicitud con la ruta de la foto.
+    // 2) Registra la solicitud (con la ruta de la foto si la hubo).
     const { data, error } = await (supabase.rpc as any)("factura_solicitar", {
       p_rfc: rfcUpper,
       p_razon_social: razon.trim(),
@@ -112,7 +115,7 @@ export default function Factura() {
       p_email: email.trim().toLowerCase(),
       p_telefono: telLimpio,
       p_forma_pago: formaPago,
-      p_ticket_foto_path: path,
+      p_ticket_foto_path: path ?? null,
       p_sucursal_codigo: suc || null,
       p_ticket_folio: ticket.trim(),
       p_ticket_total: Number(total),
@@ -125,7 +128,6 @@ export default function Factura() {
       else if (m.includes("CP_INVALIDO")) toast.error("El código postal debe tener 5 dígitos.");
       else if (m.includes("EMAIL_INVALIDO")) toast.error("Revisa tu correo.");
       else if (m.includes("TELEFONO_INVALIDO")) toast.error("El teléfono debe tener 10 dígitos.");
-      else if (m.includes("FOTO_REQUERIDA")) toast.error("Falta la foto de tu ticket.");
       else if (m.includes("TICKET") || m.includes("TOTAL") || m.includes("FECHA")) toast.error("Faltan datos de tu consumo (ticket, total y fecha).");
       else toast.error("No pudimos registrar tu solicitud. Intenta de nuevo.");
       return;
@@ -271,7 +273,7 @@ export default function Factura() {
             </div>
 
             <div className="space-y-1.5 mt-3">
-              <Label className="text-xs">Foto de tu ticket</Label>
+              <Label className="text-xs">Foto de tu ticket <span className="text-muted-foreground font-normal">(opcional)</span></Label>
               {fotoPreview ? (
                 <div className="relative rounded-xl border overflow-hidden">
                   <img src={fotoPreview} alt="Ticket" className="w-full max-h-64 object-contain bg-muted" />
@@ -301,7 +303,7 @@ export default function Factura() {
                 className="sr-only"
                 onChange={(e) => { elegirFoto(e.target.files?.[0] ?? null); e.target.value = ""; }}
               />
-              <p className="text-[11px] text-muted-foreground">Una foto clara del ticket, donde se lea el total. Nos ayuda a validar tu consumo.</p>
+              <p className="text-[11px] text-muted-foreground">Si puedes, sube una foto clara del ticket donde se lea el total. Nos ayuda a validar tu consumo.</p>
             </div>
           </div>
 
