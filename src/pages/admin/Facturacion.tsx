@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ArrowLeft, LogOut, RefreshCw, Search, Copy, Download, Clock, CheckCircle2, FileText, Store } from "lucide-react";
+import { ArrowLeft, LogOut, RefreshCw, Search, Copy, Download, Clock, CheckCircle2, FileText, Store, Image as ImageIcon } from "lucide-react";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 
 type Solicitud = {
@@ -26,6 +26,7 @@ type Solicitud = {
   ticket_folio: string | null;
   ticket_total: number | null;
   ticket_fecha: string | null;
+  ticket_foto_path: string | null;
   estado: "pendiente" | "timbrada" | "rechazada";
   created_at: string;
 };
@@ -100,6 +101,15 @@ export default function AdminFacturacion() {
     const { error } = await db.from("factura_solicitudes").update({ estado }).eq("id", r.id);
     if (error) return toast.error("No se pudo actualizar.");
     setRows((p) => p.map((x) => (x.id === r.id ? { ...x, estado } : x)));
+  };
+
+  const verTicket = async (r: Solicitud) => {
+    if (!r.ticket_foto_path) return toast.error("Esta solicitud no tiene foto.");
+    const { data, error } = await supabase.storage
+      .from("factura-tickets")
+      .createSignedUrl(r.ticket_foto_path, 3600);
+    if (error || !data?.signedUrl) return toast.error("No pudimos abrir la foto.");
+    window.open(data.signedUrl, "_blank", "noopener");
   };
 
   const copiar = (r: Solicitud) => {
@@ -203,7 +213,7 @@ export default function AdminFacturacion() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               {items.map((r) => (
-                <FacturaCard key={r.id} r={r} sucursal={nombreSuc(r)} onEstado={setEstado} onCopiar={copiar} />
+                <FacturaCard key={r.id} r={r} sucursal={nombreSuc(r)} onEstado={setEstado} onCopiar={copiar} onVerTicket={verTicket} />
               ))}
             </div>
           </section>
@@ -214,11 +224,12 @@ export default function AdminFacturacion() {
 }
 
 function FacturaCard({
-  r, sucursal, onEstado, onCopiar,
+  r, sucursal, onEstado, onCopiar, onVerTicket,
 }: {
   r: Solicitud; sucursal: string;
   onEstado: (r: Solicitud, e: Solicitud["estado"]) => void;
   onCopiar: (r: Solicitud) => void;
+  onVerTicket: (r: Solicitud) => void;
 }) {
   const Dato = ({ k, v }: { k: string; v: string }) => (
     <div className="flex justify-between gap-3 py-0.5">
@@ -260,6 +271,13 @@ function FacturaCard({
               <SelectItem value="rechazada">Rechazada</SelectItem>
             </SelectContent>
           </Select>
+          <Button
+            variant="outline" size="sm" className="gap-1 h-9"
+            onClick={() => onVerTicket(r)} disabled={!r.ticket_foto_path}
+            title={r.ticket_foto_path ? "Ver foto del ticket" : "Sin foto"}
+          >
+            <ImageIcon className="w-3.5 h-3.5" /> Ticket
+          </Button>
           <Button variant="outline" size="sm" className="gap-1 h-9" onClick={() => onCopiar(r)}>
             <Copy className="w-3.5 h-3.5" /> Copiar
           </Button>

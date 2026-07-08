@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, CheckCircle2, FileText } from "lucide-react";
+import { Loader2, CheckCircle2, FileText, Camera, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
@@ -49,8 +49,24 @@ export default function Factura() {
   const [ticket, setTicket] = useState("");
   const [total, setTotal] = useState("");
   const [fecha, setFecha] = useState(hoyLocal);
+  const [foto, setFoto] = useState<File | null>(null);
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [folio, setFolio] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!foto) { setFotoPreview(null); return; }
+    const url = URL.createObjectURL(foto);
+    setFotoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [foto]);
+
+  const elegirFoto = (f: File | null) => {
+    if (!f) return;
+    if (!f.type.startsWith("image/")) { toast.error("Sube una imagen del ticket."); return; }
+    if (f.size > 10 * 1024 * 1024) { toast.error("La foto pesa más de 10 MB. Toma otra."); return; }
+    setFoto(f);
+  };
 
   useEffect(() => {
     if (!suc) return;
@@ -64,14 +80,29 @@ export default function Factura() {
   const cpOk = /^\d{5}$/.test(cp);
   const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
   const telOk = telLimpio.length === 10;
-  const consumoOk = ticket.trim().length > 0 && Number(total) > 0 && !!fecha;
+  const consumoOk = ticket.trim().length > 0 && Number(total) > 0 && !!fecha && !!foto;
   const puedeEnviar =
     rfcOk && razon.trim().length >= 3 && regimen && cpOk && uso && emailOk &&
     telOk && formaPago && consumoOk && !enviando;
 
   const solicitar = async () => {
-    if (!puedeEnviar) return;
+    if (!puedeEnviar || !foto) return;
     setEnviando(true);
+
+    // 1) Sube la foto del ticket al bucket privado.
+    const ext = (foto.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+    const path = `${suc || "GEN"}/${crypto.randomUUID()}.${ext}`;
+    const up = await supabase.storage.from("factura-tickets").upload(path, foto, {
+      contentType: foto.type || "image/jpeg",
+      upsert: false,
+    });
+    if (up.error) {
+      setEnviando(false);
+      toast.error("No pudimos subir la foto del ticket. Intenta de nuevo.");
+      return;
+    }
+
+    // 2) Registra la solicitud con la ruta de la foto.
     const { data, error } = await (supabase.rpc as any)("factura_solicitar", {
       p_rfc: rfcUpper,
       p_razon_social: razon.trim(),
@@ -81,6 +112,7 @@ export default function Factura() {
       p_email: email.trim().toLowerCase(),
       p_telefono: telLimpio,
       p_forma_pago: formaPago,
+      p_ticket_foto_path: path,
       p_sucursal_codigo: suc || null,
       p_ticket_folio: ticket.trim(),
       p_ticket_total: Number(total),
@@ -93,6 +125,7 @@ export default function Factura() {
       else if (m.includes("CP_INVALIDO")) toast.error("El código postal debe tener 5 dígitos.");
       else if (m.includes("EMAIL_INVALIDO")) toast.error("Revisa tu correo.");
       else if (m.includes("TELEFONO_INVALIDO")) toast.error("El teléfono debe tener 10 dígitos.");
+      else if (m.includes("FOTO_REQUERIDA")) toast.error("Falta la foto de tu ticket.");
       else if (m.includes("TICKET") || m.includes("TOTAL") || m.includes("FECHA")) toast.error("Faltan datos de tu consumo (ticket, total y fecha).");
       else toast.error("No pudimos registrar tu solicitud. Intenta de nuevo.");
       return;
@@ -235,6 +268,40 @@ export default function Factura() {
               <Label htmlFor="fecha" className="text-xs">Fecha de tu visita</Label>
               <Input id="fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="h-12 text-base" />
               <p className="text-[11px] text-muted-foreground">Ya pusimos la fecha de hoy. Cámbiala solo si tu consumo fue otro día.</p>
+            </div>
+
+            <div className="space-y-1.5 mt-3">
+              <Label className="text-xs">Foto de tu ticket</Label>
+              {fotoPreview ? (
+                <div className="relative rounded-xl border overflow-hidden">
+                  <img src={fotoPreview} alt="Ticket" className="w-full max-h-64 object-contain bg-muted" />
+                  <button
+                    type="button"
+                    onClick={() => setFoto(null)}
+                    className="absolute top-2 right-2 inline-flex items-center justify-center w-8 h-8 rounded-full bg-background/90 border shadow text-foreground/80 active:scale-95"
+                    aria-label="Quitar foto"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <label
+                  htmlFor="foto-ticket"
+                  className="flex flex-col items-center justify-center gap-1.5 h-28 rounded-xl border-2 border-dashed cursor-pointer text-muted-foreground hover:border-primary/60 hover:text-primary transition-colors active:scale-[0.99]"
+                >
+                  <Camera className="h-6 w-6" />
+                  <span className="text-sm font-semibold">Tomar o subir foto</span>
+                </label>
+              )}
+              <input
+                id="foto-ticket"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="sr-only"
+                onChange={(e) => { elegirFoto(e.target.files?.[0] ?? null); e.target.value = ""; }}
+              />
+              <p className="text-[11px] text-muted-foreground">Una foto clara del ticket, donde se lea el total. Nos ayuda a validar tu consumo.</p>
             </div>
           </div>
 
