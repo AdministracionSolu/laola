@@ -29,14 +29,18 @@ export default function QrPedidos() {
   const [generando, setGenerando] = useState(false);
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
+  // Rótulo corto para los QR: "Del Valle" se muestra como "Valle".
+  const nombreCorto = (n: string) => n.replace(/^Del\s+/i, "");
+
   const tarjetas: Tarjeta[] = useMemo(
     () =>
       sucursales.flatMap((s) => {
         const out: Tarjeta[] = [];
+        const nombre = nombreCorto(s.nombre);
         if (tipo === "ambos" || tipo === "pedido")
-          out.push({ key: `${s.id}-p`, sucursal: s.nombre, accion: "Hacer pedido", sub: "Escanea para hacer el pedido", url: `${origin}/pedidos/s/${s.id}` });
+          out.push({ key: `${s.id}-p`, sucursal: nombre, accion: "Hacer pedido", sub: "Escanea para hacer el pedido", url: `${origin}/pedidos/s/${s.id}` });
         if (tipo === "ambos" || tipo === "recepcion")
-          out.push({ key: `${s.id}-r`, sucursal: s.nombre, accion: "Registrar lo que llegó", sub: "Escanea cuando llegue la mercancía", url: `${origin}/recepcion/s/${s.id}` });
+          out.push({ key: `${s.id}-r`, sucursal: nombre, accion: "Registrar lo que llegó", sub: "Escanea cuando llegue la mercancía", url: `${origin}/recepcion/s/${s.id}` });
         return out;
       }),
     [sucursales, tipo, origin]
