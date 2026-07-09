@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,16 +19,17 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import {
-  ArrowLeft, LogOut, Plus, Trash2, Users, CalendarClock, CalendarX2, ClipboardList, Clock, Pencil,
+  ArrowLeft, LogOut, Plus, Trash2, Users, CalendarClock, ClipboardList, Clock, Pencil,
 } from "lucide-react";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 
 const db = supabase as any;
 
 // ---------- Tipos ----------
+type Puesto = "mesero" | "cocina" | "caja" | "repartidor" | "barman";
 type Sucursal = { id: string; nombre: string };
 type Empleado = {
-  id: string; nombre: string; area: "mesero" | "cocina" | "caja";
+  id: string; nombre: string; area: Puesto;
   pin: string | null; sucursal_principal_id: string | null;
   telefono: string | null; orden: number; activo: boolean;
 };
@@ -41,19 +41,24 @@ type CatTurno = {
   id: string; sucursal_id: string | null; nombre: string;
   hora_entrada: string; hora_salida: string; color: string; orden: number; activo: boolean;
 };
-type Excepcion = {
-  id: string; fecha: string; sucursal_id: string; empleado_id: string | null;
-  tipo: "extension" | "descanso" | "cambio" | "cierre";
-  hora_entrada: string | null; hora_salida: string | null; nota: string | null;
-};
 type Asistencia = {
   id: string; empleado_id: string; sucursal_id: string; fecha_negocio: string;
   entrada_at: string; salida_at: string | null; turno_entrada: string | null;
   minutos_retardo: number | null; nota: string | null;
 };
 
-const AREA_LABEL: Record<string, string> = { mesero: "Meseros", cocina: "Cocina", caja: "Cajas" };
-const AREAS = ["mesero", "cocina", "caja"] as const;
+// Puesto individual de cada persona (lo que el admin asigna).
+const PUESTOS: Puesto[] = ["mesero", "cocina", "caja", "repartidor", "barman"];
+const PUESTO_LABEL: Record<Puesto, string> = {
+  mesero: "Mesero", cocina: "Cocina", caja: "Caja", repartidor: "Repartidor", barman: "Barman",
+};
+// Las 3 secciones en que se agrupa el personal para mostrarlo.
+const SECCIONES: { key: string; label: string; puestos: Puesto[] }[] = [
+  { key: "meseros", label: "Meseros", puestos: ["mesero"] },
+  { key: "cocina", label: "Cocina", puestos: ["cocina"] },
+  { key: "servicio", label: "Caja, repartidores y barra", puestos: ["caja", "repartidor", "barman"] },
+];
+const seccionDe = (p: Puesto) => SECCIONES.find((s) => s.puestos.includes(p));
 // Columnas Lun..Dom -> dia_semana (0=Dom)
 const DIAS = [
   { dow: 1, label: "Lun" }, { dow: 2, label: "Mar" }, { dow: 3, label: "Mié" },
@@ -89,8 +94,6 @@ export default function AdminHorarios() {
     setEmpleados((data ?? []) as Empleado[]);
   }, []);
 
-  const nombreSuc = (id: string) => sucursales.find((s) => s.id === id)?.nombre ?? "";
-
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Header */}
@@ -114,7 +117,6 @@ export default function AdminHorarios() {
           <TabsList className="mb-4 flex-wrap h-auto">
             <TabsTrigger value="horarios"><CalendarClock className="w-4 h-4 mr-1" /> Horarios</TabsTrigger>
             <TabsTrigger value="personal"><Users className="w-4 h-4 mr-1" /> Personal</TabsTrigger>
-            <TabsTrigger value="excepciones"><CalendarX2 className="w-4 h-4 mr-1" /> Excepciones</TabsTrigger>
             <TabsTrigger value="asistencias"><ClipboardList className="w-4 h-4 mr-1" /> Asistencias</TabsTrigger>
           </TabsList>
 
@@ -128,11 +130,6 @@ export default function AdminHorarios() {
             <PanelPersonal
               empleados={empleados} sucursales={sucursales} onChange={cargarEmpleados}
             />
-          </TabsContent>
-
-          <TabsContent value="excepciones">
-            <SucursalBar sucursales={sucursales} value={sucSel} onChange={setSucSel} />
-            <PanelExcepciones sucursalId={sucSel} nombreSuc={nombreSuc(sucSel)} empleados={empleados} />
           </TabsContent>
 
           <TabsContent value="asistencias">
@@ -172,7 +169,7 @@ function PanelPersonal({ empleados, sucursales, onChange }: {
 
   const guardar = async () => {
     if (!editando?.nombre?.trim()) { toast.error("El nombre es obligatorio."); return; }
-    if (!editando.area) { toast.error("Elige un área."); return; }
+    if (!editando.area) { toast.error("Elige un puesto."); return; }
     if (editando.pin && !/^\d{4}$/.test(editando.pin)) { toast.error("El PIN debe ser de 4 dígitos."); return; }
     const payload = {
       nombre: editando.nombre.trim(),
@@ -207,18 +204,22 @@ function PanelPersonal({ empleados, sucursales, onChange }: {
         </Button>
       </div>
 
-      {AREAS.map((area) => {
-        const lista = empleados.filter((e) => e.area === area);
+      {SECCIONES.map((sec) => {
+        const lista = empleados
+          .filter((e) => sec.puestos.includes(e.area))
+          .sort((a, b) => a.area.localeCompare(b.area) || a.orden - b.orden);
         if (!lista.length) return null;
+        const mostrarPuesto = sec.puestos.length > 1; // solo en la sección mixta
         return (
-          <div key={area} className="mb-5">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">{AREA_LABEL[area]}</h3>
+          <div key={sec.key} className="mb-5">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">{sec.label}</h3>
             <Card>
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nombre</TableHead>
+                      {mostrarPuesto && <TableHead>Puesto</TableHead>}
                       <TableHead>Sucursal base</TableHead>
                       <TableHead>PIN</TableHead>
                       <TableHead>Estado</TableHead>
@@ -229,6 +230,7 @@ function PanelPersonal({ empleados, sucursales, onChange }: {
                     {lista.map((e) => (
                       <TableRow key={e.id}>
                         <TableCell className="font-medium">{e.nombre}</TableCell>
+                        {mostrarPuesto && <TableCell><Badge variant="outline">{PUESTO_LABEL[e.area]}</Badge></TableCell>}
                         <TableCell>{sucursales.find((s) => s.id === e.sucursal_principal_id)?.nombre ?? "—"}</TableCell>
                         <TableCell>{e.pin ? "••••" : <span className="text-destructive text-xs">sin PIN</span>}</TableCell>
                         <TableCell>{e.activo ? <Badge>Activo</Badge> : <Badge variant="secondary">Baja</Badge>}</TableCell>
@@ -257,11 +259,11 @@ function PanelPersonal({ empleados, sucursales, onChange }: {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label>Área</Label>
-                  <Select value={editando.area} onValueChange={(v) => setEditando({ ...editando, area: v as any })}>
+                  <Label>Puesto</Label>
+                  <Select value={editando.area} onValueChange={(v) => setEditando({ ...editando, area: v as Puesto })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {AREAS.map((a) => <SelectItem key={a} value={a}>{AREA_LABEL[a]}</SelectItem>)}
+                      {PUESTOS.map((a) => <SelectItem key={a} value={a}>{PUESTO_LABEL[a]}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -353,13 +355,15 @@ function GridHorarios({ sucursalId, empleados }: { sucursalId: string; empleados
               </tr>
             </thead>
             <tbody>
-              {AREAS.map((area) => {
-                const grupo = visibles.filter((e) => e.area === area);
+              {SECCIONES.map((sec) => {
+                const grupo = visibles
+                  .filter((e) => sec.puestos.includes(e.area))
+                  .sort((a, b) => a.area.localeCompare(b.area) || a.orden - b.orden);
                 if (!grupo.length) return null;
                 return (
-                  <Fragment key={area}>
+                  <Fragment key={sec.key}>
                     <tr>
-                      <td colSpan={8} className="bg-muted/50 text-xs font-semibold uppercase tracking-wide p-1.5 text-muted-foreground">{AREA_LABEL[area]}</td>
+                      <td colSpan={8} className="bg-muted/50 text-xs font-semibold uppercase tracking-wide p-1.5 text-muted-foreground">{sec.label}</td>
                     </tr>
                     {grupo.map((e) => (
                       <tr key={e.id} className="border-b">
@@ -521,119 +525,6 @@ function CatalogoTurnos({ sucursalId, catalogo, onChange }: {
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-// ============================================================
-// EXCEPCIONES
-// ============================================================
-function PanelExcepciones({ sucursalId, nombreSuc, empleados }: {
-  sucursalId: string; nombreSuc: string; empleados: Empleado[];
-}) {
-  const [lista, setLista] = useState<Excepcion[]>([]);
-  const [nueva, setNueva] = useState<Partial<Excepcion> | null>(null);
-
-  const cargar = useCallback(async () => {
-    if (!sucursalId) return;
-    const { data } = await db.from("turno_excepciones").select("*").eq("sucursal_id", sucursalId).order("fecha", { ascending: false });
-    setLista((data ?? []) as Excepcion[]);
-  }, [sucursalId]);
-  useEffect(() => { cargar(); }, [cargar]);
-
-  const guardar = async () => {
-    if (!nueva?.fecha || !nueva.tipo) { toast.error("Fecha y tipo son obligatorios."); return; }
-    const res = await db.from("turno_excepciones").insert({
-      sucursal_id: sucursalId, fecha: nueva.fecha, tipo: nueva.tipo,
-      empleado_id: nueva.empleado_id || null,
-      hora_entrada: nueva.hora_entrada || null, hora_salida: nueva.hora_salida || null,
-      nota: nueva.nota || null,
-    });
-    if (res.error) { toast.error(res.error.message); return; }
-    toast.success("Excepción guardada.");
-    setNueva(null); cargar();
-  };
-  const borrar = async (id: string) => {
-    await db.from("turno_excepciones").delete().eq("id", id); cargar();
-  };
-
-  if (!sucursalId) return <p className="text-muted-foreground">Selecciona una sucursal.</p>;
-
-  const TIPO_LABEL: Record<string, string> = { extension: "Extender horario", descanso: "Descanso", cambio: "Cambio de horario", cierre: "Cierre" };
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-sm text-muted-foreground">Ajustes puntuales por fecha en {nombreSuc} (no cambian la plantilla semanal).</p>
-        <Button onClick={() => setNueva({ tipo: "extension" })}><Plus className="w-4 h-4 mr-1" /> Agregar</Button>
-      </div>
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader><TableRow>
-              <TableHead>Fecha</TableHead><TableHead>Tipo</TableHead><TableHead>Aplica a</TableHead>
-              <TableHead>Horario</TableHead><TableHead>Nota</TableHead><TableHead></TableHead>
-            </TableRow></TableHeader>
-            <TableBody>
-              {lista.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Sin excepciones.</TableCell></TableRow>
-              ) : lista.map((x) => (
-                <TableRow key={x.id}>
-                  <TableCell>{x.fecha}</TableCell>
-                  <TableCell><Badge variant="secondary">{TIPO_LABEL[x.tipo]}</Badge></TableCell>
-                  <TableCell>{x.empleado_id ? (empleados.find((e) => e.id === x.empleado_id)?.nombre ?? "—") : "Toda la sucursal"}</TableCell>
-                  <TableCell>{x.hora_entrada ? `${hhmm(x.hora_entrada)}–${hhmm(x.hora_salida)}` : "—"}</TableCell>
-                  <TableCell className="max-w-[200px] truncate">{x.nota ?? ""}</TableCell>
-                  <TableCell><Button variant="ghost" size="icon" onClick={() => borrar(x.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Dialog open={!!nueva} onOpenChange={(o) => !o && setNueva(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Nueva excepción</DialogTitle></DialogHeader>
-          {nueva && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>Fecha</Label><Input type="date" value={nueva.fecha ?? ""} onChange={(e) => setNueva({ ...nueva, fecha: e.target.value })} /></div>
-                <div>
-                  <Label>Tipo</Label>
-                  <Select value={nueva.tipo} onValueChange={(v) => setNueva({ ...nueva, tipo: v as any })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(TIPO_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div>
-                <Label>Aplica a</Label>
-                <Select value={nueva.empleado_id ?? "all"} onValueChange={(v) => setNueva({ ...nueva, empleado_id: v === "all" ? null : v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Toda la sucursal</SelectItem>
-                    {empleados.filter((e) => e.activo).map((e) => <SelectItem key={e.id} value={e.id}>{e.nombre}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              {(nueva.tipo === "extension" || nueva.tipo === "cambio") && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Entrada</Label><Input type="time" value={nueva.hora_entrada ?? ""} onChange={(e) => setNueva({ ...nueva, hora_entrada: e.target.value })} /></div>
-                  <div><Label>Salida</Label><Input type="time" value={nueva.hora_salida ?? ""} onChange={(e) => setNueva({ ...nueva, hora_salida: e.target.value })} /></div>
-                </div>
-              )}
-              <div><Label>Nota</Label><Textarea value={nueva.nota ?? ""} onChange={(e) => setNueva({ ...nueva, nota: e.target.value })} /></div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setNueva(null)}>Cancelar</Button>
-            <Button onClick={guardar}>Guardar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
   );
 }
 
