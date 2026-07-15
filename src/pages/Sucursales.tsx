@@ -1,74 +1,22 @@
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, Phone, Clock, ExternalLink, Facebook, Download } from "lucide-react";
-
-const locations = [
-  {
-    id: 1,
-    name: "La Ola Del Valle",
-    address: "Av del Valle 161, Cd del Valle, 63157",
-    city: "Tepic, Nayarit",
-    phone: "+52 311 133 0891",
-    hours: "10:00 A.M - 23:59 P.M",
-    facebook: "https://www.facebook.com/Laolaseafood/?locale=es_LA",
-    mapUrl: "https://maps.google.com/?q=Av+del+Valle+161+Tepic+Nayarit",
-    embedMap: "https://www.google.com/maps?q=Av+del+Valle+161,+Cd+del+Valle,+63157,+Tepic,+Nayarit&output=embed",
-    features: ["Privado disponible", "Música en vivo fines de semana"],
-    menuPdf: "/menus/menu-del-valle.pdf",
-  },
-  {
-    id: 2,
-    name: "La Ola Insurgentes",
-    address: "De Los Insurgentes Pte. 233, Versalles, 63000",
-    city: "Tepic, Nayarit",
-    phone: "+52 311 169 3323",
-    hours: "Dom-Mié: 11:00 A.M - 23:59 P.M / Jue-Sáb: 11:00 A.M - 2:00 A.M",
-    facebook: "https://www.facebook.com/Laolaseafood/?locale=es_LA",
-    mapUrl: "https://maps.google.com/?q=De+Los+Insurgentes+Pte+233+Versalles+Tepic+Nayarit",
-    embedMap: "https://www.google.com/maps?q=De+Los+Insurgentes+Pte+233,+Versalles,+63000,+Tepic,+Nayarit&output=embed",
-    features: ["Estacionamiento", "Cervecería"],
-    menuPdf: "/menus/menu-insurgentes.pdf",
-  },
-  {
-    id: 3,
-    name: "La Ola Solares",
-    address: "P.° Solares 1639-int: #11 & #12, Solares Residencial, 45019",
-    city: "Zapopan, Jalisco",
-    phone: "+52 33 1789 3505",
-    hours: "11:00 A.M - 20:00 P.M",
-    facebook: "https://www.facebook.com/Laolaseafood/?locale=es_LA",
-    mapUrl: "https://maps.google.com/?q=Paseo+Solares+1639+Zapopan+Jalisco",
-    embedMap: "https://www.google.com/maps?q=Paseo+Solares+1639,+Solares+Residencial,+45019,+Zapopan,+Jalisco&output=embed",
-    features: ["Terraza", "Música en vivo sábados"],
-    menuPdf: "/menus/menu-solares.pdf",
-  },
-  {
-    id: 4,
-    name: "La Ola Las Brisas",
-    address: "De Los Insurgentes Pte. 959, Las Brisas Rodeo de la Punta, 63110",
-    city: "Tepic, Nayarit",
-    phone: "+52 311 217 1395",
-    hours: "10:00 A.M - 18:00 P.M",
-    facebook: "https://www.facebook.com/Laolaseafood/?locale=es_LA",
-    mapUrl: "https://maps.google.com/?q=De+Los+Insurgentes+Pte+959+Tepic+Nayarit",
-    embedMap: "https://www.google.com/maps?q=De+Los+Insurgentes+Pte+959,+Las+Brisas,+63110,+Tepic,+Nayarit&output=embed",
-    features: ["Vista al lago", "Área para niños"],
-    menuPdf: "/menus/menu-las-brisas.pdf",
-  },
-];
+import { MapPin, Phone, Clock, ExternalLink, Facebook, UtensilsCrossed } from "lucide-react";
+import { useSucursales } from "@/lib/sucursales";
 
 export default function Sucursales() {
+  const { sucursales } = useSucursales();
+
   return (
     <Layout>
       {/* Hero */}
       <section className="bg-gradient-ocean py-16 md:py-24">
         <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-5xl font-display font-bold text-white mb-4">
-            Nuestras Sucursales
+          <h1 className="text-4xl md:text-6xl font-display font-bold text-white mb-4">
+            Nuestras sucursales
           </h1>
           <p className="text-white/90 text-lg max-w-2xl mx-auto">
-            4 ubicaciones en Tepic, Nayarit y Zapopan, Jalisco para disfrutar de nuestros mariscos
+            Cuatro ubicaciones entre Tepic, Nayarit y Zapopan, Jalisco.
           </p>
         </div>
       </section>
@@ -77,95 +25,98 @@ export default function Sucursales() {
       <section className="py-12 md:py-16 bg-background">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {locations.map((location, index) => (
-              <Card 
-                key={location.id} 
-                className="overflow-hidden hover:shadow-xl transition-all duration-300 animate-fade-in"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
+            {sucursales.map((s) => (
+              <Card key={s.id} className="overflow-hidden hover:shadow-xl transition-all duration-300">
                 <CardContent className="p-0">
-                  {/* Embedded Google Map */}
-                  <div className="h-48 relative overflow-hidden">
-                    <iframe
-                      src={location.embedMap}
-                      width="100%"
-                      height="100%"
-                      style={{ border: 0 }}
-                      allowFullScreen
-                      loading="lazy"
-                      referrerPolicy="no-referrer-when-downgrade"
-                      title={`Mapa de ${location.name}`}
-                      className="absolute inset-0"
-                    />
-                  </div>
+                  {/* Mapa embebido */}
+                  {s.mapaEmbed && (
+                    <div className="h-52 relative overflow-hidden">
+                      <iframe
+                        src={s.mapaEmbed}
+                        width="100%"
+                        height="100%"
+                        style={{ border: 0 }}
+                        allowFullScreen
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        title={`Mapa de La Ola ${s.nombre}`}
+                        className="absolute inset-0"
+                      />
+                    </div>
+                  )}
 
-                  {/* Content */}
                   <div className="p-6">
-                    <h2 className="text-xl font-display font-bold text-foreground mb-2">
-                      {location.name}
+                    <h2 className="text-2xl font-display font-bold text-foreground">
+                      La Ola {s.nombre}
                     </h2>
                     <p className="text-accent font-medium text-sm mb-4">
-                      {location.city}
+                      {s.contacto?.ciudad}
                     </p>
 
                     <div className="space-y-3 mb-6">
                       <div className="flex items-start gap-3">
                         <MapPin className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                        <p className="text-muted-foreground text-sm">
-                          {location.address}
-                        </p>
+                        <p className="text-muted-foreground text-sm">{s.direccion}</p>
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        <Phone className="w-5 h-5 text-primary flex-shrink-0" />
-                        <a
-                          href={`tel:${location.phone.replace(/\s/g, "")}`}
-                          className="text-foreground hover:text-primary transition-colors font-medium"
-                        >
-                          {location.phone}
-                        </a>
-                      </div>
+                      {s.contacto?.telefono && (
+                        <div className="flex items-center gap-3">
+                          <Phone className="w-5 h-5 text-primary flex-shrink-0" />
+                          <a
+                            href={`tel:${s.contacto.telefono.replace(/\s/g, "")}`}
+                            className="text-foreground hover:text-primary transition-colors font-medium"
+                          >
+                            {s.contacto.telefono}
+                          </a>
+                        </div>
+                      )}
 
-                      <div className="flex items-start gap-3">
-                        <Clock className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                        <p className="text-sm text-muted-foreground">
-                          {location.hours}
-                        </p>
-                      </div>
+                      {s.contacto?.horario && (
+                        <div className="flex items-start gap-3">
+                          <Clock className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                          <p className="text-sm text-muted-foreground">{s.contacto.horario}</p>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Features */}
-                    <div className="flex flex-wrap gap-2 mb-6">
-                      {location.features.map((feature, i) => (
-                        <span
-                          key={i}
-                          className="px-3 py-1 bg-secondary text-secondary-foreground rounded-full text-xs font-medium"
-                        >
-                          {feature}
-                        </span>
-                      ))}
-                    </div>
+                    {/* Amenidades */}
+                    {s.contacto?.amenidades?.length ? (
+                      <div className="flex flex-wrap gap-2 mb-6">
+                        {s.contacto.amenidades.map((a) => (
+                          <span
+                            key={a}
+                            className="px-3 py-1 bg-secondary text-secondary-foreground rounded-full text-xs font-medium"
+                          >
+                            {a}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
 
-                    {/* Actions */}
+                    {/* Acciones */}
                     <div className="flex flex-wrap gap-3">
-                      <Button asChild size="sm" className="bg-accent hover:bg-coral-light text-accent-foreground">
-                        <a href={location.mapUrl} target="_blank" rel="noopener noreferrer">
-                          <MapPin className="w-4 h-4 mr-1" />
-                          Cómo llegar
-                        </a>
-                      </Button>
+                      {s.mapaLink && (
+                        <Button asChild size="sm" className="bg-accent hover:bg-coral-light text-accent-foreground">
+                          <a href={s.mapaLink} target="_blank" rel="noopener noreferrer">
+                            <MapPin className="w-4 h-4 mr-1" />
+                            Cómo llegar
+                          </a>
+                        </Button>
+                      )}
                       <Button asChild size="sm" variant="outline" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground">
-                        <a href={location.menuPdf} target="_blank" rel="noopener noreferrer">
-                          <Download className="w-4 h-4 mr-1" />
+                        <a href={s.menuLink} target="_blank" rel="noopener noreferrer">
+                          <UtensilsCrossed className="w-4 h-4 mr-1" />
                           Menú
                         </a>
                       </Button>
-                      <Button asChild size="sm" variant="ghost" className="text-muted-foreground hover:text-primary">
-                        <a href={location.facebook} target="_blank" rel="noopener noreferrer">
-                          <Facebook className="w-4 h-4 mr-1" />
-                          Facebook
-                        </a>
-                      </Button>
+                      {s.contacto?.facebook && (
+                        <Button asChild size="sm" variant="ghost" className="text-muted-foreground hover:text-primary">
+                          <a href={s.contacto.facebook} target="_blank" rel="noopener noreferrer">
+                            <Facebook className="w-4 h-4 mr-1" />
+                            Facebook
+                          </a>
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -182,12 +133,11 @@ export default function Sucursales() {
             ¿Buscas un espacio para tu evento?
           </h2>
           <p className="text-muted-foreground mb-6 max-w-xl mx-auto">
-            Contamos con áreas privadas y cervecería en algunas sucursales. 
-            Contáctanos para más información.
+            Tenemos áreas privadas y cervecería en algunas sucursales. Cuéntanos qué necesitas.
           </p>
           <Button asChild className="bg-primary hover:bg-ocean-light text-primary-foreground">
             <a href="/contacto">
-              Solicitar Información
+              Solicitar información
               <ExternalLink className="w-4 h-4 ml-2" />
             </a>
           </Button>

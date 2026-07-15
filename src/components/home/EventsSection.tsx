@@ -1,7 +1,12 @@
-import { Calendar, Music, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import zonaPrivada from "@/assets/zona-privada.jpeg";
+
+const experiencias = [
+  { titulo: "Música en vivo", detalle: "Viernes y sábados desde las 3:00 PM" },
+  { titulo: "Privado y cervecería", detalle: "Un espacio aparte para tu celebración" },
+  { titulo: "Eventos especiales", detalle: "Cumpleaños, empresa y fechas importantes" },
+];
 
 export function EventsSection() {
   return (
@@ -10,53 +15,22 @@ export function EventsSection() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Content */}
           <div>
-            <span className="text-accent font-medium text-sm uppercase tracking-wider">
-              Eventos & Música en Vivo
-            </span>
-            <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mt-2 mb-6">
+            <p className="text-accent font-medium tracking-wide mb-2">Eventos y música en vivo</p>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold text-foreground leading-tight mb-6">
               Más que un restaurante, una experiencia
             </h2>
             <p className="text-muted-foreground mb-8 leading-relaxed">
-              En La Ola no solo disfrutas de los mejores mariscos, también vives momentos inolvidables. 
-              Contamos con música en vivo los fines de semana y un espacio privado perfecto para tus celebraciones.
+              En La Ola comes de los mejores mariscos y te quedas por el ambiente: música
+              en vivo los fines de semana y un espacio privado para lo que quieras celebrar.
             </p>
 
-            <div className="space-y-4 mb-8">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <Music className="w-6 h-6 text-primary" />
+            <div className="divide-y divide-border border-y border-border mb-8">
+              {experiencias.map((e) => (
+                <div key={e.titulo} className="py-4 flex items-baseline justify-between gap-4">
+                  <h3 className="font-display font-bold text-lg text-foreground">{e.titulo}</h3>
+                  <p className="text-sm text-muted-foreground text-right">{e.detalle}</p>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-foreground">Música en Vivo</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Viernes y sábados a partir de las 3:00 PM
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
-                  <Users className="w-6 h-6 text-accent" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground">Privado / Cervecería</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Espacio exclusivo para eventos y celebraciones
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <Calendar className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground">Eventos Especiales</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Cumpleaños, reuniones de empresa y más
-                  </p>
-                </div>
-              </div>
+              ))}
             </div>
 
             <Button asChild className="bg-accent hover:bg-coral-light text-accent-foreground">

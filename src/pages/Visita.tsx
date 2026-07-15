@@ -141,14 +141,6 @@ export default function Visita() {
     window.scrollTo({ top: 0 });
   };
 
-  const reiniciar = () => {
-    setPaso("captura");
-    setFolio(""); setTelefono("");
-    setPrimerNombre(""); setSegundoNombre(""); setApellidoPaterno(""); setApellidoMaterno("");
-    setNacDia(""); setNacMes(""); setNacAnio(""); setAcepto(false);
-    setPerfil(null);
-  };
-
   // ---------- Encabezado con logo ----------
   const Header = ({ titulo, sub }: { titulo: string; sub?: React.ReactNode }) => (
     <div className="flex flex-col items-center text-center mb-6">
@@ -235,9 +227,6 @@ export default function Visita() {
 
           <div className="flex flex-col items-center gap-3 mt-6">
             <Link to="/menu" className="text-primary font-semibold">Ver el menú</Link>
-            <button onClick={reiniciar} className="text-xs text-muted-foreground underline">
-              Registrar otro ticket
-            </button>
           </div>
         </div>
       </div>
