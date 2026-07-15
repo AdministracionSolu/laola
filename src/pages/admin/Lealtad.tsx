@@ -14,6 +14,10 @@ type Cliente = {
   id: string;
   telefono: string;
   nombre: string;
+  primer_nombre: string | null;
+  segundo_nombre: string | null;
+  apellido_paterno: string | null;
+  apellido_materno: string | null;
   cumpleanos: string | null;
   sucursal_captacion_id: string | null;
   sucursal_captacion_codigo: string | null;
@@ -26,7 +30,7 @@ type Cliente = {
 type Sucursal = { id: string; nombre: string; prefijo_folio: string | null };
 type Nivel = { id: string; nombre: string; min_visitas: number; beneficio: string | null; color: string; orden: number; activo: boolean };
 type Config = { id: number; meta_visitas: number; tope_visitas_dia: number; recompensa_texto: string };
-type Visita = { id: string; cliente_id: string; sucursal_id: string | null; fecha_negocio: string; origen: string; created_at: string };
+type Visita = { id: string; cliente_id: string; sucursal_id: string | null; fecha_negocio: string; origen: string; folio: string | null; created_at: string };
 
 const db = supabase as any;
 
@@ -164,12 +168,17 @@ export default function AdminLealtad() {
 
   const exportarCSV = () => {
     const filas = [
-      ["nombre", "telefono", "sucursal_captacion", "cumpleanos", "consentimiento", "activo", "fecha_registro"],
+      ["primer_nombre", "segundo_nombre", "apellido_paterno", "apellido_materno", "nombre", "telefono", "sucursal_captacion", "cumpleanos", "visitas", "consentimiento", "activo", "fecha_registro"],
       ...filtrados.map((c) => [
+        c.primer_nombre ?? "",
+        c.segundo_nombre ?? "",
+        c.apellido_paterno ?? "",
+        c.apellido_materno ?? "",
         c.nombre,
         c.telefono,
         nombreSucursal(c),
         c.cumpleanos ?? "",
+        c.visitas_total ?? 0,
         c.consentimiento_marketing ? "si" : "no",
         c.activo ? "si" : "no",
         c.created_at.slice(0, 10),
@@ -274,7 +283,7 @@ export default function AdminLealtad() {
                         onChange={(e) => setConfig({ ...config, meta_visitas: Math.max(1, Number(e.target.value) || 1) })} />
                     </div>
                     <div>
-                      <label className="text-xs text-muted-foreground">Máx. visitas por día (por tel.)</label>
+                      <label className="text-xs text-muted-foreground">Cap de visitas por día (por tel.)</label>
                       <Input type="number" min={1} value={config.tope_visitas_dia}
                         onChange={(e) => setConfig({ ...config, tope_visitas_dia: Math.max(1, Number(e.target.value) || 1) })} />
                     </div>
@@ -286,7 +295,7 @@ export default function AdminLealtad() {
                   </div>
                   <Button onClick={guardarConfig} className="gap-2"><Save className="w-4 h-4" /> Guardar reglas</Button>
                   <p className="text-xs text-muted-foreground">
-                    El tope por día frena que se abuse del número de alguien: un mismo teléfono solo suma la cantidad indicada de visitas al día.
+                    El blindaje principal es el folio del ticket: cada folio cuenta una sola visita por sucursal por día. El cap por día es un límite extra anti-abuso: aunque tenga varios tickets, un mismo teléfono no suma más de esta cantidad de visitas al día.
                   </p>
                 </>
               )}
@@ -426,7 +435,9 @@ export default function AdminLealtad() {
                       <span className="text-muted-foreground tabular-nums"> · {cli?.telefono ?? ""}</span>
                     </div>
                     <div className="text-muted-foreground text-xs text-right">
-                      {nombreSucId(v.sucursal_id)} · {new Date(v.created_at).toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "America/Mexico_City" })}
+                      {nombreSucId(v.sucursal_id)}
+                      {v.folio ? <> · <span className="font-medium">folio {v.folio}</span></> : null}
+                      {" · "}{new Date(v.created_at).toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "America/Mexico_City" })}
                     </div>
                   </div>
                 );
