@@ -1,4 +1,6 @@
+import { useRef } from "react";
 import { Link } from "react-router-dom";
+import Autoplay from "embla-carousel-autoplay";
 import {
   Carousel,
   CarouselContent,
@@ -39,6 +41,12 @@ const dishes = [
 ];
 
 export function FeaturedDishes() {
+  // Auto-play en loop continuo: avanza solo, se pausa al pasar el mouse
+  // y retoma tras usar las flechas.
+  const autoplay = useRef(
+    Autoplay({ delay: 2800, stopOnInteraction: false, stopOnMouseEnter: true })
+  );
+
   return (
     <section className="py-16 md:py-24 bg-background">
       <div className="container mx-auto px-4">
@@ -54,15 +62,20 @@ export function FeaturedDishes() {
           </p>
         </div>
 
-        <Carousel opts={{ align: "start", loop: true }} className="w-full">
+        <Carousel
+          plugins={[autoplay.current]}
+          opts={{ align: "start", loop: true, duration: 32 }}
+          className="w-full"
+        >
           <CarouselContent className="-ml-4">
             {dishes.map((dish) => (
               <CarouselItem key={dish.name} className="pl-4 basis-[85%] sm:basis-1/2 lg:basis-1/3">
-                <article className="group relative overflow-hidden rounded-2xl shadow-lg aspect-[3/4]">
+                <article className="group relative overflow-hidden rounded-2xl shadow-lg aspect-[4/5] bg-ocean-dark">
                   <img
                     src={dish.image}
                     alt={dish.name}
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    loading="lazy"
+                    className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-[6000ms] ease-out group-hover:scale-110"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-ocean-dark/90 via-ocean-dark/25 to-transparent" />
                   <div className="absolute inset-x-0 bottom-0 p-6 text-white">
