@@ -260,3 +260,97 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.lealtad_visita(text, text, text, text, text, text, text, date, boolean)
   TO anon, authenticated;
+
+
+-- ============================================================
+-- BLOQUE 5 — RPC pública: INSCRIPCIÓN al programa (QR de tent card)
+-- Distinta del QR del ticket: aquí NO hay folio ni se cuenta visita,
+-- solo se da de alta el perfil. Nombre estructurado + nacimiento obligatorios.
+-- (reemplaza la firma vieja de v1)
+-- ============================================================
+DROP FUNCTION IF EXISTS public.lealtad_registrar(text, text, text, date, boolean);
+
+CREATE OR REPLACE FUNCTION public.lealtad_registrar(
+  p_primer_nombre    text,
+  p_apellido_paterno text,
+  p_apellido_materno text,
+  p_telefono         text,
+  p_cumpleanos       date,
+  p_segundo_nombre   text DEFAULT NULL,
+  p_sucursal_codigo  text DEFAULT NULL,
+  p_consentimiento   boolean DEFAULT true
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $leal$
+DECLARE
+  v_tel    text;
+  v_suc_id uuid;
+  v_nombre text;
+  v_nuevo  boolean;
+BEGIN
+  v_tel := regexp_replace(COALESCE(p_telefono, ''), '\D', '', 'g');
+  IF char_length(v_tel) <> 10 THEN
+    RAISE EXCEPTION 'TELEFONO_INVALIDO';
+  END IF;
+
+  IF NULLIF(trim(COALESCE(p_primer_nombre, '')), '') IS NULL
+     OR NULLIF(trim(COALESCE(p_apellido_paterno, '')), '') IS NULL
+     OR NULLIF(trim(COALESCE(p_apellido_materno, '')), '') IS NULL THEN
+    RAISE EXCEPTION 'NOMBRE_INCOMPLETO';
+  END IF;
+
+  IF p_cumpleanos IS NULL THEN
+    RAISE EXCEPTION 'CUMPLE_REQUERIDO';
+  END IF;
+
+  IF p_consentimiento IS NOT TRUE THEN
+    RAISE EXCEPTION 'CONSENTIMIENTO_REQUERIDO';
+  END IF;
+
+  IF p_sucursal_codigo IS NOT NULL THEN
+    SELECT id INTO v_suc_id FROM sucursales
+    WHERE upper(prefijo_folio) = upper(trim(p_sucursal_codigo)) LIMIT 1;
+  END IF;
+
+  v_nombre := btrim(regexp_replace(concat_ws(' ',
+    trim(p_primer_nombre), NULLIF(trim(COALESCE(p_segundo_nombre, '')), ''),
+    trim(p_apellido_paterno), trim(p_apellido_materno)), '\s+', ' ', 'g'));
+
+  INSERT INTO lealtad_clientes (
+    telefono, nombre, primer_nombre, segundo_nombre, apellido_paterno, apellido_materno,
+    cumpleanos, sucursal_captacion_id, sucursal_captacion_codigo,
+    consentimiento_marketing, consentimiento_at, activo
+  ) VALUES (
+    v_tel, v_nombre, trim(p_primer_nombre), NULLIF(trim(COALESCE(p_segundo_nombre, '')), ''),
+    trim(p_apellido_paterno), trim(p_apellido_materno),
+    p_cumpleanos, v_suc_id, upper(trim(p_sucursal_codigo)),
+    true, now(), true
+  )
+  ON CONFLICT (telefono) DO UPDATE SET
+    nombre           = EXCLUDED.nombre,
+    primer_nombre    = EXCLUDED.primer_nombre,
+    segundo_nombre   = EXCLUDED.segundo_nombre,
+    apellido_paterno = EXCLUDED.apellido_paterno,
+    apellido_materno = EXCLUDED.apellido_materno,
+    cumpleanos       = COALESCE(lealtad_clientes.cumpleanos, EXCLUDED.cumpleanos),
+    activo           = true,
+    consentimiento_marketing = true,
+    consentimiento_at = COALESCE(lealtad_clientes.consentimiento_at, now())
+  RETURNING (xmax = 0) INTO v_nuevo;
+
+  IF v_suc_id IS NOT NULL THEN
+    UPDATE lealtad_clientes
+    SET sucursal_captacion_id = v_suc_id,
+        sucursal_captacion_codigo = upper(trim(p_sucursal_codigo))
+    WHERE telefono = v_tel AND sucursal_captacion_id IS NULL;
+  END IF;
+
+  RETURN jsonb_build_object('ok', true, 'nuevo', COALESCE(v_nuevo, false), 'nombre', v_nombre);
+END;
+$leal$;
+
+GRANT EXECUTE ON FUNCTION public.lealtad_registrar(text, text, text, text, date, text, text, boolean)
+  TO anon, authenticated;

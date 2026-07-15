@@ -28,6 +28,7 @@ import Ordenar from "./pages/Ordenar";
 import SeguimientoPedido from "./pages/SeguimientoPedido";
 import PanelPedidosEnLinea from "./pages/PanelPedidosEnLinea";
 import Lealtad from "./pages/Lealtad";
+import Visita from "./pages/Visita";
 import AdminLealtad from "./pages/admin/Lealtad";
 import Factura from "./pages/Factura";
 import AdminFacturacion from "./pages/admin/Facturacion";
@@ -56,7 +57,9 @@ const App = () => (
           <Route path="/ordenar/:slugSucursal" element={<Ordenar />} />
           <Route path="/pedido/:token" element={<SeguimientoPedido />} />
           {/* Programa de lealtad (cliente final, público, atribución por ?suc=) */}
+          {/* /lealtad = inscripción (QR de tent card). /visita = validar visita con folio (QR del ticket). */}
           <Route path="/lealtad" element={<Lealtad />} />
+          <Route path="/visita" element={<Visita />} />
           {/* Facturación self-serve (cliente final, público, atribución por ?suc=) */}
           <Route path="/factura" element={<Factura />} />
           {/* Centro de Operaciones: igual que antes (sin gate) */}
