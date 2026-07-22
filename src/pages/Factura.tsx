@@ -32,6 +32,9 @@ const RFC_RE = /^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/;
 
 // Fecha de hoy en horario local (YYYY-MM-DD), para pre-llenar el campo.
 const hoyLocal = () => new Date().toLocaleDateString("en-CA");
+// Primer día del mes en curso: se puede facturar cualquier consumo del mes,
+// pero al arrancar un mes nuevo ya no se factura nada del mes anterior.
+const inicioMesLocal = () => hoyLocal().slice(0, 8) + "01";
 
 export default function Factura() {
   const [params] = useSearchParams();
@@ -80,7 +83,8 @@ export default function Factura() {
   const cpOk = /^\d{5}$/.test(cp);
   const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
   const telOk = telLimpio.length === 10;
-  const consumoOk = ticket.trim().length > 0 && Number(total) > 0 && !!fecha && !!foto;
+  const fechaOk = !!fecha && fecha >= inicioMesLocal() && fecha <= hoyLocal();
+  const consumoOk = ticket.trim().length > 0 && Number(total) > 0 && fechaOk && !!foto;
   const puedeEnviar =
     rfcOk && razon.trim().length >= 3 && regimen && cpOk && uso && emailOk &&
     telOk && formaPago && consumoOk && !enviando;
@@ -126,6 +130,7 @@ export default function Factura() {
       else if (m.includes("EMAIL_INVALIDO")) toast.error("Revisa tu correo.");
       else if (m.includes("TELEFONO_INVALIDO")) toast.error("El teléfono debe tener 10 dígitos.");
       else if (m.includes("FOTO_REQUERIDA")) toast.error("Falta la foto de tu ticket.");
+      else if (m.includes("FECHA_FUERA_DE_MES")) toast.error("Solo puedes facturar consumos del mes en curso.");
       else if (m.includes("TICKET") || m.includes("TOTAL") || m.includes("FECHA")) toast.error("Faltan datos de tu consumo (ticket, total y fecha).");
       else toast.error("No pudimos registrar tu solicitud. Intenta de nuevo.");
       return;
@@ -266,8 +271,21 @@ export default function Factura() {
             </div>
             <div className="space-y-1.5 mt-3">
               <Label htmlFor="fecha" className="text-xs">Fecha de tu visita</Label>
-              <Input id="fecha" type="date" value={fecha} readOnly disabled className="h-12 text-base bg-muted/60 cursor-not-allowed" />
-              <p className="text-[11px] text-muted-foreground">La factura se genera con la fecha de hoy. Solicítala el mismo día de tu consumo.</p>
+              <Input
+                id="fecha"
+                type="date"
+                value={fecha}
+                min={inicioMesLocal()}
+                max={hoyLocal()}
+                onChange={(e) => setFecha(e.target.value)}
+                className="h-12 text-base"
+              />
+              {fecha && !fechaOk && (
+                <p className="text-xs text-destructive">
+                  Solo puedes facturar consumos del mes en curso (del {inicioMesLocal().slice(8)} a hoy).
+                </p>
+              )}
+              <p className="text-[11px] text-muted-foreground">Puedes facturar cualquier consumo del mes en curso. Al cerrar el mes ya no es posible facturar días anteriores.</p>
             </div>
 
             <div className="space-y-1.5 mt-3">
@@ -311,7 +329,7 @@ export default function Factura() {
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-4">
-          Solicita tu factura el mismo día de tu consumo. Cualquier duda, con tu mesero.
+          Puedes solicitar tu factura hasta el último día del mes de tu consumo. Cualquier duda, con tu mesero.
         </p>
       </div>
     </div>

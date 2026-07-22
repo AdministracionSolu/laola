@@ -43,6 +43,9 @@ export default function ProveedorPortal() {
   // Filas de gramaje por producto por-gramaje (4 filas, en blanco).
   const [gramajes, setGramajes] = useState<Record<string, GramajeRow[]>>({});
   const [guardando, setGuardando] = useState(false);
+  // Pantalla de éxito con lo que quedó guardado, y lista de lo que falló.
+  const [exito, setExito] = useState<{ nombre: string; detalle: string }[] | null>(null);
+  const [fallidos, setFallidos] = useState<string[]>([]);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -78,8 +81,18 @@ export default function ProveedorPortal() {
       return !isNaN(v) && v > 0;
     });
 
+  // Corre un RPC y reintenta UNA vez si falla (señal débil de celular).
+  const conReintento = async (run: () => Promise<{ data: unknown; error: unknown }>) => {
+    const r1 = await run();
+    if (!r1.error && r1.data !== false) return true;
+    const r2 = await run();
+    return !r2.error && r2.data !== false;
+  };
+
   const guardarTodo = async () => {
     if (!catalogo) return;
+    const nombreDe = (id: string) => catalogo.productos.find((p) => p.id === id)?.nombre ?? "";
+    const unidadDe = (id: string) => catalogo.productos.find((p) => p.id === id)?.unidad ?? "";
     const normales = catalogo.productos.filter((p) => !p.por_gramaje);
     const porGramaje = catalogo.productos.filter((p) => p.por_gramaje);
 
@@ -100,23 +113,56 @@ export default function ProveedorPortal() {
       return;
     }
 
+    // Una tarea por producto, con cómo limpiar su campo si se guardó bien.
+    type Tarea = {
+      id: string;
+      nombre: string;
+      detalle: string;
+      run: () => Promise<{ data: unknown; error: unknown }>;
+      limpiar: () => void;
+    };
+    const tareas: Tarea[] = [
+      ...itemsNormales.map((it) => ({
+        id: it.id,
+        nombre: nombreDe(it.id),
+        detalle: `$${it.valor}/${unidadDe(it.id)}`,
+        run: () => rpc("prov_set_precio", { p_token: token, p_producto_id: it.id, p_precio: it.valor }),
+        limpiar: () => setPrecios((prev) => { const n = { ...prev }; delete n[it.id]; return n; }),
+      })),
+      ...itemsGramaje.map((it) => ({
+        id: it.id,
+        nombre: nombreDe(it.id),
+        detalle: it.filas.map((f) => `${f.gramaje || "s/g"} $${f.precio}`).join(" · "),
+        run: () => rpc("prov_set_camaron", { p_token: token, p_producto_id: it.id, p_items: it.filas }),
+        limpiar: () => setGramajes((prev) => ({ ...prev, [it.id]: filasVacias() })),
+      })),
+    ];
+
     setGuardando(true);
-    const results = await Promise.all([
-      ...itemsNormales.map((it) => rpc("prov_set_precio", { p_token: token, p_producto_id: it.id, p_precio: it.valor })),
-      ...itemsGramaje.map((it) => rpc("prov_set_camaron", { p_token: token, p_producto_id: it.id, p_items: it.filas })),
-    ]);
+    setFallidos([]);
+    // En lotes chicos (no 10+ llamadas de golpe en señal de celular).
+    const resultados: { tarea: Tarea; ok: boolean }[] = [];
+    for (let i = 0; i < tareas.length; i += 3) {
+      const lote = tareas.slice(i, i + 3);
+      const oks = await Promise.all(lote.map((t) => conReintento(t.run)));
+      lote.forEach((t, j) => resultados.push({ tarea: t, ok: oks[j] }));
+    }
     setGuardando(false);
 
-    const total = itemsNormales.length + itemsGramaje.length;
-    const ok = results.filter((r) => !r.error && r.data !== false).length;
-    if (ok === total) {
-      toast.success("Precios guardados ✓");
-      setPrecios({});
-      const g: Record<string, GramajeRow[]> = {};
-      catalogo.productos.forEach((p) => { if (p.por_gramaje) g[p.id] = filasVacias(); });
-      setGramajes(g);
+    const bien = resultados.filter((r) => r.ok);
+    const mal = resultados.filter((r) => !r.ok);
+    bien.forEach((r) => r.tarea.limpiar());
+
+    if (mal.length === 0) {
+      setExito(bien.map((r) => ({ nombre: r.tarea.nombre, detalle: r.tarea.detalle })));
     } else {
-      toast.error(`Se guardaron ${ok} de ${total}. Reintenta.`);
+      // Los que fallaron conservan su campo lleno; aviso fijo (no solo toast).
+      setFallidos(mal.map((r) => r.tarea.nombre));
+      toast.error(
+        `Se guardaron ${bien.length} de ${tareas.length}. Falta: ${mal
+          .map((r) => r.tarea.nombre)
+          .join(", ")}. Dale Guardar otra vez.`
+      );
     }
   };
 
@@ -152,6 +198,47 @@ export default function ProveedorPortal() {
   const hoy = format(new Date(), "EEEE d 'de' MMMM", { locale: es });
   const hoyCap = hoy.charAt(0).toUpperCase() + hoy.slice(1);
 
+  // ---- Pantalla de éxito: lo que quedó guardado, confirmado ----
+  if (exito) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/10 flex items-center justify-center p-4">
+        <div className="max-w-sm w-full space-y-4">
+          <div className="text-center space-y-2">
+            <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-emerald-100 text-emerald-600">
+              <CheckCircle2 className="h-14 w-14" />
+            </div>
+            <h1 className="text-2xl font-bold">¡Precios guardados!</h1>
+            <p className="text-sm text-muted-foreground">
+              Gracias, {catalogo.proveedor.nombre} · {hoyCap}
+            </p>
+          </div>
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-sm font-semibold mb-2">
+                Quedaron registrados {exito.length} producto{exito.length === 1 ? "" : "s"}:
+              </p>
+              <div className="divide-y">
+                {exito.map((r) => (
+                  <div key={r.nombre} className="flex items-center justify-between gap-2 py-2">
+                    <span className="text-sm">{r.nombre}</span>
+                    <span className="font-semibold text-sm text-right">{r.detalle}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          <Button
+            variant="outline"
+            className="w-full h-12 text-base"
+            onClick={() => { setExito(null); cargar(); }}
+          >
+            Capturar otro precio
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/10 pb-28">
       {/* Encabezado personalizado */}
@@ -176,6 +263,19 @@ export default function ProveedorPortal() {
         <p className="text-sm text-muted-foreground px-1">
           Escribe el precio de <b>hoy</b> de cada producto y dale Guardar. Toma menos de 1 minuto.
         </p>
+
+        {fallidos.length > 0 && (
+          <Card className="border-destructive/50 bg-destructive/5">
+            <CardContent className="p-4 text-sm">
+              <p className="font-semibold text-destructive">
+                Estos precios NO se guardaron: {fallidos.join(", ")}.
+              </p>
+              <p className="text-muted-foreground mt-1">
+                Siguen capturados abajo. Revisa tu señal y vuelve a dar Guardar.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {catalogo.productos.length === 0 ? (
           <Card>

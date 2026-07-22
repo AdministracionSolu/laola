@@ -103,6 +103,12 @@ export default function Pedidos() {
   const [enviando, setEnviando] = useState(false);
   const [revisar, setRevisar] = useState(false);
   const [draftCargado, setDraftCargado] = useState(false);
+  // Pantalla de éxito con lo que el SERVIDOR confirmó tras enviar.
+  const [exito, setExito] = useState<{
+    hora: string;
+    renglones: { nombre: string; cantidad: number; unidad: string }[];
+    existencias: number;
+  } | null>(null);
 
   // ---- Carga inicial ----
   useEffect(() => {
@@ -334,45 +340,58 @@ export default function Pedidos() {
       // haya capturado en cantidad_pedida).
       const { data: existRows } = await supabase
         .from("pedidos_detalle")
-        .select("id, insumo_id")
+        .select("id, insumo_id, cantidad_pedida")
         .eq("pedido_id", id);
       const existentes = new Map(
-        ((existRows ?? []) as { id: string; insumo_id: string }[]).map((r) => [r.insumo_id, r.id])
+        ((existRows ?? []) as { id: string; insumo_id: string; cantidad_pedida: number }[]).map(
+          (r) => [r.insumo_id, r]
+        )
       );
 
-      // Nuevos: se insertan con cantidad_pedida = la solicitud (default a ajustar).
-      const nuevos = aGuardar
-        .filter((i) => !existentes.has(i.insumo_id))
-        .map((i) => {
-          const d = detalles[i.insumo_id];
-          return {
-            pedido_id: id,
-            insumo_id: i.insumo_id,
-            existencia: d.existencia,
-            cantidad_sugerida: d.cantidad_pedida,
-            cantidad_pedida: d.cantidad_pedida,
-          };
-        });
-      if (nuevos.length) {
-        const { error } = await supabase.from("pedidos_detalle").insert(nuevos);
-        if (error) throw error;
+      // TODO en un solo upsert (choca contra el único pedido+insumo en vez de
+      // tronar el lote completo): si otro dispositivo mandó primero, sus
+      // renglones se actualizan y los nuestros se agregan; nada se pierde.
+      const payload = aGuardar.map((i) => {
+        const d = detalles[i.insumo_id];
+        const previo = existentes.get(i.insumo_id);
+        return {
+          pedido_id: id as string,
+          insumo_id: i.insumo_id,
+          existencia: d.existencia,
+          cantidad_sugerida: d.cantidad_pedida,
+          // Renglón ya ajustado por el admin: se respeta su cantidad_pedida.
+          cantidad_pedida: previo ? Number(previo.cantidad_pedida) : d.cantidad_pedida,
+        };
+      });
+      if (payload.length) {
+        const { error } = await supabase
+          .from("pedidos_detalle")
+          .upsert(payload, { onConflict: "pedido_id,insumo_id" });
+        if (error && error.code === "42P10") {
+          // La base aún no tiene el candado único (pedido, insumo): camino
+          // legado mientras se aplica el SQL (insertar nuevos, actualizar existentes).
+          const nuevos = payload.filter((r) => !existentes.has(r.insumo_id));
+          if (nuevos.length) {
+            const { error: insErr } = await supabase.from("pedidos_detalle").insert(nuevos);
+            if (insErr) throw insErr;
+          }
+          const updates = payload
+            .filter((r) => existentes.has(r.insumo_id))
+            .map((r) =>
+              supabase
+                .from("pedidos_detalle")
+                .update({ existencia: r.existencia, cantidad_sugerida: r.cantidad_sugerida })
+                .eq("id", existentes.get(r.insumo_id)!.id)
+            );
+          const rs = await Promise.all(updates);
+          const bad = rs.find((x) => x.error);
+          if (bad?.error) throw bad.error;
+        } else if (error) {
+          throw error;
+        }
       }
 
-      // Existentes: solo existencia + solicitud (NO cantidad_pedida del admin).
-      const actualizaciones = aGuardar
-        .filter((i) => existentes.has(i.insumo_id))
-        .map((i) => {
-          const d = detalles[i.insumo_id];
-          return supabase
-            .from("pedidos_detalle")
-            .update({ existencia: d.existencia, cantidad_sugerida: d.cantidad_pedida })
-            .eq("id", existentes.get(i.insumo_id) as string);
-        });
-      const resultados = await Promise.all(actualizaciones);
-      const errUpd = resultados.find((r) => r.error);
-      if (errUpd?.error) throw errUpd.error;
-
-      // 3) Último paso: marcar enviado (detalle ya quedó completo).
+      // 3) Marcar enviado (detalle ya quedó completo).
       const { error: estadoErr } = await supabase
         .from("pedidos")
         .update({
@@ -384,11 +403,44 @@ export default function Pedidos() {
         .eq("id", id);
       if (estadoErr) throw estadoErr;
 
+      // 4) Verificar contra el servidor: lo que la base REALMENTE tiene es lo
+      //    que se muestra en la pantalla de éxito.
+      const { data: verifRows, error: verifErr } = await supabase
+        .from("pedidos_detalle")
+        .select("insumo_id, existencia, cantidad_sugerida")
+        .eq("pedido_id", id);
+      if (verifErr) throw verifErr;
+      const enServidor = new Map(
+        ((verifRows ?? []) as { insumo_id: string; existencia: number | null; cantidad_sugerida: number | null }[]).map(
+          (r) => [r.insumo_id, r]
+        )
+      );
+      const faltantes = aGuardar.filter((i) => !enServidor.has(i.insumo_id));
+      if (faltantes.length > 0) {
+        toast.error(
+          `Atención: ${faltantes.length} producto(s) no se registraron (${faltantes
+            .map((f) => f.nombre)
+            .join(", ")}). Vuelve a enviar.`
+        );
+        return;
+      }
+
       setEstadoPedido("enviado");
       setEnviadoAt(ahora);
       localStorage.removeItem(draftKey);
       setRevisar(false);
-      toast.success(`Pedido enviado a las ${getHoraNegocio(ahora)} ✓`);
+      // Resumen CONFIRMADO por el servidor para la pantalla de éxito.
+      setExito({
+        hora: getHoraNegocio(ahora),
+        renglones: aGuardar
+          .filter((i) => Number(enServidor.get(i.insumo_id)?.cantidad_sugerida || 0) > 0)
+          .map((i) => ({
+            nombre: i.nombre,
+            cantidad: Number(enServidor.get(i.insumo_id)?.cantidad_sugerida || 0),
+            unidad: i.unidad,
+          })),
+        existencias: aGuardar.length,
+      });
     } catch (error) {
       console.error("Error al enviar pedido:", error);
       toast.error("No se pudo enviar el pedido. Intenta de nuevo.");
@@ -398,6 +450,62 @@ export default function Pedidos() {
   };
 
   if (!sucursalId) return null;
+
+  // ---- Pantalla de éxito: confirmación clara de lo que quedó registrado ----
+  if (exito) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/10 flex items-center justify-center p-4">
+        <div className="max-w-md w-full space-y-4">
+          <div className="text-center space-y-2">
+            <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-emerald-100 text-emerald-600">
+              <CheckCircle2 className="h-14 w-14" />
+            </div>
+            <h1 className="text-2xl font-bold">¡Pedido enviado!</h1>
+            <p className="text-sm text-muted-foreground">
+              {sucursalNombre} · {exito.hora} · por {registradoPor.trim()}
+            </p>
+          </div>
+
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-sm font-semibold mb-2">
+                El sistema registró {exito.renglones.length} producto
+                {exito.renglones.length === 1 ? "" : "s"} a pedir:
+              </p>
+              <div className="divide-y">
+                {exito.renglones.map((r) => (
+                  <div key={r.nombre} className="flex items-center justify-between py-2">
+                    <span className="text-sm">{r.nombre}</span>
+                    <span className="font-semibold text-sm">
+                      {r.cantidad} {r.unidad}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">
+                También se guardaron las existencias de {exito.existencias} producto
+                {exito.existencias === 1 ? "" : "s"}. Esta lista es lo que quedó
+                guardado en el sistema; si falta algo, regresa y vuelve a enviar.
+              </p>
+            </CardContent>
+          </Card>
+
+          <div className="space-y-2">
+            <Button className="w-full h-12 text-base" onClick={() => navigate("/pedidos")}>
+              Listo
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full h-12 text-base"
+              onClick={() => setExito(null)}
+            >
+              Hacer un cambio al pedido
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/10 pb-28">
