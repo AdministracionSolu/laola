@@ -13,7 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { AdminCorteDialog } from "@/components/admin/AdminCorteDialog";
-import { esProteina, infoProteina } from "@/lib/proteinas";
+import { infoProteina } from "@/lib/proteinas";
 import { getFechaCalendario } from "@/lib/fecha";
 
 interface Sucursal {
@@ -310,28 +310,32 @@ export default function PanelControl() {
                 <CardContent className="p-0">
                   {pedidoSeleccionado ? (
                     <ScrollArea className="h-[50vh]">
-                      <div className="p-3 space-y-2">
-                        {pedidosDetalle
-                          .filter(d => d.cantidad_pedida > 0 && esProteina(d.insumos?.nombre ?? ""))
-                          .map((detalle) => (
-                            <div
-                              key={detalle.id}
-                              className="flex items-center justify-between text-sm py-1 border-b border-dashed"
-                            >
-                              <span className="truncate flex-1">
-                                {infoProteina(detalle.insumos?.nombre ?? "")?.display ?? detalle.insumos?.nombre}
-                              </span>
-                              <div className="flex items-center gap-3 text-right">
-                                <span className="text-xs text-muted-foreground">
-                                  Exist: {detalle.existencia}
-                                </span>
-                                <Badge variant="outline">
-                                  {detalle.cantidad_pedida}
-                                </Badge>
-                              </div>
-                            </div>
-                          ))}
-                      </div>
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b text-xs text-muted-foreground">
+                            <th className="text-left p-2">Insumo</th>
+                            <th className="p-2 text-center">Existencia</th>
+                            <th className="p-2 text-center">Pedido</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pedidosDetalle
+                            .filter(d => d.cantidad_pedida > 0 || Number(d.existencia) > 0)
+                            .map((detalle) => (
+                              <tr key={detalle.id} className="border-b border-dashed">
+                                <td className="p-2 truncate">
+                                  {infoProteina(detalle.insumos?.nombre ?? "")?.display ?? detalle.insumos?.nombre}
+                                </td>
+                                <td className="p-2 text-center tabular-nums text-muted-foreground">
+                                  {detalle.existencia}
+                                </td>
+                                <td className="p-2 text-center">
+                                  <Badge variant="outline">{detalle.cantidad_pedida}</Badge>
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
                     </ScrollArea>
                   ) : (
                     <div className="p-8 text-center text-muted-foreground text-sm">

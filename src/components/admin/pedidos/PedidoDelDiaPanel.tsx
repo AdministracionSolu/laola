@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from "react";
+import { Fragment, useMemo, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,7 +108,7 @@ export function PedidoDelDiaPanel({ sucursales, pedidosDetalle, insumosOrden, no
           <div>
             <CardTitle className="text-sm">Pedido del día — {hasta}</CardTitle>
             <CardDescription className="text-xs">
-              Cada celda: <b>ex</b>istencia · lo que la sucursal <b>pidió</b> · <b>casilla: cuánto les vamos a pedir</b>. Captura y guarda.
+              Por sucursal: <b>Exist.</b> (cuánto tienen) · <b>Pidió</b> (cuánto solicitaron) · <b>A pedir</b> (cuánto les vamos a pedir; captura y guarda).
             </CardDescription>
           </div>
           <Button size="sm" variant="outline" className="gap-1" onClick={exportar} disabled={!consolidado.length}>
@@ -130,11 +130,20 @@ export function PedidoDelDiaPanel({ sucursales, pedidosDetalle, insumosOrden, no
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-xs text-muted-foreground">
-                <th className="text-left p-2 sticky left-0 bg-background">Insumo</th>
+                <th rowSpan={2} className="text-left p-2 sticky left-0 bg-background align-bottom">Insumo</th>
                 {sucursales.map((s) => (
-                  <th key={s.id} className="p-2 text-center min-w-[110px]">{s.nombre}</th>
+                  <th key={s.id} colSpan={3} className="p-2 text-center border-l font-semibold">{s.nombre}</th>
                 ))}
-                <th className="p-2 text-center">Total a pedir</th>
+                <th rowSpan={2} className="p-2 text-center align-bottom">Total a pedir</th>
+              </tr>
+              <tr className="border-b text-[11px] text-muted-foreground">
+                {sucursales.map((s) => (
+                  <Fragment key={s.id}>
+                    <th className="p-1 text-center border-l">Exist.</th>
+                    <th className="p-1 text-center">Pidió</th>
+                    <th className="p-1 text-center min-w-[90px]">A pedir</th>
+                  </Fragment>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -142,40 +151,45 @@ export function PedidoDelDiaPanel({ sucursales, pedidosDetalle, insumosOrden, no
                 <tr key={r.insumo_id} className="border-b">
                   <td className="p-2 sticky left-0 bg-background font-medium">{r.nombre}</td>
                   {r.celdas.map((c) => (
-                    <td key={c.sucursal_id} className="p-2 text-center tabular-nums align-top">
-                      <div className="text-[11px] text-muted-foreground">
-                        ex {num(c.existencia)} · pidió {num(c.solicitado)}
-                      </div>
-                      {c.detalleId ? (
-                        <div className="flex items-center justify-center gap-1 my-1">
-                          <button
-                            type="button"
-                            title="Usar lo que pidió la sucursal"
-                            onClick={() => setPedido(c.detalleId as string, c.solicitado)}
-                            className="text-muted-foreground hover:text-primary text-xs px-1"
-                          >
-                            ←
-                          </button>
-                          <Input
-                            type="number"
-                            inputMode="decimal"
-                            value={c.pedidoReal === null ? "" : String(c.pedidoReal)}
-                            onChange={(e) =>
-                              setPedido(c.detalleId as string, e.target.value === "" ? 0 : parseFloat(e.target.value) || 0)
-                            }
-                            className="h-8 w-16 text-center font-semibold"
-                          />
-                        </div>
-                      ) : (
-                        <div className="text-muted-foreground/40 my-1">—</div>
-                      )}
-                    </td>
+                    <Fragment key={c.sucursal_id}>
+                      <td className="p-2 text-center tabular-nums border-l">
+                        {c.detalleId ? num(c.existencia) : <span className="text-muted-foreground/40">—</span>}
+                      </td>
+                      <td className="p-2 text-center tabular-nums">
+                        {c.detalleId ? num(c.solicitado) : <span className="text-muted-foreground/40">—</span>}
+                      </td>
+                      <td className="p-2 text-center">
+                        {c.detalleId ? (
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              type="button"
+                              title="Usar lo que pidió la sucursal"
+                              onClick={() => setPedido(c.detalleId as string, c.solicitado)}
+                              className="text-muted-foreground hover:text-primary text-xs px-1"
+                            >
+                              ←
+                            </button>
+                            <Input
+                              type="number"
+                              inputMode="decimal"
+                              value={c.pedidoReal === null ? "" : String(c.pedidoReal)}
+                              onChange={(e) =>
+                                setPedido(c.detalleId as string, e.target.value === "" ? 0 : parseFloat(e.target.value) || 0)
+                              }
+                              className="h-8 w-16 text-center font-semibold"
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground/40">—</span>
+                        )}
+                      </td>
+                    </Fragment>
                   ))}
                   <td className="p-2 text-center font-semibold">{num(r.totalPed)}</td>
                 </tr>
               ))}
               {!consolidado.length && (
-                <tr><td colSpan={sucursales.length + 2} className="p-6 text-center text-muted-foreground">Sin pedidos ese día.</td></tr>
+                <tr><td colSpan={sucursales.length * 3 + 2} className="p-6 text-center text-muted-foreground">Sin pedidos ese día.</td></tr>
               )}
             </tbody>
           </table>
