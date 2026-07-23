@@ -184,7 +184,7 @@ export default function HorariosCaptura() {
       </div>
 
       <Dialog open={!!celda} onOpenChange={(o) => !o && !guardando && setCelda(null)}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {celda && `${ROLES.find((r) => r.key === celda.rol)?.label} · ${DIAS.find((d) => d.dow === celda.dia)?.label}`}
