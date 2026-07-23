@@ -11,8 +11,8 @@
 -- Idempotente: cada bloque solo inserta a quien NO exista ya con ese
 -- (nombre, sucursal). Se puede correr de nuevo sin duplicar.
 --
--- Sucursales: 'Del Valle', 'Cervecería', 'Las Brisas'. Solares queda
--- pendiente (falta lista).
+-- Sucursales: 'Valle', 'Cervecería', 'Las Brisas' (nombres reales en
+-- la tabla sucursales). Solares queda pendiente (falta lista).
 -- ============================================================
 
 
@@ -68,7 +68,7 @@ FROM (VALUES
   ('WENDY MARLEN GARCIA SANTANA', 44),
   ('WILLIAMS ALFONSO BELTRAN CONCHAS', 45)
 ) AS v(nombre, orden)
-JOIN public.sucursales s ON s.nombre = 'Del Valle'
+JOIN public.sucursales s ON s.nombre = 'Valle'
 WHERE NOT EXISTS (
   SELECT 1 FROM public.empleados e
   WHERE e.nombre = v.nombre AND e.sucursal_principal_id = s.id

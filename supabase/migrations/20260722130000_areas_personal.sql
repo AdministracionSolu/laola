@@ -13,8 +13,9 @@
 --     vienen en la lista nueva: NO se tocan aquí (dar de baja a
 --     mano en la pestaña Personal si aplica).
 --
--- Mapeo de sucursales: VALLE=Del Valle, ALAMEDA=Cervecería,
--- RODEO=Las Brisas.
+-- Mapeo de sucursales: VALLE='Valle', ALAMEDA='Cervecería',
+-- RODEO='Las Brisas' (nombres reales en la tabla sucursales; NO es
+-- 'Del Valle').
 --
 -- Idempotente: los UPDATE son por (nombre, sucursal) y los INSERT
 -- verifican existencia.
@@ -82,7 +83,7 @@ FROM (VALUES
   ('WILLIAMS ALFONSO BELTRAN CONCHAS', 'mesero')
 ) AS v(nombre, area),
      public.sucursales s
-WHERE s.nombre = 'Del Valle'
+WHERE s.nombre = 'Valle'
   AND e.sucursal_principal_id = s.id
   AND e.nombre = v.nombre;
 
@@ -96,7 +97,7 @@ FROM (VALUES
   ('ALEXANDER EFRAIN VILLELA HERRERA', 'mesero', 46),
   ('LUIS ERNESTO TRUJILLO MURILLO', 'cocina', 47)
 ) AS v(nombre, area, orden)
-JOIN public.sucursales s ON s.nombre = 'Del Valle'
+JOIN public.sucursales s ON s.nombre = 'Valle'
 WHERE NOT EXISTS (
   SELECT 1 FROM public.empleados e
   WHERE e.nombre = v.nombre AND e.sucursal_principal_id = s.id
