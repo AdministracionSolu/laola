@@ -26,7 +26,7 @@ import logoLaOla from "@/assets/logo-la-ola.jpeg";
 const db = supabase as any;
 
 // ---------- Tipos ----------
-type Puesto = "mesero" | "cocina" | "caja" | "repartidor" | "barman";
+type Puesto = "mesero" | "cocina" | "caja" | "repartidor" | "barman" | "contabilidad" | "valet";
 type Sucursal = { id: string; nombre: string };
 type Empleado = {
   id: string; nombre: string; area: Puesto;
@@ -48,15 +48,16 @@ type Asistencia = {
 };
 
 // Puesto individual de cada persona (lo que el admin asigna).
-const PUESTOS: Puesto[] = ["mesero", "cocina", "caja", "repartidor", "barman"];
+const PUESTOS: Puesto[] = ["mesero", "cocina", "caja", "repartidor", "barman", "contabilidad", "valet"];
 const PUESTO_LABEL: Record<Puesto, string> = {
   mesero: "Mesero", cocina: "Cocina", caja: "Caja", repartidor: "Repartidor", barman: "Barman",
+  contabilidad: "Contabilidad", valet: "Valet parking",
 };
 // Las 3 secciones en que se agrupa el personal para mostrarlo.
 const SECCIONES: { key: string; label: string; puestos: Puesto[] }[] = [
   { key: "meseros", label: "Meseros", puestos: ["mesero"] },
   { key: "cocina", label: "Cocina", puestos: ["cocina"] },
-  { key: "servicio", label: "Caja, repartidores y barra", puestos: ["caja", "repartidor", "barman"] },
+  { key: "servicio", label: "Caja, barra y otros", puestos: ["caja", "repartidor", "barman", "contabilidad", "valet"] },
 ];
 const seccionDe = (p: Puesto) => SECCIONES.find((s) => s.puestos.includes(p));
 // Columnas Lun..Dom -> dia_semana (0=Dom)

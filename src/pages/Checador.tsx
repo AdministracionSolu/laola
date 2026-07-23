@@ -26,6 +26,7 @@ interface Resultado {
 
 const AREA_LABEL: Record<string, string> = {
   mesero: "Mesero", cocina: "Cocina", caja: "Caja", repartidor: "Repartidor", barman: "Barman",
+  contabilidad: "Contabilidad", valet: "Valet parking",
 };
 const LS_ID = "laola_sucursal_id";
 const LS_NOMBRE = "laola_sucursal_nombre";
