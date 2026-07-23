@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import {
-  ArrowLeft, LogOut, Plus, Trash2, Users, CalendarClock, ClipboardList, Clock, Pencil,
+  ArrowLeft, LogOut, Plus, Trash2, Users, CalendarClock, ClipboardList, Clock, Pencil, Copy, Link2,
 } from "lucide-react";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 
@@ -35,8 +35,12 @@ type Empleado = {
 };
 type Turno = {
   id: string; empleado_id: string; sucursal_id: string; dia_semana: number;
-  hora_entrada: string; hora_salida: string; catalogo_turno_id: string | null; activo: boolean;
+  hora_entrada: string | null; hora_salida: string | null;
+  rol: "abre" | "intermedio" | "cierra" | null; area: string | null;
+  catalogo_turno_id: string | null; activo: boolean;
 };
+type Liga = { id: string; token: string; sucursal_id: string; area: string; activo: boolean };
+const ROL_LABEL: Record<string, string> = { abre: "Abre", intermedio: "Intermedio", cierra: "Cierra" };
 type CatTurno = {
   id: string; sucursal_id: string | null; nombre: string;
   hora_entrada: string; hora_salida: string; color: string; orden: number; activo: boolean;
@@ -125,6 +129,10 @@ export default function AdminHorarios() {
           <TabsContent value="horarios">
             <SucursalBar sucursales={sucursales} value={sucSel} onChange={setSucSel} />
             <GridHorarios sucursalId={sucSel} empleados={empleados} />
+            <LigasCaptura
+              sucursalId={sucSel}
+              sucursalNombre={sucursales.find((s) => s.id === sucSel)?.nombre ?? ""}
+            />
           </TabsContent>
 
           <TabsContent value="personal">
@@ -332,7 +340,7 @@ function GridHorarios({ sucursalId, empleados }: { sucursalId: string; empleados
 
   const turnosDe = (empId: string, dow: number) =>
     turnos.filter((t) => t.empleado_id === empId && t.dia_semana === dow)
-      .sort((a, b) => a.hora_entrada.localeCompare(b.hora_entrada));
+      .sort((a, b) => (a.hora_entrada ?? "").localeCompare(b.hora_entrada ?? ""));
 
   if (!sucursalId) return <p className="text-muted-foreground">Selecciona una sucursal.</p>;
 
@@ -381,7 +389,7 @@ function GridHorarios({ sucursalId, empleados }: { sucursalId: string; empleados
                                   <span className="text-muted-foreground text-xs m-auto">+</span>
                                 ) : cel.map((t) => (
                                   <span key={t.id} className="text-xs rounded bg-primary/10 text-primary px-1 py-0.5 whitespace-nowrap">
-                                    {hhmm(t.hora_entrada)}–{hhmm(t.hora_salida)}
+                                    {t.rol ? ROL_LABEL[t.rol] : `${hhmm(t.hora_entrada)}–${hhmm(t.hora_salida)}`}
                                   </span>
                                 ))}
                               </button>
@@ -446,7 +454,7 @@ function CeldaDialog({ empleado, dow, sucursalId, turnos, catalogo, onClose, onC
               <Label className="text-xs text-muted-foreground">Turnos de este día</Label>
               {turnos.map((t) => (
                 <div key={t.id} className="flex items-center justify-between rounded border px-2 py-1">
-                  <span className="text-sm">{hhmm(t.hora_entrada)}–{hhmm(t.hora_salida)}</span>
+                  <span className="text-sm">{t.rol ? ROL_LABEL[t.rol] : `${hhmm(t.hora_entrada)}–${hhmm(t.hora_salida)}`}</span>
                   <Button variant="ghost" size="icon" onClick={() => quitar(t.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                 </div>
               ))}
@@ -523,6 +531,98 @@ function CatalogoTurnos({ sucursalId, catalogo, onChange }: {
           <div><Label className="text-xs">Entrada</Label><Input type="time" value={entrada} onChange={(e) => setEntrada(e.target.value)} /></div>
           <div><Label className="text-xs">Salida</Label><Input type="time" value={salida} onChange={(e) => setSalida(e.target.value)} /></div>
           <Button variant="outline" onClick={crear}><Plus className="w-4 h-4 mr-1" /> Guardar turno</Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// LIGAS DE CAPTURA POR ÁREA
+// Una liga por área: se manda por WhatsApp a la persona encargada
+// y ella sube el horario de su equipo en /horario/:token (sin login).
+// ============================================================
+const AREA_SLUG: Record<Puesto, string> = {
+  mesero: "meseros", cocina: "cocina", caja: "caja", repartidor: "repartidores",
+  barman: "barra", contabilidad: "contabilidad", valet: "valet",
+};
+const slugify = (s: string) =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+function LigasCaptura({ sucursalId, sucursalNombre }: { sucursalId: string; sucursalNombre: string }) {
+  const [ligas, setLigas] = useState<Liga[]>([]);
+  const [areaSel, setAreaSel] = useState<Puesto>("mesero");
+
+  const cargar = useCallback(async () => {
+    if (!sucursalId) return;
+    const { data } = await db.from("horarios_ligas").select("*").eq("sucursal_id", sucursalId).eq("activo", true);
+    setLigas((data ?? []) as Liga[]);
+  }, [sucursalId]);
+  useEffect(() => { cargar(); }, [cargar]);
+
+  const urlDe = (l: Liga) => `${window.location.origin}/horario/${l.token}`;
+
+  const crear = async () => {
+    const token = `${slugify(sucursalNombre)}-${AREA_SLUG[areaSel]}`;
+    const res = await db.from("horarios_ligas").insert({ sucursal_id: sucursalId, area: areaSel, token });
+    if (res.error) {
+      toast.error(res.error.code === "23505" ? "Esa área ya tiene su liga." : res.error.message);
+      return;
+    }
+    toast.success("Liga creada.");
+    cargar();
+  };
+
+  const copiar = async (l: Liga) => {
+    await navigator.clipboard.writeText(urlDe(l));
+    toast.success("Liga copiada. Mándala por WhatsApp a la persona encargada.");
+  };
+
+  const borrar = async (id: string) => {
+    const res = await db.from("horarios_ligas").delete().eq("id", id);
+    if (res.error) { toast.error(res.error.message); return; }
+    cargar();
+  };
+
+  if (!sucursalId) return null;
+
+  return (
+    <Card className="mt-6">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2"><Link2 className="w-4 h-4" /> Ligas de captura por área</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-xs text-muted-foreground mb-3">
+          Cada área tiene UNA liga. La persona encargada la abre en su celular y asigna quién abre,
+          quién va de intermedio y quién cierra cada día. Quien no aparece, descansa.
+        </p>
+        <div className="space-y-2 mb-4">
+          {ligas.map((l) => (
+            <div key={l.id} className="flex items-center justify-between gap-2 rounded border px-3 py-2">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">{PUESTO_LABEL[l.area as Puesto] ?? l.area}</p>
+                <p className="text-xs text-muted-foreground truncate">{urlDe(l)}</p>
+              </div>
+              <div className="flex shrink-0">
+                <Button variant="ghost" size="icon" onClick={() => copiar(l)}><Copy className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => borrar(l.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+              </div>
+            </div>
+          ))}
+          {ligas.length === 0 && <p className="text-sm text-muted-foreground">Sin ligas todavía en esta sucursal.</p>}
+        </div>
+        <div className="flex items-end gap-2">
+          <div className="w-48">
+            <Label className="text-xs">Área</Label>
+            <Select value={areaSel} onValueChange={(v) => setAreaSel(v as Puesto)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {PUESTOS.map((a) => <SelectItem key={a} value={a}>{PUESTO_LABEL[a]}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button variant="outline" onClick={crear}><Plus className="w-4 h-4 mr-1" /> Crear liga</Button>
         </div>
       </CardContent>
     </Card>

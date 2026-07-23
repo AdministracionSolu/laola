@@ -24,6 +24,7 @@ import PedidosHome from "./pages/PedidosHome";
 import EntrarSucursal from "./pages/EntrarSucursal";
 import Compras from "./pages/Compras";
 import ProveedorPortal from "./pages/ProveedorPortal";
+import HorariosCaptura from "./pages/HorariosCaptura";
 import OperacionesLayout from "./components/operaciones/OperacionesLayout";
 import Ordenar from "./pages/Ordenar";
 import SeguimientoPedido from "./pages/SeguimientoPedido";
@@ -99,6 +100,8 @@ const App = () => (
           <Route path="/admin/horarios" element={<AdminHorarios />} />
           {/* Portal público del proveedor (sin login, por token) */}
           <Route path="/proveedor/:token" element={<ProveedorPortal />} />
+          {/* Captura de horario por área (sin login, por liga con token) */}
+          <Route path="/horario/:token" element={<HorariosCaptura />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
