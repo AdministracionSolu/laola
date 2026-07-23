@@ -10,16 +10,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Wrench, CalendarDays, Lock, ChevronRight, Package, QrCode, ShoppingCart, UtensilsCrossed } from "lucide-react";
+import { Wrench, CalendarDays, Lock, ChevronRight, Package, QrCode, ShoppingCart, Store, UtensilsCrossed } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ResumenAnual } from "./ResumenAnual";
 
 // Accesos parkeados (fuera del bar principal en lo que se define su uso).
 const ACCESOS = [
+  { label: "Proveedores", to: "/admin/proveedores", icon: Store },
   { label: "Insumos & Pedidos", to: "/admin/pedidos", icon: Package },
   { label: "QR de pedidos", to: "/admin/qr-pedidos", icon: QrCode },
   { label: "Menús por sucursal", to: "/admin/menus", icon: UtensilsCrossed },
-  { label: "Pedido del día", to: "/compras", icon: ShoppingCart },
+  { label: "Pedido del día (código compras)", to: "/compras", icon: ShoppingCart },
 ];
 
 // Contraseña de nivel administrador dueño (no visible para contadoras).
