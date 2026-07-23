@@ -70,7 +70,7 @@ export function DondeComprarPanel({ pedidosDetalle, insumosOrden, nombreInsumo, 
     exportarExcel(
       filas.map((f) => ({
         Insumo: f.nombre,
-        "A pedir": f.total,
+        "A comprar": f.total,
         Unidad: f.unidad,
         Proveedor: f.mejor?.proveedor ?? "sin precio",
         "Precio unit.": f.mejor?.precio ?? "",
@@ -97,7 +97,7 @@ export function DondeComprarPanel({ pedidosDetalle, insumosOrden, nombreInsumo, 
         <div>
           <CardTitle className="text-sm">Dónde comprar — {hasta}</CardTitle>
           <CardDescription className="text-xs">
-            Lo que hay que pedir y el proveedor más barato. Total estimado: <b>{money(totalGasto)}</b>
+            Lo que hay que comprar y el proveedor más barato. Total estimado: <b>{money(totalGasto)}</b>
             {filasNoConfiables > 0 && (
               <span className="block text-amber-600 mt-0.5">
                 ⚠ {filasNoConfiables} insumo(s) con precio en otra unidad: no se suman al total ni se
@@ -115,7 +115,7 @@ export function DondeComprarPanel({ pedidosDetalle, insumosOrden, nombreInsumo, 
           <thead>
             <tr className="border-b text-xs text-muted-foreground">
               <th className="text-left p-2">Insumo</th>
-              <th className="p-2 text-center">A pedir</th>
+              <th className="p-2 text-center">A comprar</th>
               <th className="text-left p-2">Comprar a (más barato)</th>
               <th className="p-2 text-right">Costo est.</th>
             </tr>

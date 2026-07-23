@@ -92,10 +92,10 @@ export function PedidoDelDiaPanel({ sucursales, pedidosDetalle, insumosOrden, no
       r.celdas.forEach((c) => {
         const s = sucursales.find((x) => x.id === c.sucursal_id)?.nombre || "";
         fila[`${s} existencia`] = c.existencia;
-        fila[`${s} solicitado`] = c.solicitado;
-        fila[`${s} a pedir`] = c.pedidoReal ?? "";
+        fila[`${s} pedido sugerido`] = c.solicitado;
+        fila[`${s} a comprar`] = c.pedidoReal ?? "";
       });
-      fila["Total a pedir"] = r.totalPed;
+      fila["Total a comprar"] = r.totalPed;
       return fila;
     });
     exportarExcel(filas, `pedido_del_dia_${hasta}`, "Pedido del día");
@@ -108,7 +108,7 @@ export function PedidoDelDiaPanel({ sucursales, pedidosDetalle, insumosOrden, no
           <div>
             <CardTitle className="text-sm">Pedido del día — {hasta}</CardTitle>
             <CardDescription className="text-xs">
-              Por sucursal: <b>Exist.</b> (cuánto tienen) · <b>Pidió</b> (cuánto solicitaron) · <b>A pedir</b> (cuánto les vamos a pedir; captura y guarda).
+              Por sucursal: <b>Existencia</b> (cuánto tienen) · <b>Pedido sugerido</b> (cuánto solicitó la sucursal) · <b>A comprar</b> (cuánto se va a comprar; captura y guarda).
             </CardDescription>
           </div>
           <Button size="sm" variant="outline" className="gap-1" onClick={exportar} disabled={!consolidado.length}>
@@ -134,14 +134,14 @@ export function PedidoDelDiaPanel({ sucursales, pedidosDetalle, insumosOrden, no
                 {sucursales.map((s) => (
                   <th key={s.id} colSpan={3} className="p-2 text-center border-l font-semibold">{s.nombre}</th>
                 ))}
-                <th rowSpan={2} className="p-2 text-center align-bottom">Total a pedir</th>
+                <th rowSpan={2} className="p-2 text-center align-bottom">Total a comprar</th>
               </tr>
               <tr className="border-b text-[11px] text-muted-foreground">
                 {sucursales.map((s) => (
                   <Fragment key={s.id}>
-                    <th className="p-1 text-center border-l">Exist.</th>
-                    <th className="p-1 text-center">Pidió</th>
-                    <th className="p-1 text-center min-w-[90px]">A pedir</th>
+                    <th className="p-1 text-center border-l">Existencia</th>
+                    <th className="p-1 text-center">Pedido sugerido</th>
+                    <th className="p-1 text-center min-w-[90px]">A comprar</th>
                   </Fragment>
                 ))}
               </tr>

@@ -73,7 +73,7 @@ export function AhorrosPanel({ pedidosDetalle, insumosOrden, nombreInsumo, unida
     exportarExcel(
       filas.map((f) => ({
         Insumo: f.nombre,
-        "A pedir": f.total,
+        "A comprar": f.total,
         Unidad: f.unidad,
         "Más barato": f.barato ? `${f.barato.proveedor} ${f.barato.precio}` : "",
         "Más caro": f.caro ? `${f.caro.proveedor} ${f.caro.precio}` : "",
@@ -140,7 +140,7 @@ export function AhorrosPanel({ pedidosDetalle, insumosOrden, nombreInsumo, unida
             <thead>
               <tr className="border-b text-xs text-muted-foreground">
                 <th className="text-left p-2">Insumo</th>
-                <th className="p-2 text-center">A pedir</th>
+                <th className="p-2 text-center">A comprar</th>
                 <th className="text-left p-2">Más barato</th>
                 <th className="text-left p-2">Más caro</th>
                 <th className="p-2 text-right">Ahorro</th>
