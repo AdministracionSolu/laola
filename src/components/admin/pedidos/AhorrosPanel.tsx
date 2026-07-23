@@ -1,27 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Download, Loader2, PiggyBank } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { exportarExcel } from "@/lib/exportar";
 import type { PedidoDetLite } from "@/hooks/useAnaliticaPedidos";
+import { useOfertasPorInsumo } from "./useOfertas";
 
 const money = (n: number) =>
   new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(n);
 const num = (n: number) => (Math.round(n * 100) / 100).toString();
 const normUnidad = (u: string | null | undefined) => (u ?? "").trim().toLowerCase();
-
-const rpc = (fn: string, args: Record<string, unknown>) =>
-  (supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>)(fn, args);
-
-interface Oferta {
-  insumo_id: string;
-  proveedor: string;
-  producto: string;
-  unidad: string;
-  precio: number | null;
-}
 
 interface Props {
   pedidosDetalle: PedidoDetLite[];
@@ -34,16 +23,8 @@ interface Props {
 }
 
 export function AhorrosPanel({ pedidosDetalle, insumosOrden, nombreInsumo, unidadInsumo, hasta, pin = "" }: Props) {
-  const [ofertas, setOfertas] = useState<Oferta[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    rpc("compras_precios", { p_pin: pin }).then(({ data }) => {
-      setOfertas(Array.isArray(data) ? (data as Oferta[]) : []);
-      setLoading(false);
-    });
-  }, [pin]);
+  // Ofertas agrupadas por insumo (mapeo directo o por nombre), ordenadas por precio.
+  const { ofertasPorInsumo, loading } = useOfertasPorInsumo(insumosOrden, nombreInsumo, pin);
 
   // Total a pedir por insumo (suma de cantidad_pedida del día).
   const totalPorInsumo = useMemo(() => {
@@ -57,20 +38,12 @@ export function AhorrosPanel({ pedidosDetalle, insumosOrden, nombreInsumo, unida
   // El ahorro solo es real si los precios comparados están en la MISMA unidad
   // que el pedido: se descartan ofertas en otra unidad.
   const filas = useMemo(() => {
-    const porInsumo = new Map<string, Oferta[]>();
-    ofertas.forEach((o) => {
-      if (o.precio == null) return;
-      const arr = porInsumo.get(o.insumo_id) || [];
-      arr.push(o);
-      porInsumo.set(o.insumo_id, arr);
-    });
     return insumosOrden
       .map((ins) => {
         const total = totalPorInsumo.get(ins) || 0;
         const unidad = unidadInsumo.get(ins) || "";
-        const comparables = (porInsumo.get(ins) || [])
-          .filter((o) => normUnidad(o.unidad) === normUnidad(unidad))
-          .sort((a, b) => a.precio! - b.precio!);
+        const comparables = (ofertasPorInsumo.get(ins) || [])
+          .filter((o) => normUnidad(o.unidad) === normUnidad(unidad));
         const barato = comparables[0] || null;
         const caro = comparables.length > 1 ? comparables[comparables.length - 1] : null;
         const ahorro = barato && caro ? total * (caro.precio! - barato.precio!) : null;
@@ -88,7 +61,7 @@ export function AhorrosPanel({ pedidosDetalle, insumosOrden, nombreInsumo, unida
         };
       })
       .filter((f) => f.total > 0);
-  }, [insumosOrden, totalPorInsumo, ofertas, nombreInsumo, unidadInsumo]);
+  }, [insumosOrden, totalPorInsumo, ofertasPorInsumo, nombreInsumo, unidadInsumo]);
 
   const comparadas = filas.filter((f) => f.ahorro != null);
   const totalBarato = comparadas.reduce((s, f) => s + (f.costoBarato || 0), 0);

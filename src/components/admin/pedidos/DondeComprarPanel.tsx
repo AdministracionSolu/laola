@@ -1,27 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Download, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { exportarExcel } from "@/lib/exportar";
 import type { PedidoDetLite } from "@/hooks/useAnaliticaPedidos";
+import { useOfertasPorInsumo } from "./useOfertas";
 
 const money = (n: number) =>
   new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(n);
 const num = (n: number) => (Math.round(n * 100) / 100).toString();
 const normUnidad = (u: string | null | undefined) => (u ?? "").trim().toLowerCase();
-
-const rpc = (fn: string, args: Record<string, unknown>) =>
-  (supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>)(fn, args);
-
-interface Oferta {
-  insumo_id: string;
-  proveedor: string;
-  producto: string;
-  unidad: string;
-  precio: number | null;
-}
 
 interface Props {
   pedidosDetalle: PedidoDetLite[];
@@ -34,16 +23,8 @@ interface Props {
 }
 
 export function DondeComprarPanel({ pedidosDetalle, insumosOrden, nombreInsumo, unidadInsumo, hasta, pin = "" }: Props) {
-  const [ofertas, setOfertas] = useState<Oferta[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    rpc("compras_precios", { p_pin: pin }).then(({ data }) => {
-      setOfertas(Array.isArray(data) ? (data as Oferta[]) : []);
-      setLoading(false);
-    });
-  }, [pin]);
+  // Ofertas agrupadas por insumo (mapeo directo o por nombre), ordenadas por precio.
+  const { ofertasPorInsumo, loading } = useOfertasPorInsumo(insumosOrden, nombreInsumo, pin);
 
   // Total a pedir por insumo (suma de cantidad_pedida del día).
   const totalPorInsumo = useMemo(() => {
@@ -53,19 +34,6 @@ export function DondeComprarPanel({ pedidosDetalle, insumosOrden, nombreInsumo, 
       .forEach((d) => m.set(d.insumo_id, (m.get(d.insumo_id) || 0) + d.cantidad_pedida));
     return m;
   }, [pedidosDetalle, hasta]);
-
-  // Ofertas agrupadas por insumo, ordenadas por precio.
-  const ofertasPorInsumo = useMemo(() => {
-    const m = new Map<string, Oferta[]>();
-    ofertas.forEach((o) => {
-      if (o.precio == null) return;
-      const arr = m.get(o.insumo_id) || [];
-      arr.push(o);
-      m.set(o.insumo_id, arr);
-    });
-    m.forEach((arr) => arr.sort((a, b) => (a.precio! - b.precio!)));
-    return m;
-  }, [ofertas]);
 
   const filas = useMemo(() => {
     return insumosOrden
