@@ -20,6 +20,8 @@ export const MESES_CORTO = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ag
 export const DIAS_SEMANA = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
 export const COLORS_SUCURSAL: Record<string, string> = {
+  "Valle": "hsl(210, 70%, 55%)",
+  // Alias del nombre anterior (por si quedara en datos o cachés viejos).
   "Del Valle": "hsl(210, 70%, 55%)",
   "Las Brisas": "hsl(150, 60%, 45%)",
   "Cervecería": "hsl(35, 80%, 50%)",

@@ -10,9 +10,9 @@ import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, Loader2, Trash2, 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const SUCURSAL_MAP: Record<string, { id: string; nombre: string }> = {
-  "V. 161":        { id: "f9ef883d-88dc-47e1-945d-af145905a955", nombre: "Del Valle" },
-  "V.161":         { id: "f9ef883d-88dc-47e1-945d-af145905a955", nombre: "Del Valle" },
-  "VALLE 161":     { id: "f9ef883d-88dc-47e1-945d-af145905a955", nombre: "Del Valle" },
+  "V. 161":        { id: "f9ef883d-88dc-47e1-945d-af145905a955", nombre: "Valle" },
+  "V.161":         { id: "f9ef883d-88dc-47e1-945d-af145905a955", nombre: "Valle" },
+  "VALLE 161":     { id: "f9ef883d-88dc-47e1-945d-af145905a955", nombre: "Valle" },
   "R. 955":        { id: "dc600e86-cfd8-466a-b0e1-319a836d3af8", nombre: "Las Brisas" },
   "R.955":         { id: "dc600e86-cfd8-466a-b0e1-319a836d3af8", nombre: "Las Brisas" },
   "INSURGENTES 955": { id: "dc600e86-cfd8-466a-b0e1-319a836d3af8", nombre: "Las Brisas" },

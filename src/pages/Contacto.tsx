@@ -4,7 +4,7 @@ import { Phone } from "lucide-react";
 
 const sucursales = [
   {
-    nombre: "La Ola Del Valle",
+    nombre: "La Ola Valle",
     ubicacion: "Tepic, Nayarit",
     telefono: "311 133 0891",
     href: "tel:+523111330891",

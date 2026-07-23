@@ -41,9 +41,9 @@ export interface AperturaPlaza {
  * en Guadalajara no disponemos del efectivo (lo usan allá para otras cosas),
  * pero sí queremos verlo por separado para saber cuánto usa cada plaza.
  *
- * Tepic: Cervecería, Del Valle, Las Brisas. Todo lo demás cae en Guadalajara.
+ * Tepic: Cervecería, Valle, Las Brisas. Todo lo demás cae en Guadalajara.
  */
-const TEPIC = new Set(["cerveceria", "del valle", "las brisas"]);
+const TEPIC = new Set(["cerveceria", "valle", "del valle", "las brisas"]);
 
 function normaliza(s: string): string {
   return s
