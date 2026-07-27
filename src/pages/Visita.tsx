@@ -23,13 +23,20 @@ type Perfil = {
   nivel_color: string;
   siguiente_nivel: string | null;
   faltan_siguiente_nivel: number | null;
+  anio?: number;
+  visitas_anio?: number;
   meta_visitas: number;
   sellos: number;
   faltan_recompensa: number;
   recompensas_disponibles: number;
+  recompensa_posicion?: number | null;
+  recompensa_titulo?: string | null;
+  bienvenida_disponible?: boolean;
 };
 
-type Paso = "captura" | "registro" | "progreso";
+type Canje = { titulo: string; hora: Date };
+
+type Paso = "captura" | "registro" | "progreso" | "canjeado";
 
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -59,6 +66,9 @@ export default function Visita() {
 
   const [enviando, setEnviando] = useState(false);
   const [perfil, setPerfil] = useState<Perfil | null>(null);
+  const [canje, setCanje] = useState<Canje | null>(null);
+  const [confirmando, setConfirmando] = useState<"recompensa" | "bienvenida" | null>(null);
+  const [canjeando, setCanjeando] = useState(false);
 
   useEffect(() => {
     if (!suc) return;
@@ -141,6 +151,32 @@ export default function Visita() {
     window.scrollTo({ top: 0 });
   };
 
+  // Canje self-serve: deja registro interno para empatar contra el comandero.
+  const canjear = async (tipo: "recompensa" | "bienvenida") => {
+    setCanjeando(true);
+    const fn = tipo === "bienvenida" ? "lealtad_canjear_bienvenida" : "lealtad_canjear_cliente";
+    const { data, error } = await (supabase.rpc as any)(fn, {
+      p_telefono: telLimpio,
+      p_sucursal_codigo: suc || null,
+    });
+    setCanjeando(false);
+    setConfirmando(null);
+
+    if (error) {
+      const msg = error.message || "";
+      if (msg.includes("SIN_RECOMPENSAS")) toast.error("Aún no tienes recompensa disponible.");
+      else if (msg.includes("YA_CANJEADA")) toast.error("Tu regalo de bienvenida ya fue canjeado.");
+      else toast.error("No pudimos registrar el canje. Intenta de nuevo.");
+      return;
+    }
+
+    const r = data as Perfil & { canje_titulo: string };
+    setPerfil(r);
+    setCanje({ titulo: r.canje_titulo, hora: new Date() });
+    setPaso("canjeado");
+    window.scrollTo({ top: 0 });
+  };
+
   // ---------- Encabezado con logo ----------
   const Header = ({ titulo, sub }: { titulo: string; sub?: React.ReactNode }) => (
     <div className="flex flex-col items-center text-center mb-6">
@@ -156,6 +192,36 @@ export default function Visita() {
       )}
     </div>
   );
+
+  // ============================================================
+  // PASO 4 — Canje registrado: pantalla para enseñar al mesero
+  // ============================================================
+  if (paso === "canjeado" && perfil && canje) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-primary/10 via-background to-background">
+        <div className="max-w-md mx-auto px-4 py-8">
+          <Header titulo="¡Canje registrado!" sub="Enséñale esta pantalla a tu mesero 🌊" />
+          <div className="rounded-2xl border-2 border-primary bg-primary/5 p-6 text-center shadow-sm">
+            <div className="mx-auto w-16 h-16 rounded-full bg-primary text-white flex items-center justify-center mb-4">
+              <Check className="h-9 w-9" />
+            </div>
+            <p className="text-xl font-bold">{canje.titulo}</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              {sucursalNombre ? <>{sucursalNombre} · </> : null}
+              {canje.hora.toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+            </p>
+            <p className="text-xs text-muted-foreground mt-3">
+              Tu mesero registra la entrega en el sistema. ¡Disfrútalo!
+            </p>
+          </div>
+          <div className="flex flex-col items-center gap-3 mt-6">
+            <button onClick={() => setPaso("progreso")} className="text-primary font-semibold">Ver mi progreso</button>
+            <Link to="/menu" className="text-sm text-muted-foreground underline">Ver el menú</Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ============================================================
   // PASO 3 — Progreso / tarjeta de sellos
@@ -202,19 +268,59 @@ export default function Visita() {
               ))}
             </div>
             <p className="text-center text-sm text-muted-foreground mt-3">
-              {perfil.faltan_recompensa === 0
+              {perfil.recompensas_disponibles > 0
                 ? "¡Completaste tu tarjeta! 🎉"
-                : `Te faltan ${perfil.faltan_recompensa} ${perfil.faltan_recompensa === 1 ? "visita" : "visitas"} para tu recompensa.`}
+                : perfil.recompensa_titulo
+                  ? `Vas por: ${perfil.recompensa_titulo}. Te ${perfil.faltan_recompensa === 1 ? "falta 1 visita" : `faltan ${perfil.faltan_recompensa} visitas`}.`
+                  : `Te faltan ${perfil.faltan_recompensa} ${perfil.faltan_recompensa === 1 ? "visita" : "visitas"} para tu recompensa.`}
+            </p>
+            <p className="text-center text-xs text-muted-foreground mt-1">
+              Tus visitas y recompensas cuentan durante {perfil.anio ?? new Date().getFullYear()}.
             </p>
           </div>
 
-          {/* Recompensas disponibles */}
-          {perfil.recompensas_disponibles > 0 && (
+          {/* Recompensa disponible: canje self-serve frente al mesero */}
+          {perfil.recompensas_disponibles > 0 && perfil.recompensa_titulo && (
             <div className="rounded-2xl border-2 border-accent bg-accent/10 p-4 mt-4 text-center">
-              <p className="font-semibold text-accent">
-                🎁 Tienes {perfil.recompensas_disponibles} recompensa{perfil.recompensas_disponibles > 1 ? "s" : ""} disponible{perfil.recompensas_disponibles > 1 ? "s" : ""}
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">Pídela con tu mesero o en caja.</p>
+              <p className="font-semibold text-accent">🎁 Te toca: {perfil.recompensa_titulo}</p>
+              <p className="text-sm text-muted-foreground mt-1">Elige con tu mesero.</p>
+              {confirmando === "recompensa" ? (
+                <div className="mt-3 space-y-2">
+                  <p className="text-sm font-medium">Canjéalo solo frente a tu mesero. ¿Registrar el canje ahora?</p>
+                  <div className="flex gap-2 justify-center">
+                    <Button size="sm" disabled={canjeando} onClick={() => canjear("recompensa")}>
+                      {canjeando ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sí, canjear"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setConfirmando(null)}>Todavía no</Button>
+                  </div>
+                </div>
+              ) : (
+                <Button className="mt-3 font-semibold" onClick={() => setConfirmando("recompensa")}>
+                  Canjear con mi mesero
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* Regalo de bienvenida (una sola vez) */}
+          {perfil.bienvenida_disponible && (
+            <div className="rounded-2xl border-2 border-primary/40 bg-primary/5 p-4 mt-4 text-center">
+              <p className="font-semibold text-primary">🥂 Tienes pendiente tu regalo de bienvenida: balazo + bebida</p>
+              {confirmando === "bienvenida" ? (
+                <div className="mt-3 space-y-2">
+                  <p className="text-sm font-medium">Canjéalo solo frente a tu mesero. ¿Registrar el canje ahora?</p>
+                  <div className="flex gap-2 justify-center">
+                    <Button size="sm" disabled={canjeando} onClick={() => canjear("bienvenida")}>
+                      {canjeando ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sí, canjear"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setConfirmando(null)}>Todavía no</Button>
+                  </div>
+                </div>
+              ) : (
+                <Button variant="outline" className="mt-3 font-semibold" onClick={() => setConfirmando("bienvenida")}>
+                  Canjear mi bienvenida
+                </Button>
+              )}
             </div>
           )}
 

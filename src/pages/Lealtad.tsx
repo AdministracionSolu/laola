@@ -129,9 +129,13 @@ export default function Lealtad() {
           <Header titulo={`¡Bienvenido, ${nombreOk}!`} sub="Ya eres parte de La Ola 🌊" />
           <div className="rounded-2xl border bg-card p-6 shadow-sm text-center space-y-4">
             <PartyPopper className="h-12 w-12 mx-auto text-accent" />
+            <div className="rounded-xl border-2 border-accent bg-accent/10 p-3">
+              <p className="font-semibold text-accent">🥂 Tu regalo de bienvenida: balazo + bebida</p>
+              <p className="text-xs text-muted-foreground mt-1">Canjéalo con tu mesero en tu próxima visita.</p>
+            </div>
             <p className="text-muted-foreground">
               La próxima vez que nos visites, escanea el <b>QR de tu ticket</b> y pon el folio para sumar tu visita.
-              Junta visitas y gana recompensas 🦐
+              Cada 3 visitas ganas una recompensa 🦐
             </p>
             <div className="flex items-center justify-center gap-2 rounded-xl bg-primary/5 border border-primary/10 p-3 text-sm text-primary font-medium">
               <Ticket className="h-4 w-4" /> Tu visita se valida con el ticket de tu cuenta.

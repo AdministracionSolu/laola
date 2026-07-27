@@ -31,8 +31,15 @@ type Sucursal = { id: string; nombre: string; prefijo_folio: string | null };
 type Nivel = { id: string; nombre: string; min_visitas: number; beneficio: string | null; color: string; orden: number; activo: boolean };
 type Config = { id: number; meta_visitas: number; tope_visitas_dia: number; recompensa_texto: string };
 type Visita = { id: string; cliente_id: string; sucursal_id: string | null; fecha_negocio: string; origen: string; folio: string | null; created_at: string };
+type Recompensa = { posicion: number; titulo: string; activo: boolean };
+type Canje = { id: string; cliente_id: string; posicion: number; titulo: string; sucursal_id: string | null; fecha_negocio: string; origen: string; created_at: string };
+type Intento = { id: string; telefono: string; folio_norm: string | null; sucursal_id: string | null; motivo: string; fecha_negocio: string; created_at: string };
 
 const db = supabase as any;
+
+// Día de negocio de La Ola: rueda a las 4 AM CDMX.
+const fechaNegocioHoy = () =>
+  new Date(Date.now() - 4 * 3600e3).toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
 
 export default function AdminLealtad() {
   const navigate = useNavigate();
@@ -44,6 +51,11 @@ export default function AdminLealtad() {
   const [niveles, setNiveles] = useState<Nivel[]>([]);
   const [config, setConfig] = useState<Config | null>(null);
   const [visitas, setVisitas] = useState<Visita[]>([]);
+  const [recompensas, setRecompensas] = useState<Recompensa[]>([]);
+  const [intentos, setIntentos] = useState<Intento[]>([]);
+  const [visitas30, setVisitas30] = useState<Visita[]>([]);
+  const [fechaConc, setFechaConc] = useState(fechaNegocioHoy());
+  const [canjesDia, setCanjesDia] = useState<Canje[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -59,12 +71,16 @@ export default function AdminLealtad() {
 
   const cargar = async () => {
     setCargando(true);
-    const [cli, suc, niv, cfg, vis] = await Promise.all([
+    const hace30 = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+    const [cli, suc, niv, cfg, vis, rec, int, v30] = await Promise.all([
       db.from("lealtad_clientes").select("*").order("visitas_total", { ascending: false }),
       db.from("sucursales").select("id,nombre,prefijo_folio").order("nombre"),
       db.from("lealtad_niveles").select("*").order("min_visitas"),
       db.from("lealtad_config").select("*").eq("id", 1).maybeSingle(),
       db.from("lealtad_visitas").select("*").order("created_at", { ascending: false }).limit(60),
+      db.from("lealtad_recompensas").select("*").order("posicion"),
+      db.from("lealtad_intentos").select("*").order("created_at", { ascending: false }).limit(200),
+      db.from("lealtad_visitas").select("id,cliente_id,sucursal_id,fecha_negocio,origen,folio,created_at").gte("fecha_negocio", hace30),
     ]);
     if (cli.error) toast.error("No pudimos cargar los clientes.");
     setClientes((cli.data ?? []) as Cliente[]);
@@ -72,8 +88,17 @@ export default function AdminLealtad() {
     setNiveles((niv.data ?? []) as Nivel[]);
     setConfig((cfg.data ?? null) as Config | null);
     setVisitas((vis.data ?? []) as Visita[]);
+    setRecompensas((rec.data ?? []) as Recompensa[]);
+    setIntentos((int.data ?? []) as Intento[]);
+    setVisitas30((v30.data ?? []) as Visita[]);
     setCargando(false);
   };
+
+  // Canjes del día seleccionado (conciliación contra el comandero)
+  useEffect(() => {
+    db.from("lealtad_canjes").select("*").eq("fecha_negocio", fechaConc).order("created_at")
+      .then(({ data }: { data: Canje[] | null }) => setCanjesDia(data ?? []));
+  }, [fechaConc]);
 
   const nombreSucursal = (c: Cliente) =>
     sucursales.find((s) => s.id === c.sucursal_captacion_id)?.nombre ??
@@ -94,10 +119,16 @@ export default function AdminLealtad() {
       toast.error(error.message.includes("SIN_RECOMPENSAS") ? "No tiene recompensas disponibles." : "No se pudo canjear.");
       return;
     }
-    toast.success(`Recompensa canjeada a ${c.nombre}.`);
-    const r = data as any;
-    setClientes((prev) => prev.map((x) => x.id === c.id ? { ...x, recompensas_usadas: x.recompensas_usadas + 1 } : x));
-    void r;
+    toast.success(`Canjeado a ${c.nombre}: ${(data as any)?.canje_titulo ?? "recompensa"}.`);
+    cargar();
+  };
+
+  const guardarRecompensa = async (r: Recompensa) => {
+    const { error } = await db.from("lealtad_recompensas")
+      .update({ titulo: r.titulo, activo: r.activo, updated_at: new Date().toISOString() })
+      .eq("posicion", r.posicion);
+    if (error) return toast.error("No se pudo guardar la recompensa.");
+    toast.success(`Recompensa ${r.posicion} guardada.`);
   };
 
   const guardarConfig = async () => {
@@ -145,6 +176,50 @@ export default function AdminLealtad() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientes, sucursales]);
+
+  // ---------- Conciliación del día (empatar vs comandero) ----------
+  const conciliacion = useMemo(() => {
+    const porSuc = new Map<string, { total: number; porTitulo: Map<string, number> }>();
+    for (const c of canjesDia) {
+      const k = nombreSucId(c.sucursal_id) === "—" ? "Sin sucursal" : nombreSucId(c.sucursal_id);
+      const e = porSuc.get(k) ?? { total: 0, porTitulo: new Map() };
+      e.total += 1;
+      e.porTitulo.set(c.titulo, (e.porTitulo.get(c.titulo) ?? 0) + 1);
+      porSuc.set(k, e);
+    }
+    return [...porSuc.entries()].sort((a, b) => b[1].total - a[1].total);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canjesDia, sucursales]);
+
+  // ---------- Anomalías ----------
+  const anomalias = useMemo(() => {
+    // 1) Teléfonos que topan el límite diario repetidamente (rotación de folios)
+    const porTel = new Map<string, number>();
+    for (const i of intentos) if (i.motivo === "ya_hoy") porTel.set(i.telefono, (porTel.get(i.telefono) ?? 0) + 1);
+    const topeRepetido = [...porTel.entries()].filter(([, n]) => n >= 3).sort((a, b) => b[1] - a[1]);
+
+    // 2) Mismo cliente con visitas en 2+ sucursales el mismo día de negocio
+    const porClienteDia = new Map<string, Set<string>>();
+    for (const v of visitas30) {
+      if (!v.sucursal_id) continue;
+      const k = `${v.cliente_id}|${v.fecha_negocio}`;
+      const s = porClienteDia.get(k) ?? new Set<string>();
+      s.add(v.sucursal_id);
+      porClienteDia.set(k, s);
+    }
+    const multiSucursal = [...porClienteDia.entries()]
+      .filter(([, s]) => s.size > 1)
+      .map(([k, s]) => {
+        const [clienteId, fecha] = k.split("|");
+        return { clienteId, fecha, sucursales: [...s].map((id) => nombreSucId(id)).join(", ") };
+      });
+
+    // 3) Folios que otros teléfonos intentaron reutilizar (cuentas compartidas)
+    const folioConflicto = intentos.filter((i) => i.motivo === "folio_usado");
+
+    return { topeRepetido, multiSucursal, folioConflicto };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [intentos, visitas30, sucursales]);
 
   // ---------- Tabla filtrada ----------
   const filtrados = useMemo(() => {
@@ -269,6 +344,59 @@ export default function AdminLealtad() {
           </CardContent>
         </Card>
 
+        {/* Conciliación diaria: canjes en sistema vs comandero */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Ticket className="w-4 h-4" /> Conciliación de canjes
+              </CardTitle>
+              <Input type="date" value={fechaConc} onChange={(e) => setFechaConc(e.target.value)} className="w-44 h-9" />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Beneficios canjeados en sistema por día de negocio. Empátalo contra lo que registró el comandero: si el comandero tiene más cortesías que esto, se están entregando beneficios de más.
+            </p>
+          </CardHeader>
+          <CardContent>
+            {canjesDia.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sin canjes registrados el {fechaConc}.</p>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  <Badge className="text-sm py-1.5 px-3">Total del día: {canjesDia.length}</Badge>
+                  {conciliacion.map(([suc, e]) => (
+                    <Badge key={suc} variant="secondary" className="text-sm py-1.5 px-3">
+                      {suc}: <span className="font-bold ml-1">{e.total}</span>
+                    </Badge>
+                  ))}
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 text-left">
+                      <tr>
+                        <th className="px-3 py-2 font-semibold">Sucursal</th>
+                        <th className="px-3 py-2 font-semibold">Beneficio</th>
+                        <th className="px-3 py-2 font-semibold text-right">Canjes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {conciliacion.flatMap(([suc, e]) =>
+                        [...e.porTitulo.entries()].map(([titulo, n]) => (
+                          <tr key={`${suc}-${titulo}`} className="border-t">
+                            <td className="px-3 py-2">{suc}</td>
+                            <td className="px-3 py-2">{titulo}</td>
+                            <td className="px-3 py-2 text-right font-semibold tabular-nums">{n}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Configuración del programa + Niveles */}
         <div className="grid lg:grid-cols-2 gap-4">
           <Card>
@@ -288,14 +416,22 @@ export default function AdminLealtad() {
                         onChange={(e) => setConfig({ ...config, tope_visitas_dia: Math.max(1, Number(e.target.value) || 1) })} />
                     </div>
                   </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground">Recompensa (texto que ve la caja)</label>
-                    <Input value={config.recompensa_texto}
-                      onChange={(e) => setConfig({ ...config, recompensa_texto: e.target.value })} />
-                  </div>
                   <Button onClick={guardarConfig} className="gap-2"><Save className="w-4 h-4" /> Guardar reglas</Button>
+                  <div className="pt-2 border-t">
+                    <p className="text-xs font-semibold text-muted-foreground mb-2">Ciclo de recompensas (en loop, la elección se hace en el comandero)</p>
+                    <div className="space-y-2">
+                      {recompensas.map((r) => (
+                        <div key={r.posicion} className="flex items-center gap-2">
+                          <span className="w-6 h-6 shrink-0 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">{r.posicion}</span>
+                          <Input className="h-9" value={r.titulo}
+                            onChange={(e) => setRecompensas((p) => p.map((x) => x.posicion === r.posicion ? { ...x, titulo: e.target.value } : x))} />
+                          <Button size="icon" variant="ghost" onClick={() => guardarRecompensa(r)}><Save className="w-4 h-4" /></Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    El blindaje principal es el folio del ticket: cada folio cuenta una sola visita por sucursal por día. El cap por día es un límite extra anti-abuso: aunque tenga varios tickets, un mismo teléfono no suma más de esta cantidad de visitas al día.
+                    Regla dura: un folio por teléfono por día. El ciclo y las recompensas cuentan por año natural; el 1 de enero todos arrancan de nuevo. El regalo de bienvenida (balazo + bebida) es una sola vez, de por vida.
                   </p>
                 </>
               )}
@@ -442,6 +578,70 @@ export default function AdminLealtad() {
                   </div>
                 );
               })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Anomalías (anti-fraude) */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2"><Search className="w-4 h-4" /> Anomalías</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Señales de abuso: números rotando folios, cuentas compartidas entre sucursales y folios reutilizados. Últimos 30 días.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <p className="text-sm font-semibold mb-1">Teléfonos topando el límite diario (3+ intentos rechazados)</p>
+              {anomalias.topeRepetido.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Sin casos.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {anomalias.topeRepetido.map(([tel, n]) => {
+                    const cli = clientes.find((c) => c.telefono === tel);
+                    return (
+                      <Badge key={tel} variant="destructive" className="text-sm py-1.5 px-3">
+                        {cli?.nombre ?? tel} · {tel} · {n} intentos
+                      </Badge>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-semibold mb-1">Mismo número en 2+ sucursales el mismo día</p>
+              {anomalias.multiSucursal.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Sin casos.</p>
+              ) : (
+                <div className="space-y-1">
+                  {anomalias.multiSucursal.map((m) => {
+                    const cli = clientes.find((c) => c.id === m.clienteId);
+                    return (
+                      <p key={`${m.clienteId}-${m.fecha}`} className="text-sm">
+                        <span className="font-medium">{cli?.nombre ?? "—"}</span>
+                        <span className="text-muted-foreground"> · {cli?.telefono ?? ""} · {m.fecha} · {m.sucursales}</span>
+                      </p>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-semibold mb-1">Folios que otro teléfono intentó reutilizar</p>
+              {anomalias.folioConflicto.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Sin casos.</p>
+              ) : (
+                <div className="max-h-60 overflow-y-auto divide-y">
+                  {anomalias.folioConflicto.map((i) => (
+                    <div key={i.id} className="flex items-center justify-between py-1.5 text-sm">
+                      <span>folio <b>{i.folio_norm}</b> · intentó {i.telefono}</span>
+                      <span className="text-muted-foreground text-xs">
+                        {nombreSucId(i.sucursal_id)} · {i.fecha_negocio}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

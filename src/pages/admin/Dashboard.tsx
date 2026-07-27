@@ -24,6 +24,7 @@ import { InformeCumplimiento } from "@/components/admin/InformeCumplimiento";
 import { CargaHistorica } from "@/components/admin/CargaHistorica";
 import { PestanaApertura } from "@/components/admin/PestanaApertura";
 import { HerramientasDialog } from "@/components/admin/HerramientasDialog";
+import { SemaforoCortes } from "@/components/admin/SemaforoCortes";
 export default function AdminDashboard() {
   const [filtroSucursal, setFiltroSucursal] = useState<string>("todas");
   const [filtroTipo, setFiltroTipo] = useState<string>("todos");
@@ -176,6 +177,8 @@ export default function AdminDashboard() {
 
           {/* Vista: Estado Actual */}
           <TabsContent value="estado" className="space-y-6">
+            <SemaforoCortes sucursales={sucursales} />
+
             <Card className="mb-6">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg">Período</CardTitle>
