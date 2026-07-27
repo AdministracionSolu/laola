@@ -100,6 +100,25 @@ export default function AdminLealtad() {
       .then(({ data }: { data: Canje[] | null }) => setCanjesDia(data ?? []));
   }, [fechaConc]);
 
+  // Ciclo del AÑO en curso (v4): visitas y canjes por cliente desde el 1 de enero
+  const [visAnio, setVisAnio] = useState<Map<string, number>>(new Map());
+  const [canAnio, setCanAnio] = useState<Map<string, number>>(new Map());
+  useEffect(() => {
+    const inicio = `${fechaNegocioHoy().slice(0, 4)}-01-01`;
+    Promise.all([
+      db.from("lealtad_visitas").select("cliente_id").gte("fecha_negocio", inicio),
+      db.from("lealtad_canjes").select("cliente_id").gt("posicion", 0).gte("fecha_negocio", inicio),
+    ]).then(([v, c]: any[]) => {
+      const cuenta = (rows: { cliente_id: string }[] | null) => {
+        const m = new Map<string, number>();
+        for (const r of rows ?? []) m.set(r.cliente_id, (m.get(r.cliente_id) ?? 0) + 1);
+        return m;
+      };
+      setVisAnio(cuenta(v.data));
+      setCanAnio(cuenta(c.data));
+    });
+  }, [cargando]);
+
   const nombreSucursal = (c: Cliente) =>
     sucursales.find((s) => s.id === c.sucursal_captacion_id)?.nombre ??
     c.sucursal_captacion_codigo ?? "Sin sucursal";
@@ -110,8 +129,10 @@ export default function AdminLealtad() {
     const alcanzados = niveles.filter((n) => n.activo && n.min_visitas <= total);
     return alcanzados.length ? alcanzados[alcanzados.length - 1] : null;
   };
-  const meta = Math.max(1, config?.meta_visitas ?? 10);
-  const recompDisp = (c: Cliente) => Math.max(0, Math.floor(c.visitas_total / meta) - c.recompensas_usadas);
+  const meta = Math.max(1, config?.meta_visitas ?? 3);
+  // v4: recompensas disponibles = ciclo del AÑO natural (visitas y canjes del año)
+  const recompDisp = (c: Cliente) =>
+    Math.max(0, Math.floor((visAnio.get(c.id) ?? 0) / meta) - (canAnio.get(c.id) ?? 0));
 
   const canjear = async (c: Cliente) => {
     const { data, error } = await db.rpc("lealtad_canjear", { p_telefono: c.telefono });
