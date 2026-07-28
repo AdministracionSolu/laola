@@ -33,6 +33,12 @@ const filasVacias = (): GramajeRow[] =>
 const rpc = (fn: string, args: Record<string, unknown>) =>
   (supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>)(fn, args);
 
+// ¿El error es "la función no existe todavía en la base"? (SQL pendiente de correr)
+const funcionNoExiste = (error: unknown) => {
+  const e = error as { code?: string; message?: string } | null;
+  return !!e && (e.code === "PGRST202" || (e.message ?? "").includes("prov_guardar_precios"));
+};
+
 export default function ProveedorPortal() {
   const { token = "" } = useParams();
   const [loading, setLoading] = useState(true);
@@ -47,6 +53,8 @@ export default function ProveedorPortal() {
   const [exito, setExito] = useState<{ nombre: string; detalle: string }[] | null>(null);
   const [fallidos, setFallidos] = useState<string[]>([]);
 
+  const draftKey = `prov-draft-${token}`;
+
   const cargar = useCallback(async () => {
     setLoading(true);
     const { data, error } = await rpc("prov_catalogo", { p_token: token });
@@ -60,12 +68,33 @@ export default function ProveedorPortal() {
       // Inicializa 4 filas vacías para cada producto por gramaje.
       const g: Record<string, GramajeRow[]> = {};
       c.productos.forEach((p) => { if (p.por_gramaje) g[p.id] = filasVacias(); });
+      // Restaura el borrador local (lo capturado sobrevive recargas de página).
+      try {
+        const raw = localStorage.getItem(draftKey);
+        if (raw) {
+          const d = JSON.parse(raw) as { precios?: Record<string, string>; gramajes?: Record<string, GramajeRow[]> };
+          if (d.precios) setPrecios(d.precios);
+          Object.entries(d.gramajes ?? {}).forEach(([id, filas]) => {
+            if (g[id]) g[id] = g[id].map((f, i) => filas[i] ?? f);
+          });
+        }
+      } catch { /* borrador ilegible: se ignora */ }
       setGramajes(g);
     }
     setLoading(false);
-  }, [token]);
+  }, [token, draftKey]);
 
   useEffect(() => { cargar(); }, [cargar]);
+
+  // Guarda el borrador local con cada tecleo.
+  useEffect(() => {
+    if (!catalogo) return;
+    const hayAlgo =
+      Object.values(precios).some((v) => v !== "") ||
+      Object.values(gramajes).some((fs) => fs.some((f) => f.gramaje !== "" || f.precio !== ""));
+    if (hayAlgo) localStorage.setItem(draftKey, JSON.stringify({ precios, gramajes }));
+    else localStorage.removeItem(draftKey);
+  }, [precios, gramajes, catalogo, draftKey]);
 
   const setGramajeCell = (prodId: string, i: number, campo: keyof GramajeRow, valor: string) => {
     setGramajes((prev) => {
@@ -140,7 +169,37 @@ export default function ProveedorPortal() {
 
     setGuardando(true);
     setFallidos([]);
-    // En lotes chicos (no 10+ llamadas de golpe en señal de celular).
+
+    // Envío ATÓMICO: un solo RPC guarda todo en una transacción (o entra
+    // todo o no entra nada). Un reintento por si la señal parpadea.
+    const payload = {
+      p_token: token,
+      p_normales: itemsNormales.map((it) => ({ producto_id: it.id, precio: it.valor })),
+      p_gramajes: itemsGramaje.map((it) => ({
+        producto_id: it.id,
+        filas: it.filas.map((f) => ({ gramaje: f.gramaje, precio: parseFloat(f.precio) })),
+      })),
+    };
+    let r = await rpc("prov_guardar_precios", payload);
+    if (r.error && !funcionNoExiste(r.error)) r = await rpc("prov_guardar_precios", payload);
+
+    if (!funcionNoExiste(r.error)) {
+      setGuardando(false);
+      const res = r.data as { ok?: boolean } | null;
+      if (!r.error && res?.ok) {
+        tareas.forEach((t) => t.limpiar());
+        localStorage.removeItem(draftKey);
+        setExito(tareas.map((t) => ({ nombre: t.nombre, detalle: t.detalle })));
+      } else {
+        // No se guardó NADA (atómico): los campos siguen llenos, reintentar.
+        setFallidos(tareas.map((t) => t.nombre));
+        toast.error("No se guardó ningún precio. Revisa tu señal y dale Guardar otra vez.");
+      }
+      return;
+    }
+
+    // Camino viejo (solo mientras la base no tenga el RPC atómico):
+    // en lotes chicos (no 10+ llamadas de golpe en señal de celular).
     const resultados: { tarea: Tarea; ok: boolean }[] = [];
     for (let i = 0; i < tareas.length; i += 3) {
       const lote = tareas.slice(i, i + 3);
@@ -149,18 +208,19 @@ export default function ProveedorPortal() {
     }
     setGuardando(false);
 
-    const bien = resultados.filter((r) => r.ok);
-    const mal = resultados.filter((r) => !r.ok);
-    bien.forEach((r) => r.tarea.limpiar());
+    const bien = resultados.filter((r2) => r2.ok);
+    const mal = resultados.filter((r2) => !r2.ok);
+    bien.forEach((r2) => r2.tarea.limpiar());
 
     if (mal.length === 0) {
-      setExito(bien.map((r) => ({ nombre: r.tarea.nombre, detalle: r.tarea.detalle })));
+      localStorage.removeItem(draftKey);
+      setExito(bien.map((r2) => ({ nombre: r2.tarea.nombre, detalle: r2.tarea.detalle })));
     } else {
       // Los que fallaron conservan su campo lleno; aviso fijo (no solo toast).
-      setFallidos(mal.map((r) => r.tarea.nombre));
+      setFallidos(mal.map((r2) => r2.tarea.nombre));
       toast.error(
         `Se guardaron ${bien.length} de ${tareas.length}. Falta: ${mal
-          .map((r) => r.tarea.nombre)
+          .map((r2) => r2.tarea.nombre)
           .join(", ")}. Dale Guardar otra vez.`
       );
     }
