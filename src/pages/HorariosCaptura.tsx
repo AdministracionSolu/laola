@@ -2,34 +2,32 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
-import { Loader2, AlertTriangle } from "lucide-react";
+import { Loader2, AlertTriangle, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 
 // Captura del horario semanal de UN área, por liga con token (sin login).
-// La persona encargada del área toca la celda del rol y elige el nombre.
+// Persona-primero: se toca a una persona y se arma su semana completa
+// (Lun: Abre, Mar: Cierra, Mié: Intermedio…) con un toque por día.
 // Sin horas: el equipo ya sabe qué significa Abre / Intermedio / Cierra.
-// Quien no aparece en ningún rol un día, descansa ese día (se deriva solo).
+// "Descansa" = la persona no tiene rol ese día.
 
 interface Persona { id: string; nombre: string; }
 interface Asignacion { dia: number; rol: string; empleado_id: string; }
 interface Info { sucursal: string; area: string; equipo: Persona[]; asignaciones: Asignacion[]; }
 
 const DIAS = [
-  { dow: 1, label: "Lunes" }, { dow: 2, label: "Martes" }, { dow: 3, label: "Miércoles" },
-  { dow: 4, label: "Jueves" }, { dow: 5, label: "Viernes" }, { dow: 6, label: "Sábado" },
-  { dow: 0, label: "Domingo" },
+  { dow: 1, label: "Lunes", corto: "Lu" }, { dow: 2, label: "Martes", corto: "Ma" },
+  { dow: 3, label: "Miércoles", corto: "Mi" }, { dow: 4, label: "Jueves", corto: "Ju" },
+  { dow: 5, label: "Viernes", corto: "Vi" }, { dow: 6, label: "Sábado", corto: "Sá" },
+  { dow: 0, label: "Domingo", corto: "Do" },
 ];
 const ROLES = [
-  { key: "abre", label: "Abre" },
-  { key: "intermedio", label: "Intermedio" },
-  { key: "cierra", label: "Cierra" },
+  { key: "abre", label: "Abre", corto: "A" },
+  { key: "intermedio", label: "Interm.", corto: "I" },
+  { key: "cierra", label: "Cierra", corto: "C" },
 ];
+const rolLabel = (key: string) => ROLES.find((r) => r.key === key)?.label ?? key;
 const AREA_LABEL: Record<string, string> = {
   mesero: "Meseros", cocina: "Cocina", caja: "Caja", repartidor: "Repartidores",
   barman: "Barra", contabilidad: "Contabilidad", valet: "Valet parking",
@@ -43,9 +41,8 @@ export default function HorariosCaptura() {
   const [loading, setLoading] = useState(true);
   const [valido, setValido] = useState(true);
   const [info, setInfo] = useState<Info | null>(null);
-  // Celda abierta en el selector de nombres.
-  const [celda, setCelda] = useState<{ dia: number; rol: string } | null>(null);
-  const [guardando, setGuardando] = useState(false);
+  // Persona cuya semana está abierta (acordeón: una a la vez).
+  const [abierta, setAbierta] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
     const { data, error } = await rpc("horarios_captura_info", { p_token: token });
@@ -61,7 +58,7 @@ export default function HorariosCaptura() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  // Mapa "dia|rol" -> empleado_id para pintar la cuadrícula.
+  // Mapa "dia|rol" -> empleado_id.
   const asign = useMemo(() => {
     const m = new Map<string, string>();
     info?.asignaciones.forEach((a) => m.set(`${a.dia}|${a.rol}`, a.empleado_id));
@@ -71,12 +68,8 @@ export default function HorariosCaptura() {
   const nombreDe = (id: string | undefined) =>
     info?.equipo.find((p) => p.id === id)?.nombre;
 
-  // Rol que ya tiene una persona en un día dado (para avisar al moverla).
   const rolDe = (personaId: string, dia: number) =>
     ROLES.find((r) => asign.get(`${dia}|${r.key}`) === personaId)?.key;
-
-  const descansanEl = (dia: number) =>
-    (info?.equipo ?? []).filter((p) => !rolDe(p.id, dia));
 
   // Avisos que no bloquean: días sin quien abra/cierre y gente sin descanso.
   const avisos = useMemo(() => {
@@ -90,21 +83,37 @@ export default function HorariosCaptura() {
       if (DIAS.every((d) => rolDe(p.id, d.dow))) out.push(`${p.nombre} no tiene día de descanso`);
     });
     return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [info, asign]);
 
-  const asignar = async (empleadoId: string | null) => {
-    if (!celda) return;
-    setGuardando(true);
-    const { error } = await rpc("horarios_captura_set", {
-      p_token: token, p_dia: celda.dia, p_rol: celda.rol, p_empleado_id: empleadoId,
-    });
-    setGuardando(false);
+  // Un toque = un guardado. Actualiza local de inmediato y sincroniza atrás;
+  // si el servidor falla, recarga para volver a la verdad.
+  const setRol = async (persona: Persona, dia: number, nuevoRol: string | null) => {
+    if (!info) return;
+    const rolActual = rolDe(persona.id, dia);
+    if (nuevoRol === (rolActual ?? null)) return;
+
+    const desplazadoId = nuevoRol ? asign.get(`${dia}|${nuevoRol}`) : undefined;
+
+    // Optimista: fuera lo que esta persona tenía ese día y quien ocupaba el rol destino.
+    const nuevas = info.asignaciones.filter((a) =>
+      !(a.dia === dia && (a.empleado_id === persona.id || (nuevoRol && a.rol === nuevoRol))));
+    if (nuevoRol) nuevas.push({ dia, rol: nuevoRol, empleado_id: persona.id });
+    setInfo({ ...info, asignaciones: nuevas });
+
+    if (desplazadoId && desplazadoId !== persona.id) {
+      const diaLabel = DIAS.find((d) => d.dow === dia)?.label ?? "";
+      toast.info(`${nombreDe(desplazadoId)} quedó sin rol el ${diaLabel.toLowerCase()} (lo reemplazó ${persona.nombre}).`);
+    }
+
+    // Descansar = vaciar la celda del rol que tenía.
+    const { error } = nuevoRol
+      ? await rpc("horarios_captura_set", { p_token: token, p_dia: dia, p_rol: nuevoRol, p_empleado_id: persona.id })
+      : await rpc("horarios_captura_set", { p_token: token, p_dia: dia, p_rol: rolActual, p_empleado_id: null });
     if (error) {
       toast.error("No se pudo guardar, intenta de nuevo.");
-      return;
+      await cargar();
     }
-    setCelda(null);
-    await cargar();
   };
 
   if (loading) {
@@ -136,7 +145,7 @@ export default function HorariosCaptura() {
           <img src={logoLaOla} alt="La Ola" className="w-9 h-9 rounded-full object-cover" />
           <div>
             <h1 className="font-bold leading-tight">Horario · {areaLabel}</h1>
-            <p className="text-xs text-muted-foreground">{info.sucursal} · toca un rol y elige a la persona</p>
+            <p className="text-xs text-muted-foreground">{info.sucursal} · toca a una persona y arma su semana</p>
           </div>
         </div>
       </div>
@@ -154,78 +163,127 @@ export default function HorariosCaptura() {
           </Card>
         )}
 
-        {DIAS.map((d) => (
-          <Card key={d.dow}>
+        {info.equipo.length === 0 && (
+          <Card><CardContent className="p-4 text-center text-sm text-muted-foreground">
+            No hay personal de {areaLabel.toLowerCase()} dado de alta en esta sucursal.
+          </CardContent></Card>
+        )}
+
+        {/* Una tarjeta por persona: cerrada muestra su semana en chico, abierta la edita. */}
+        {info.equipo.map((p) => {
+          const estaAbierta = abierta === p.id;
+          return (
+            <Card key={p.id}>
+              <CardContent className="p-3">
+                <button
+                  className="w-full flex items-center justify-between gap-2 text-left"
+                  onClick={() => setAbierta(estaAbierta ? null : p.id)}
+                >
+                  <span className="font-semibold">{p.nombre}</span>
+                  <span className="flex items-center gap-1.5">
+                    {!estaAbierta && (
+                      <span className="flex gap-1">
+                        {DIAS.map((d) => {
+                          const r = rolDe(p.id, d.dow);
+                          return (
+                            <span
+                              key={d.dow}
+                              className={`w-6 rounded text-center text-[10px] leading-4 py-0.5 ${
+                                r ? "bg-primary/10 text-primary font-semibold" : "bg-muted text-muted-foreground/60"
+                              }`}
+                            >
+                              {d.corto}
+                              <br />
+                              {r ? ROLES.find((x) => x.key === r)?.corto : "—"}
+                            </span>
+                          );
+                        })}
+                      </span>
+                    )}
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${estaAbierta ? "rotate-180" : ""}`} />
+                  </span>
+                </button>
+
+                {estaAbierta && (
+                  <div className="mt-3 space-y-1.5">
+                    {DIAS.map((d) => {
+                      const rolActual = rolDe(p.id, d.dow);
+                      return (
+                        <div key={d.dow} className="flex items-center gap-1.5">
+                          <span className="w-8 shrink-0 text-xs font-medium text-muted-foreground">{d.corto}</span>
+                          {ROLES.map((r) => {
+                            const ocupanteId = asign.get(`${d.dow}|${r.key}`);
+                            const esMio = ocupanteId === p.id;
+                            const ocupadoPorOtro = !!ocupanteId && !esMio;
+                            return (
+                              <button
+                                key={r.key}
+                                onClick={() => setRol(p, d.dow, r.key)}
+                                className={`flex-1 rounded-md border px-1 py-1.5 text-center leading-tight ${
+                                  esMio
+                                    ? "bg-primary text-primary-foreground border-primary font-semibold"
+                                    : "hover:border-primary hover:bg-primary/5"
+                                }`}
+                              >
+                                <span className="text-xs">{r.label}</span>
+                                {ocupadoPorOtro && (
+                                  <span className="block text-[10px] text-muted-foreground truncate max-w-[72px] mx-auto">
+                                    {nombreDe(ocupanteId)}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                          <button
+                            onClick={() => setRol(p, d.dow, null)}
+                            className={`flex-1 rounded-md border px-1 py-1.5 text-xs text-center ${
+                              !rolActual
+                                ? "bg-muted font-semibold border-muted-foreground/30"
+                                : "text-muted-foreground hover:bg-muted"
+                            }`}
+                          >
+                            Desc.
+                          </button>
+                        </div>
+                      );
+                    })}
+                    <p className="text-[11px] text-muted-foreground pt-1">
+                      Un toque guarda. Si el rol ya era de alguien más, esa persona queda sin rol ese día.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+
+        {/* Resumen por día, para no perder el panorama de la semana. */}
+        {info.equipo.length > 0 && (
+          <Card>
             <CardContent className="p-3">
-              <p className="font-semibold mb-2">{d.label}</p>
-              <div className="space-y-1.5">
-                {ROLES.map((r) => {
-                  const quien = nombreDe(asign.get(`${d.dow}|${r.key}`));
-                  return (
-                    <button
-                      key={r.key}
-                      onClick={() => setCelda({ dia: d.dow, rol: r.key })}
-                      className="w-full flex items-center justify-between rounded-md border px-3 py-2.5 text-left hover:border-primary hover:bg-primary/5"
-                    >
-                      <span className="text-sm text-muted-foreground">{r.label}</span>
-                      {quien
-                        ? <span className="font-semibold">{quien}</span>
-                        : <span className="text-muted-foreground/50 text-sm">— elegir —</span>}
-                    </button>
-                  );
-                })}
+              <p className="font-semibold mb-2 text-sm">Resumen de la semana</p>
+              <div className="space-y-1">
+                {DIAS.map((d) => (
+                  <div key={d.dow} className="flex gap-2 text-xs">
+                    <span className="w-8 shrink-0 font-medium text-muted-foreground">{d.corto}</span>
+                    <span className="min-w-0">
+                      {ROLES.map((r) => {
+                        const quien = nombreDe(asign.get(`${d.dow}|${r.key}`));
+                        return (
+                          <span key={r.key} className="mr-2 whitespace-nowrap">
+                            <span className="text-muted-foreground">{rolLabel(r.key)}:</span>{" "}
+                            {quien ?? <span className="text-destructive/70">falta</span>}
+                          </span>
+                        );
+                      })}
+                    </span>
+                  </div>
+                ))}
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Descansan: {descansanEl(d.dow).map((p) => p.nombre).join(", ") || "nadie"}
-              </p>
             </CardContent>
           </Card>
-        ))}
+        )}
       </div>
-
-      <Dialog open={!!celda} onOpenChange={(o) => !o && !guardando && setCelda(null)}>
-        <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {celda && `${ROLES.find((r) => r.key === celda.rol)?.label} · ${DIAS.find((d) => d.dow === celda.dia)?.label}`}
-            </DialogTitle>
-          </DialogHeader>
-          {celda && (
-            <div className="space-y-2">
-              {info.equipo.map((p) => {
-                const rolActual = rolDe(p.id, celda.dia);
-                const esLaCelda = asign.get(`${celda.dia}|${celda.rol}`) === p.id;
-                return (
-                  <Button
-                    key={p.id}
-                    variant={esLaCelda ? "default" : "outline"}
-                    className="w-full justify-between h-11"
-                    disabled={guardando}
-                    onClick={() => asignar(p.id)}
-                  >
-                    {p.nombre}
-                    {rolActual && !esLaCelda && (
-                      <Badge variant="secondary" className="ml-2">
-                        ya {ROLES.find((r) => r.key === rolActual)?.label.toLowerCase()}
-                      </Badge>
-                    )}
-                  </Button>
-                );
-              })}
-              {asign.get(`${celda.dia}|${celda.rol}`) && (
-                <Button variant="ghost" className="w-full text-destructive" disabled={guardando} onClick={() => asignar(null)}>
-                  Dejar vacío
-                </Button>
-              )}
-              {info.equipo.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-2">
-                  No hay personal de {areaLabel.toLowerCase()} dado de alta en esta sucursal.
-                </p>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
