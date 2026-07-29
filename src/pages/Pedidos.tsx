@@ -150,7 +150,9 @@ export default function Pedidos() {
             insumo_id: r.insumos.id,
             nombre: p.display,
             categoria_id: r.insumos.categoria_id,
-            unidad: r.unidad || p.unidad || r.insumos.unidad || "pz",
+            // La unidad canónica de la proteína manda: la base tiene 'kg'
+            // volcado parejo en todo (Pizzas y Medallón se piden por pieza).
+            unidad: p.unidad || r.unidad || r.insumos.unidad || "pz",
             nivel_par: r.nivel_par,
             costo: r.costo,
             orden: p.orden,

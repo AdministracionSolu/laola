@@ -116,7 +116,7 @@ export default function Recepciones() {
           return {
             insumo_id: d.insumo_id,
             nombre: p?.display ?? d.insumos.nombre,
-            unidad: d.insumos.unidad || p?.unidad || "pz",
+            unidad: p?.unidad || d.insumos.unidad || "pz",
             categoria_id: d.insumos.categoria_id,
             pedido_detalle_id: d.id,
             orden: p?.orden ?? 999,

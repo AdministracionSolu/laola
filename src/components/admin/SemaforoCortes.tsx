@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Siren } from "lucide-react";
 
 type Sucursal = { id: string; nombre: string };
-type Config = { sucursal_id: string; hora_limite: string; activo: boolean };
+type Config = { sucursal_id: string; hora_limite: string; hora_limite_finde: string | null; activo: boolean };
 type Alerta = { sucursal_id: string; fecha_negocio: string; created_at: string };
 
 const db = supabase as any;
@@ -87,6 +87,13 @@ export function SemaforoCortes({ sucursales }: { sucursales: Sucursal[] }) {
                     className="h-8 w-28"
                     value={cfg.hora_limite.slice(0, 5)}
                     onChange={(ev) => guardar(s.id, { hora_limite: ev.target.value })}
+                  />
+                  <span className="text-xs text-muted-foreground" title="Hora especial para viernes y sábado (día de negocio). Vacío = usa la hora normal.">Vie/Sáb</span>
+                  <Input
+                    type="time"
+                    className="h-8 w-28"
+                    value={cfg.hora_limite_finde?.slice(0, 5) ?? ""}
+                    onChange={(ev) => guardar(s.id, { hora_limite_finde: ev.target.value || null })}
                   />
                   <Switch
                     checked={cfg.activo}

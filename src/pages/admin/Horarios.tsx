@@ -71,6 +71,25 @@ const DIAS = [
 ];
 const TOLERANCIA_MIN = 5;
 
+// Fechas reales de una semana (lunes a domingo), para ver en qué día del
+// mes cae cada columna (quincenas, fechas importantes).
+function fechasDeSemana(cual: "esta" | "proxima"): Map<number, Date> {
+  const hoy = new Date();
+  const lunes = new Date(hoy);
+  lunes.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7) + (cual === "proxima" ? 7 : 0));
+  const m = new Map<number, Date>();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(lunes);
+    d.setDate(lunes.getDate() + i);
+    m.set(d.getDay(), d);
+  }
+  return m;
+}
+const esQuincena = (d: Date) => {
+  const ultimo = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  return d.getDate() === 15 || d.getDate() === ultimo;
+};
+
 const hhmm = (t: string | null) => (t ? t.slice(0, 5) : "");
 const horaLocal = (iso: string | null) =>
   iso ? new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", timeZone: "America/Mexico_City" }) : "—";
@@ -133,6 +152,7 @@ export default function AdminHorarios() {
               sucursalId={sucSel}
               sucursalNombre={sucursales.find((s) => s.id === sucSel)?.nombre ?? ""}
             />
+            <HorariosPorRol sucursalId={sucSel} />
           </TabsContent>
 
           <TabsContent value="personal">
@@ -320,6 +340,8 @@ function GridHorarios({ sucursalId, empleados }: { sucursalId: string; empleados
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [catalogo, setCatalogo] = useState<CatTurno[]>([]);
   const [editCelda, setEditCelda] = useState<{ empleado: Empleado; dow: number } | null>(null);
+  const [semana, setSemana] = useState<"esta" | "proxima">("proxima");
+  const fechas = fechasDeSemana(semana);
 
   const cargar = useCallback(async () => {
     if (!sucursalId) return;
@@ -346,9 +368,22 @@ function GridHorarios({ sucursalId, empleados }: { sucursalId: string; empleados
 
   return (
     <div>
-      <p className="text-sm text-muted-foreground mb-3">
-        Abre de lunes a domingo. Toca una celda para asignar turnos (puedes poner varios el mismo día: turno partido / hasta 3).
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <p className="text-sm text-muted-foreground">
+          Abre de lunes a domingo. Toca una celda para asignar turnos (puedes poner varios el mismo día: turno partido / hasta 3).
+        </p>
+        <div className="flex rounded-lg border overflow-hidden text-xs shrink-0">
+          {(["esta", "proxima"] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setSemana(s)}
+              className={`px-3 py-1.5 ${semana === s ? "bg-primary text-primary-foreground font-semibold" : "bg-card text-muted-foreground"}`}
+            >
+              {s === "esta" ? "Esta semana" : "Próxima semana"}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {visibles.length === 0 ? (
         <Card><CardContent className="py-8 text-center text-muted-foreground">
@@ -360,7 +395,17 @@ function GridHorarios({ sucursalId, empleados }: { sucursalId: string; empleados
             <thead>
               <tr>
                 <th className="text-left p-2 sticky left-0 bg-muted/30 min-w-[140px]">Empleado</th>
-                {DIAS.map((d) => <th key={d.dow} className="p-2 text-center min-w-[110px]">{d.label}</th>)}
+                {DIAS.map((d) => {
+                  const f = fechas.get(d.dow)!;
+                  return (
+                    <th key={d.dow} className="p-2 text-center min-w-[110px]">
+                      {d.label}{" "}
+                      <span className={esQuincena(f) ? "text-amber-600 font-bold" : "text-muted-foreground font-normal"}>
+                        {f.getDate()}
+                      </span>
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
@@ -623,6 +668,115 @@ function LigasCaptura({ sucursalId, sucursalNombre }: { sucursalId: string; sucu
             </Select>
           </div>
           <Button variant="outline" onClick={crear}><Plus className="w-4 h-4 mr-1" /> Crear liga</Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// HORARIOS POR ROL (qué roles tiene cada área y con qué horas)
+// Barra no tiene intermedio; caja abre 10–18 y cierra 16–00; etc.
+// Un área sin renglones muestra los 3 roles sin horas (como antes).
+// ============================================================
+type RolDef = {
+  id: string; sucursal_id: string | null; area: string;
+  rol: "abre" | "intermedio" | "cierra";
+  hora_entrada: string | null; hora_salida: string | null; activo: boolean;
+};
+const ROLES_DEF: { key: RolDef["rol"]; label: string }[] = [
+  { key: "abre", label: "Abre" }, { key: "intermedio", label: "Intermedio" }, { key: "cierra", label: "Cierra" },
+];
+
+function HorariosPorRol({ sucursalId }: { sucursalId: string }) {
+  const [defs, setDefs] = useState<RolDef[]>([]);
+  const [areaSel, setAreaSel] = useState<Puesto>("mesero");
+
+  const cargar = useCallback(async () => {
+    if (!sucursalId) return;
+    const { data } = await db.from("horarios_roles_def").select("*").eq("sucursal_id", sucursalId);
+    setDefs((data ?? []) as RolDef[]);
+  }, [sucursalId]);
+  useEffect(() => { cargar(); }, [cargar]);
+
+  const defDe = (rol: string) => defs.find((d) => d.area === areaSel && d.rol === rol && d.activo);
+  const areaSinDefs = !defs.some((d) => d.area === areaSel && d.activo);
+
+  const toggleRol = async (rol: string, on: boolean) => {
+    const d = defs.find((x) => x.area === areaSel && x.rol === rol);
+    const res = on
+      ? d
+        ? await db.from("horarios_roles_def").update({ activo: true }).eq("id", d.id)
+        : await db.from("horarios_roles_def").insert({ sucursal_id: sucursalId, area: areaSel, rol })
+      : d
+        ? await db.from("horarios_roles_def").update({ activo: false }).eq("id", d.id)
+        : { error: null };
+    if (res.error) { toast.error(res.error.message); return; }
+    cargar();
+  };
+
+  const setHora = async (rol: string, campo: "hora_entrada" | "hora_salida", valor: string) => {
+    const d = defDe(rol);
+    if (!d) return;
+    const res = await db.from("horarios_roles_def")
+      .update({ [campo]: valor || null, updated_at: new Date().toISOString() })
+      .eq("id", d.id);
+    if (res.error) { toast.error(res.error.message); return; }
+    cargar();
+  };
+
+  if (!sucursalId) return null;
+
+  return (
+    <Card className="mt-6">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2"><Clock className="w-4 h-4" /> Horarios por rol</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-xs text-muted-foreground mb-3">
+          Define qué roles tiene cada área y sus horas (p. ej. barra sin intermedio; caja abre 10:00–18:00 y cierra 16:00–00:00).
+          Las horas se muestran en la liga de captura del área.
+        </p>
+        <div className="w-48 mb-3">
+          <Label className="text-xs">Área</Label>
+          <Select value={areaSel} onValueChange={(v) => setAreaSel(v as Puesto)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {PUESTOS.map((a) => <SelectItem key={a} value={a}>{PUESTO_LABEL[a]}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        {areaSinDefs && (
+          <p className="text-xs text-amber-600 mb-2">
+            Esta área no tiene definición: la liga muestra los 3 roles sin horas. Activa los que apliquen.
+          </p>
+        )}
+        <div className="space-y-2">
+          {ROLES_DEF.map((r) => {
+            const d = defDe(r.key);
+            return (
+              <div key={r.key} className="flex flex-wrap items-center gap-3 border-b pb-2 last:border-b-0">
+                <Switch checked={!!d} onCheckedChange={(v) => toggleRol(r.key, v)} />
+                <span className={`w-24 text-sm font-medium ${d ? "" : "text-muted-foreground line-through"}`}>{r.label}</span>
+                {d && (
+                  <div className="flex items-center gap-2 ml-auto">
+                    <Label className="text-xs text-muted-foreground">Entrada</Label>
+                    <Input
+                      type="time" className="h-8 w-28"
+                      value={d.hora_entrada?.slice(0, 5) ?? ""}
+                      onChange={(ev) => setHora(r.key, "hora_entrada", ev.target.value)}
+                    />
+                    <Label className="text-xs text-muted-foreground">Salida</Label>
+                    <Input
+                      type="time" className="h-8 w-28"
+                      value={d.hora_salida?.slice(0, 5) ?? ""}
+                      onChange={(ev) => setHora(r.key, "hora_salida", ev.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </CardContent>
     </Card>

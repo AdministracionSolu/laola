@@ -73,6 +73,7 @@ export interface UseCortesReturn {
   refetch: () => void;
   deleteCorte: (corteId: string) => Promise<boolean>;
   cambiarTipoCorte: (corteId: string, nuevoTipo: "momento" | "cierre") => Promise<boolean>;
+  cambiarFechaCorte: (corteId: string, nuevaFecha: string) => Promise<boolean>;
 }
 
 interface UseCortesOptions {
@@ -202,6 +203,32 @@ export function useCortes(options: UseCortesOptions): UseCortesReturn {
     return true;
   }, [toast, refetch]);
 
+  // Mover el día de negocio de un corte (p. ej. se subió en la tarde y el
+  // trigger lo puso en el día siguiente). El cambio queda en cortes_audit.
+  const cambiarFechaCorte = useCallback(async (corteId: string, nuevaFecha: string): Promise<boolean> => {
+    const { error } = await supabase
+      .from("cortes_caja")
+      .update({ fecha_venta: nuevaFecha })
+      .eq("id", corteId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo cambiar la fecha del corte",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    toast({
+      title: "Fecha actualizada",
+      description: "El corte se movió de día. El cambio quedó en la bitácora.",
+    });
+
+    refetch();
+    return true;
+  }, [toast, refetch]);
+
   useEffect(() => {
     fetchSucursales().then(() => setIsLoading(false));
   }, [fetchSucursales]);
@@ -327,5 +354,6 @@ export function useCortes(options: UseCortesOptions): UseCortesReturn {
     refetch,
     deleteCorte,
     cambiarTipoCorte,
+    cambiarFechaCorte,
   };
 }

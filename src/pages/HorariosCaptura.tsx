@@ -14,7 +14,8 @@ import logoLaOla from "@/assets/logo-la-ola.jpeg";
 
 interface Persona { id: string; nombre: string; }
 interface Asignacion { dia: number; rol: string; empleado_id: string; }
-interface Info { sucursal: string; area: string; equipo: Persona[]; asignaciones: Asignacion[]; }
+interface RolDef { rol: string; hora_entrada: string | null; hora_salida: string | null; }
+interface Info { sucursal: string; area: string; roles?: RolDef[]; equipo: Persona[]; asignaciones: Asignacion[]; }
 
 const DIAS = [
   { dow: 1, label: "Lunes", corto: "Lu" }, { dow: 2, label: "Martes", corto: "Ma" },
@@ -36,6 +37,28 @@ const AREA_LABEL: Record<string, string> = {
 const rpc = (fn: string, args: Record<string, unknown>) =>
   (supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>)(fn, args);
 
+// Fechas reales de la semana (lunes a domingo) para que quien captura vea
+// en qué día del mes cae cada columna (quincenas, fechas importantes).
+function fechasDeSemana(cual: "esta" | "proxima"): Map<number, Date> {
+  const hoy = new Date();
+  const lunes = new Date(hoy);
+  lunes.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7) + (cual === "proxima" ? 7 : 0));
+  const m = new Map<number, Date>();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(lunes);
+    d.setDate(lunes.getDate() + i);
+    m.set(d.getDay(), d);
+  }
+  return m;
+}
+
+const esQuincena = (d: Date) => {
+  const ultimo = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  return d.getDate() === 15 || d.getDate() === ultimo;
+};
+
+const MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
 export default function HorariosCaptura() {
   const { token = "" } = useParams();
   const [loading, setLoading] = useState(true);
@@ -43,6 +66,9 @@ export default function HorariosCaptura() {
   const [info, setInfo] = useState<Info | null>(null);
   // Persona cuya semana está abierta (acordeón: una a la vez).
   const [abierta, setAbierta] = useState<string | null>(null);
+  // Semana cuyas fechas se muestran (el horario es la plantilla semanal).
+  const [semana, setSemana] = useState<"esta" | "proxima">("proxima");
+  const fechas = useMemo(() => fechasDeSemana(semana), [semana]);
 
   const cargar = useCallback(async () => {
     const { data, error } = await rpc("horarios_captura_info", { p_token: token });
@@ -70,6 +96,19 @@ export default function HorariosCaptura() {
 
   const rolDe = (personaId: string, dia: number) =>
     ROLES.find((r) => asign.get(`${dia}|${r.key}`) === personaId)?.key;
+
+  // Roles disponibles en esta área (p. ej. barra no tiene intermedio).
+  // Sin definición en la base, se muestran los 3 como siempre.
+  const rolesArea = useMemo(() => {
+    if (!info?.roles?.length) return ROLES;
+    return ROLES.filter((r) => info.roles!.some((d) => d.rol === r.key));
+  }, [info]);
+
+  const horasDe = (rolKey: string) => {
+    const d = info?.roles?.find((x) => x.rol === rolKey);
+    if (!d?.hora_entrada || !d?.hora_salida) return null;
+    return `${d.hora_entrada.slice(0, 5)}–${d.hora_salida.slice(0, 5)}`;
+  };
 
   // Avisos que no bloquean: días sin quien abra/cierre y gente sin descanso.
   const avisos = useMemo(() => {
@@ -151,6 +190,41 @@ export default function HorariosCaptura() {
       </div>
 
       <div className="max-w-lg mx-auto px-4 pt-4 space-y-3">
+        {/* Semana de referencia: fechas reales para ubicar quincenas */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex rounded-lg border overflow-hidden text-xs">
+            {(["esta", "proxima"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setSemana(s)}
+                className={`px-3 py-1.5 ${semana === s ? "bg-primary text-primary-foreground font-semibold" : "bg-card text-muted-foreground"}`}
+              >
+                {s === "esta" ? "Esta semana" : "Próxima semana"}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground text-right">
+            {fechas.get(1)!.getDate()} {MESES_CORTOS[fechas.get(1)!.getMonth()]} – {fechas.get(0)!.getDate()} {MESES_CORTOS[fechas.get(0)!.getMonth()]}
+          </p>
+        </div>
+
+        {/* Horas de cada rol en esta área (si están definidas) */}
+        {rolesArea.some((r) => horasDe(r.key)) && (
+          <Card>
+            <CardContent className="p-3 flex flex-wrap gap-x-4 gap-y-1">
+              {rolesArea.map((r) => {
+                const h = horasDe(r.key);
+                return (
+                  <p key={r.key} className="text-xs">
+                    <span className="font-semibold text-primary">{r.label}</span>{" "}
+                    <span className="text-muted-foreground">{h ?? "horario del área"}</span>
+                  </p>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+
         {avisos.length > 0 && (
           <Card className="border-amber-300 bg-amber-50/60">
             <CardContent className="p-3 space-y-1">
@@ -208,10 +282,14 @@ export default function HorariosCaptura() {
                   <div className="mt-3 space-y-1.5">
                     {DIAS.map((d) => {
                       const rolActual = rolDe(p.id, d.dow);
+                      const f = fechas.get(d.dow)!;
                       return (
                         <div key={d.dow} className="flex items-center gap-1.5">
-                          <span className="w-8 shrink-0 text-xs font-medium text-muted-foreground">{d.corto}</span>
-                          {ROLES.map((r) => {
+                          <span className={`w-11 shrink-0 text-xs font-medium leading-tight ${esQuincena(f) ? "text-amber-600" : "text-muted-foreground"}`}>
+                            {d.corto} {f.getDate()}
+                            {esQuincena(f) && <span className="block text-[9px] font-semibold">quincena</span>}
+                          </span>
+                          {rolesArea.map((r) => {
                             const ocupanteId = asign.get(`${d.dow}|${r.key}`);
                             const esMio = ocupanteId === p.id;
                             const ocupadoPorOtro = !!ocupanteId && !esMio;
@@ -265,9 +343,11 @@ export default function HorariosCaptura() {
               <div className="space-y-1">
                 {DIAS.map((d) => (
                   <div key={d.dow} className="flex gap-2 text-xs">
-                    <span className="w-8 shrink-0 font-medium text-muted-foreground">{d.corto}</span>
+                    <span className="w-11 shrink-0 font-medium text-muted-foreground">
+                      {d.corto} {fechas.get(d.dow)!.getDate()}
+                    </span>
                     <span className="min-w-0">
-                      {ROLES.map((r) => {
+                      {rolesArea.map((r) => {
                         const quien = nombreDe(asign.get(`${d.dow}|${r.key}`));
                         return (
                           <span key={r.key} className="mr-2 whitespace-nowrap">

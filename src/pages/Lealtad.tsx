@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Waves, Ticket, PartyPopper } from "lucide-react";
+import { Loader2, Waves, Ticket, PartyPopper, Sparkles, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
@@ -20,8 +20,14 @@ const MESES = [
 
 export default function Lealtad() {
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const suc = (params.get("suc") ?? "").trim().toUpperCase();
 
+  // El mismo QR sirve para dos caminos: inscribirse por primera vez o
+  // registrar una visita. ?modo=registro brinca directo al formulario.
+  const [modo, setModo] = useState<"elige" | "registro">(
+    params.get("modo") === "registro" ? "registro" : "elige"
+  );
   const [sucursalNombre, setSucursalNombre] = useState<string | null>(null);
   const [listo, setListo] = useState(false);
   const [nombreOk, setNombreOk] = useState("");
@@ -142,6 +148,55 @@ export default function Lealtad() {
             </div>
             <Link to="/menu" className="inline-block text-primary font-semibold pt-2">Ver el menú</Link>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================================
+  // Bifurcación: ¿primera vez o registrar visita?
+  // ============================================================
+  if (modo === "elige") {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-primary/10 via-background to-background">
+        <div className="max-w-md mx-auto px-4 py-8">
+          <Header titulo="Programa de Lealtad" sub="Tus visitas a La Ola tienen premio 🦐" />
+          <div className="space-y-4">
+            <button
+              onClick={() => setModo("registro")}
+              className="w-full rounded-2xl border-2 border-primary/20 bg-card p-5 shadow-sm text-left flex items-center gap-4 transition-all hover:border-primary hover:shadow-md active:scale-[0.99]"
+            >
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <Sparkles className="h-6 w-6 text-primary" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-lg leading-tight">Es mi primera vez</p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Únete al programa y llévate tu regalo de bienvenida.
+                </p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+            </button>
+
+            <button
+              onClick={() => navigate(`/visita${suc ? `?suc=${suc}` : ""}`)}
+              className="w-full rounded-2xl border-2 border-accent/30 bg-card p-5 shadow-sm text-left flex items-center gap-4 transition-all hover:border-accent hover:shadow-md active:scale-[0.99]"
+            >
+              <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
+                <Ticket className="h-6 w-6 text-accent" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-lg leading-tight">Ya soy miembro</p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Registra tu visita de hoy con el folio de tu ticket.
+                </p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+            </button>
+          </div>
+          <p className="text-center text-xs text-muted-foreground mt-6 flex items-center justify-center gap-1.5">
+            <Waves className="h-3.5 w-3.5" /> Cada 3 visitas ganas una recompensa.
+          </p>
         </div>
       </div>
     );
