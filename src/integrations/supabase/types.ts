@@ -14,6 +14,104 @@ export type Database = {
   }
   public: {
     Tables: {
+      asistencias: {
+        Row: {
+          created_at: string
+          empleado_id: string
+          entrada_at: string
+          fecha_negocio: string
+          id: string
+          minutos_retardo: number | null
+          nota: string | null
+          salida_at: string | null
+          sucursal_id: string
+          turno_entrada: string | null
+        }
+        Insert: {
+          created_at?: string
+          empleado_id: string
+          entrada_at?: string
+          fecha_negocio: string
+          id?: string
+          minutos_retardo?: number | null
+          nota?: string | null
+          salida_at?: string | null
+          sucursal_id: string
+          turno_entrada?: string | null
+        }
+        Update: {
+          created_at?: string
+          empleado_id?: string
+          entrada_at?: string
+          fecha_negocio?: string
+          id?: string
+          minutos_retardo?: number | null
+          nota?: string | null
+          salida_at?: string | null
+          sucursal_id?: string
+          turno_entrada?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asistencias_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asistencias_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalogo_turnos: {
+        Row: {
+          activo: boolean
+          color: string
+          created_at: string
+          hora_entrada: string
+          hora_salida: string
+          id: string
+          nombre: string
+          orden: number
+          sucursal_id: string | null
+        }
+        Insert: {
+          activo?: boolean
+          color?: string
+          created_at?: string
+          hora_entrada: string
+          hora_salida: string
+          id?: string
+          nombre: string
+          orden?: number
+          sucursal_id?: string | null
+        }
+        Update: {
+          activo?: boolean
+          color?: string
+          created_at?: string
+          hora_entrada?: string
+          hora_salida?: string
+          id?: string
+          nombre?: string
+          orden?: number
+          sucursal_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalogo_turnos_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categorias_insumos: {
         Row: {
           created_at: string
@@ -62,6 +160,100 @@ export type Database = {
         Update: {
           id?: number
           token?: string
+        }
+        Relationships: []
+      }
+      cortes_alertas_config: {
+        Row: {
+          activo: boolean
+          hora_limite: string
+          hora_limite_finde: string | null
+          sucursal_id: string
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          hora_limite?: string
+          hora_limite_finde?: string | null
+          sucursal_id: string
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          hora_limite?: string
+          hora_limite_finde?: string | null
+          sucursal_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cortes_alertas_config_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: true
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cortes_alertas_enviadas: {
+        Row: {
+          created_at: string
+          fecha_negocio: string
+          id: string
+          sucursal_id: string
+        }
+        Insert: {
+          created_at?: string
+          fecha_negocio: string
+          id?: string
+          sucursal_id: string
+        }
+        Update: {
+          created_at?: string
+          fecha_negocio?: string
+          id?: string
+          sucursal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cortes_alertas_enviadas_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cortes_audit: {
+        Row: {
+          accion: string
+          antes: Json
+          corte_id: string
+          created_at: string
+          despues: Json | null
+          id: string
+          quien: string | null
+          sucursal_id: string | null
+        }
+        Insert: {
+          accion: string
+          antes: Json
+          corte_id: string
+          created_at?: string
+          despues?: Json | null
+          id?: string
+          quien?: string | null
+          sucursal_id?: string | null
+        }
+        Update: {
+          accion?: string
+          antes?: Json
+          corte_id?: string
+          created_at?: string
+          despues?: Json | null
+          id?: string
+          quien?: string | null
+          sucursal_id?: string | null
         }
         Relationships: []
       }
@@ -138,6 +330,294 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "cortes_caja_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      empleados: {
+        Row: {
+          activo: boolean
+          area: string
+          created_at: string
+          id: string
+          nombre: string
+          orden: number
+          pin: string | null
+          sucursal_principal_id: string | null
+          telefono: string | null
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          area: string
+          created_at?: string
+          id?: string
+          nombre: string
+          orden?: number
+          pin?: string | null
+          sucursal_principal_id?: string | null
+          telefono?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          area?: string
+          created_at?: string
+          id?: string
+          nombre?: string
+          orden?: number
+          pin?: string | null
+          sucursal_principal_id?: string | null
+          telefono?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empleados_sucursal_principal_id_fkey"
+            columns: ["sucursal_principal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      factura_folios: {
+        Row: {
+          fecha: string
+          sucursal_codigo: string
+          ultimo: number
+        }
+        Insert: {
+          fecha: string
+          sucursal_codigo: string
+          ultimo?: number
+        }
+        Update: {
+          fecha?: string
+          sucursal_codigo?: string
+          ultimo?: number
+        }
+        Relationships: []
+      }
+      factura_solicitudes: {
+        Row: {
+          cfdi_uuid: string | null
+          codigo_postal: string
+          created_at: string
+          email: string
+          estado: string
+          folio_solicitud: string
+          forma_pago: string | null
+          id: string
+          notas: string | null
+          razon_social: string
+          regimen_fiscal: string
+          rfc: string
+          sucursal_codigo: string | null
+          sucursal_id: string | null
+          telefono: string | null
+          ticket_fecha: string | null
+          ticket_folio: string | null
+          ticket_foto_path: string | null
+          ticket_total: number | null
+          timbrada_at: string | null
+          updated_at: string
+          uso_cfdi: string
+        }
+        Insert: {
+          cfdi_uuid?: string | null
+          codigo_postal: string
+          created_at?: string
+          email: string
+          estado?: string
+          folio_solicitud: string
+          forma_pago?: string | null
+          id?: string
+          notas?: string | null
+          razon_social: string
+          regimen_fiscal: string
+          rfc: string
+          sucursal_codigo?: string | null
+          sucursal_id?: string | null
+          telefono?: string | null
+          ticket_fecha?: string | null
+          ticket_folio?: string | null
+          ticket_foto_path?: string | null
+          ticket_total?: number | null
+          timbrada_at?: string | null
+          updated_at?: string
+          uso_cfdi: string
+        }
+        Update: {
+          cfdi_uuid?: string | null
+          codigo_postal?: string
+          created_at?: string
+          email?: string
+          estado?: string
+          folio_solicitud?: string
+          forma_pago?: string | null
+          id?: string
+          notas?: string | null
+          razon_social?: string
+          regimen_fiscal?: string
+          rfc?: string
+          sucursal_codigo?: string | null
+          sucursal_id?: string | null
+          telefono?: string | null
+          ticket_fecha?: string | null
+          ticket_folio?: string | null
+          ticket_foto_path?: string | null
+          ticket_total?: number | null
+          timbrada_at?: string | null
+          updated_at?: string
+          uso_cfdi?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "factura_solicitudes_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      folios_secuencia: {
+        Row: {
+          fecha: string
+          sucursal_id: string
+          ultimo: number
+        }
+        Insert: {
+          fecha: string
+          sucursal_id: string
+          ultimo?: number
+        }
+        Update: {
+          fecha?: string
+          sucursal_id?: string
+          ultimo?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folios_secuencia_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      horarios_ligas: {
+        Row: {
+          activo: boolean
+          area: string
+          created_at: string
+          id: string
+          sucursal_id: string
+          token: string
+        }
+        Insert: {
+          activo?: boolean
+          area: string
+          created_at?: string
+          id?: string
+          sucursal_id: string
+          token: string
+        }
+        Update: {
+          activo?: boolean
+          area?: string
+          created_at?: string
+          id?: string
+          sucursal_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "horarios_ligas_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      horarios_roles_def: {
+        Row: {
+          activo: boolean
+          area: string
+          hora_entrada: string | null
+          hora_salida: string | null
+          id: string
+          rol: string
+          sucursal_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          area: string
+          hora_entrada?: string | null
+          hora_salida?: string | null
+          id?: string
+          rol: string
+          sucursal_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          area?: string
+          hora_entrada?: string | null
+          hora_salida?: string | null
+          id?: string
+          rol?: string
+          sucursal_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "horarios_roles_def_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      horarios_sucursal: {
+        Row: {
+          activo: boolean
+          created_at: string
+          dia_semana: number
+          hora_apertura: string
+          hora_cierre: string
+          id: string
+          sucursal_id: string
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string
+          dia_semana: number
+          hora_apertura: string
+          hora_cierre: string
+          id?: string
+          sucursal_id: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string
+          dia_semana?: number
+          hora_apertura?: string
+          hora_cierre?: string
+          id?: string
+          sucursal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "horarios_sucursal_sucursal_id_fkey"
             columns: ["sucursal_id"]
             isOneToOne: false
             referencedRelation: "sucursales"
@@ -234,6 +714,484 @@ export type Database = {
           },
         ]
       }
+      integracion_makatea: {
+        Row: {
+          activo: boolean
+          base_url: string
+          id: number
+          secreto: string
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          base_url: string
+          id?: number
+          secreto: string
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          base_url?: string
+          id?: number
+          secreto?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lealtad_canjes: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          fecha_negocio: string
+          id: string
+          origen: string
+          posicion: number
+          sucursal_id: string | null
+          titulo: string
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          fecha_negocio: string
+          id?: string
+          origen?: string
+          posicion: number
+          sucursal_id?: string | null
+          titulo: string
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          fecha_negocio?: string
+          id?: string
+          origen?: string
+          posicion?: number
+          sucursal_id?: string | null
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lealtad_canjes_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "lealtad_clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lealtad_canjes_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lealtad_clientes: {
+        Row: {
+          activo: boolean
+          apellido_materno: string | null
+          apellido_paterno: string | null
+          bienvenida_canjeada_at: string | null
+          consentimiento_at: string | null
+          consentimiento_marketing: boolean
+          created_at: string
+          cumpleanos: string | null
+          id: string
+          nombre: string
+          primer_nombre: string | null
+          recompensas_usadas: number
+          segundo_nombre: string | null
+          sucursal_captacion_codigo: string | null
+          sucursal_captacion_id: string | null
+          telefono: string
+          ultima_visita: string | null
+          updated_at: string
+          visitas_total: number
+        }
+        Insert: {
+          activo?: boolean
+          apellido_materno?: string | null
+          apellido_paterno?: string | null
+          bienvenida_canjeada_at?: string | null
+          consentimiento_at?: string | null
+          consentimiento_marketing?: boolean
+          created_at?: string
+          cumpleanos?: string | null
+          id?: string
+          nombre: string
+          primer_nombre?: string | null
+          recompensas_usadas?: number
+          segundo_nombre?: string | null
+          sucursal_captacion_codigo?: string | null
+          sucursal_captacion_id?: string | null
+          telefono: string
+          ultima_visita?: string | null
+          updated_at?: string
+          visitas_total?: number
+        }
+        Update: {
+          activo?: boolean
+          apellido_materno?: string | null
+          apellido_paterno?: string | null
+          bienvenida_canjeada_at?: string | null
+          consentimiento_at?: string | null
+          consentimiento_marketing?: boolean
+          created_at?: string
+          cumpleanos?: string | null
+          id?: string
+          nombre?: string
+          primer_nombre?: string | null
+          recompensas_usadas?: number
+          segundo_nombre?: string | null
+          sucursal_captacion_codigo?: string | null
+          sucursal_captacion_id?: string | null
+          telefono?: string
+          ultima_visita?: string | null
+          updated_at?: string
+          visitas_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lealtad_clientes_sucursal_captacion_id_fkey"
+            columns: ["sucursal_captacion_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lealtad_config: {
+        Row: {
+          id: number
+          meta_visitas: number
+          recompensa_texto: string
+          tope_visitas_dia: number
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          meta_visitas?: number
+          recompensa_texto?: string
+          tope_visitas_dia?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          meta_visitas?: number
+          recompensa_texto?: string
+          tope_visitas_dia?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lealtad_intentos: {
+        Row: {
+          created_at: string
+          fecha_negocio: string
+          folio_norm: string | null
+          id: string
+          motivo: string
+          sucursal_id: string | null
+          telefono: string
+        }
+        Insert: {
+          created_at?: string
+          fecha_negocio: string
+          folio_norm?: string | null
+          id?: string
+          motivo: string
+          sucursal_id?: string | null
+          telefono: string
+        }
+        Update: {
+          created_at?: string
+          fecha_negocio?: string
+          folio_norm?: string | null
+          id?: string
+          motivo?: string
+          sucursal_id?: string | null
+          telefono?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lealtad_intentos_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lealtad_niveles: {
+        Row: {
+          activo: boolean
+          beneficio: string | null
+          color: string
+          id: string
+          min_visitas: number
+          nombre: string
+          orden: number
+        }
+        Insert: {
+          activo?: boolean
+          beneficio?: string | null
+          color?: string
+          id?: string
+          min_visitas: number
+          nombre: string
+          orden?: number
+        }
+        Update: {
+          activo?: boolean
+          beneficio?: string | null
+          color?: string
+          id?: string
+          min_visitas?: number
+          nombre?: string
+          orden?: number
+        }
+        Relationships: []
+      }
+      lealtad_recompensas: {
+        Row: {
+          activo: boolean
+          posicion: number
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          posicion: number
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          posicion?: number
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lealtad_visitas: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          fecha_negocio: string
+          folio: string | null
+          folio_norm: string | null
+          id: string
+          origen: string
+          sucursal_id: string | null
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          fecha_negocio: string
+          folio?: string | null
+          folio_norm?: string | null
+          id?: string
+          origen?: string
+          sucursal_id?: string | null
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          fecha_negocio?: string
+          folio?: string | null
+          folio_norm?: string | null
+          id?: string
+          origen?: string
+          sucursal_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lealtad_visitas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "lealtad_clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lealtad_visitas_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_categorias: {
+        Row: {
+          activa: boolean
+          created_at: string
+          id: string
+          nombre: string
+          orden: number
+        }
+        Insert: {
+          activa?: boolean
+          created_at?: string
+          id?: string
+          nombre: string
+          orden?: number
+        }
+        Update: {
+          activa?: boolean
+          created_at?: string
+          id?: string
+          nombre?: string
+          orden?: number
+        }
+        Relationships: []
+      }
+      menu_items: {
+        Row: {
+          categoria_id: string
+          created_at: string
+          descripcion: string | null
+          es_alcohol: boolean
+          id: string
+          nombre: string
+          opciones: Json | null
+          orden: number
+        }
+        Insert: {
+          categoria_id: string
+          created_at?: string
+          descripcion?: string | null
+          es_alcohol?: boolean
+          id?: string
+          nombre: string
+          opciones?: Json | null
+          orden?: number
+        }
+        Update: {
+          categoria_id?: string
+          created_at?: string
+          descripcion?: string | null
+          es_alcohol?: boolean
+          id?: string
+          nombre?: string
+          opciones?: Json | null
+          orden?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_items_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "menu_categorias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_variante_sucursal: {
+        Row: {
+          disponible: boolean
+          precio: number
+          sucursal_id: string
+          variante_id: string
+        }
+        Insert: {
+          disponible?: boolean
+          precio: number
+          sucursal_id: string
+          variante_id: string
+        }
+        Update: {
+          disponible?: boolean
+          precio?: number
+          sucursal_id?: string
+          variante_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_variante_sucursal_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_variante_sucursal_variante_id_fkey"
+            columns: ["variante_id"]
+            isOneToOne: false
+            referencedRelation: "menu_variantes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_variantes: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          nombre: string
+          orden: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          nombre: string
+          orden?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          nombre?: string
+          orden?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_variantes_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notificaciones_pedido: {
+        Row: {
+          created_at: string
+          estado: string
+          id: string
+          payload: Json | null
+          pedido_id: string
+          telefono: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          estado?: string
+          id?: string
+          payload?: Json | null
+          pedido_id: string
+          telefono: string
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          estado?: string
+          id?: string
+          payload?: Json | null
+          pedido_id?: string
+          telefono?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificaciones_pedido_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos_en_linea"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pedidos: {
         Row: {
           created_at: string
@@ -323,21 +1281,203 @@ export type Database = {
           },
         ]
       }
+      pedidos_en_linea: {
+        Row: {
+          confirmado_at: string | null
+          costo_envio: number
+          created_at: string
+          direccion: string | null
+          entregado_at: string | null
+          estado: string
+          folio: string
+          id: string
+          listo_at: string | null
+          metodo_pago: string
+          motivo_cancelacion: string | null
+          nombre_cliente: string
+          notas_generales: string | null
+          referencias: string | null
+          subtotal: number
+          sucursal_id: string
+          telefono: string
+          tipo: string
+          token: string
+          total: number
+          updated_at: string
+          zona_id: string | null
+        }
+        Insert: {
+          confirmado_at?: string | null
+          costo_envio?: number
+          created_at?: string
+          direccion?: string | null
+          entregado_at?: string | null
+          estado?: string
+          folio: string
+          id?: string
+          listo_at?: string | null
+          metodo_pago?: string
+          motivo_cancelacion?: string | null
+          nombre_cliente: string
+          notas_generales?: string | null
+          referencias?: string | null
+          subtotal?: number
+          sucursal_id: string
+          telefono: string
+          tipo: string
+          token?: string
+          total?: number
+          updated_at?: string
+          zona_id?: string | null
+        }
+        Update: {
+          confirmado_at?: string | null
+          costo_envio?: number
+          created_at?: string
+          direccion?: string | null
+          entregado_at?: string | null
+          estado?: string
+          folio?: string
+          id?: string
+          listo_at?: string | null
+          metodo_pago?: string
+          motivo_cancelacion?: string | null
+          nombre_cliente?: string
+          notas_generales?: string | null
+          referencias?: string | null
+          subtotal?: number
+          sucursal_id?: string
+          telefono?: string
+          tipo?: string
+          token?: string
+          total?: number
+          updated_at?: string
+          zona_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_en_linea_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_en_linea_zona_id_fkey"
+            columns: ["zona_id"]
+            isOneToOne: false
+            referencedRelation: "zonas_reparto"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pedidos_en_linea_items: {
+        Row: {
+          cantidad: number
+          created_at: string
+          id: string
+          nombre_item: string
+          nombre_variante: string
+          notas: string | null
+          opciones_elegidas: Json | null
+          pedido_id: string
+          precio_unitario: number
+          variante_id: string | null
+        }
+        Insert: {
+          cantidad: number
+          created_at?: string
+          id?: string
+          nombre_item: string
+          nombre_variante: string
+          notas?: string | null
+          opciones_elegidas?: Json | null
+          pedido_id: string
+          precio_unitario: number
+          variante_id?: string | null
+        }
+        Update: {
+          cantidad?: number
+          created_at?: string
+          id?: string
+          nombre_item?: string
+          nombre_variante?: string
+          notas?: string | null
+          opciones_elegidas?: Json | null
+          pedido_id?: string
+          precio_unitario?: number
+          variante_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_en_linea_items_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos_en_linea"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_en_linea_items_variante_id_fkey"
+            columns: ["variante_id"]
+            isOneToOne: false
+            referencedRelation: "menu_variantes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proveedor_envios: {
+        Row: {
+          created_at: string
+          fuente: string
+          id: string
+          payload: Json
+          proveedor_id: string | null
+          resultado: Json | null
+        }
+        Insert: {
+          created_at?: string
+          fuente: string
+          id?: string
+          payload: Json
+          proveedor_id?: string | null
+          resultado?: Json | null
+        }
+        Update: {
+          created_at?: string
+          fuente?: string
+          id?: string
+          payload?: Json
+          proveedor_id?: string | null
+          resultado?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proveedor_envios_proveedor_id_fkey"
+            columns: ["proveedor_id"]
+            isOneToOne: false
+            referencedRelation: "proveedores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       proveedor_precios: {
         Row: {
           created_at: string
+          gramaje: string | null
           id: string
           precio: number
           proveedor_producto_id: string
         }
         Insert: {
           created_at?: string
+          gramaje?: string | null
           id?: string
           precio: number
           proveedor_producto_id: string
         }
         Update: {
           created_at?: string
+          gramaje?: string | null
           id?: string
           precio?: number
           proveedor_producto_id?: string
@@ -359,6 +1499,7 @@ export type Database = {
           id: string
           insumo_id: string | null
           nombre: string
+          por_gramaje: boolean
           proveedor_id: string
           unidad: string | null
         }
@@ -368,6 +1509,7 @@ export type Database = {
           id?: string
           insumo_id?: string | null
           nombre: string
+          por_gramaje?: boolean
           proveedor_id: string
           unidad?: string | null
         }
@@ -377,6 +1519,7 @@ export type Database = {
           id?: string
           insumo_id?: string | null
           nombre?: string
+          por_gramaje?: boolean
           proveedor_id?: string
           unidad?: string | null
         }
@@ -588,24 +1731,166 @@ export type Database = {
           created_at: string
           direccion: string | null
           id: string
+          menu_url: string | null
           nombre: string
+          pedidos_en_linea_activos: boolean
+          pedidos_pausados_hasta: string | null
           pin: string | null
+          prefijo_folio: string | null
+          slug: string | null
+          telefono_contacto: string | null
+          tiempo_estimado_min: number
+          venta_alcohol_en_linea: boolean
+          zona_horaria: string
         }
         Insert: {
           created_at?: string
           direccion?: string | null
           id?: string
+          menu_url?: string | null
           nombre: string
+          pedidos_en_linea_activos?: boolean
+          pedidos_pausados_hasta?: string | null
           pin?: string | null
+          prefijo_folio?: string | null
+          slug?: string | null
+          telefono_contacto?: string | null
+          tiempo_estimado_min?: number
+          venta_alcohol_en_linea?: boolean
+          zona_horaria?: string
         }
         Update: {
           created_at?: string
           direccion?: string | null
           id?: string
+          menu_url?: string | null
           nombre?: string
+          pedidos_en_linea_activos?: boolean
+          pedidos_pausados_hasta?: string | null
           pin?: string | null
+          prefijo_folio?: string | null
+          slug?: string | null
+          telefono_contacto?: string | null
+          tiempo_estimado_min?: number
+          venta_alcohol_en_linea?: boolean
+          zona_horaria?: string
         }
         Relationships: []
+      }
+      turno_excepciones: {
+        Row: {
+          created_at: string
+          empleado_id: string | null
+          fecha: string
+          hora_entrada: string | null
+          hora_salida: string | null
+          id: string
+          nota: string | null
+          sucursal_id: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          empleado_id?: string | null
+          fecha: string
+          hora_entrada?: string | null
+          hora_salida?: string | null
+          id?: string
+          nota?: string | null
+          sucursal_id: string
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          empleado_id?: string | null
+          fecha?: string
+          hora_entrada?: string | null
+          hora_salida?: string | null
+          id?: string
+          nota?: string | null
+          sucursal_id?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "turno_excepciones_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turno_excepciones_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      turnos: {
+        Row: {
+          activo: boolean
+          area: string | null
+          catalogo_turno_id: string | null
+          created_at: string
+          dia_semana: number
+          empleado_id: string
+          hora_entrada: string | null
+          hora_salida: string | null
+          id: string
+          rol: string | null
+          sucursal_id: string
+        }
+        Insert: {
+          activo?: boolean
+          area?: string | null
+          catalogo_turno_id?: string | null
+          created_at?: string
+          dia_semana: number
+          empleado_id: string
+          hora_entrada?: string | null
+          hora_salida?: string | null
+          id?: string
+          rol?: string | null
+          sucursal_id: string
+        }
+        Update: {
+          activo?: boolean
+          area?: string | null
+          catalogo_turno_id?: string | null
+          created_at?: string
+          dia_semana?: number
+          empleado_id?: string
+          hora_entrada?: string | null
+          hora_salida?: string | null
+          id?: string
+          rol?: string | null
+          sucursal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "turnos_catalogo_turno_id_fkey"
+            columns: ["catalogo_turno_id"]
+            isOneToOne: false
+            referencedRelation: "catalogo_turnos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turnos_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turnos_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -675,6 +1960,44 @@ export type Database = {
           },
         ]
       }
+      zonas_reparto: {
+        Row: {
+          activa: boolean
+          costo_envio: number
+          created_at: string
+          id: string
+          nombre: string
+          pedido_minimo: number
+          sucursal_id: string
+        }
+        Insert: {
+          activa?: boolean
+          costo_envio?: number
+          created_at?: string
+          id?: string
+          nombre: string
+          pedido_minimo?: number
+          sucursal_id: string
+        }
+        Update: {
+          activa?: boolean
+          costo_envio?: number
+          created_at?: string
+          id?: string
+          nombre?: string
+          pedido_minimo?: number
+          sucursal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zonas_reparto_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       zonas_sucursal: {
         Row: {
           capacidad: number | null
@@ -712,8 +2035,49 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      checador_estado: {
+        Args: { p_sucursal_id: string }
+        Returns: {
+          area: string
+          entrada_at: string
+          nombre: string
+        }[]
+      }
+      checador_listar: {
+        Args: { p_sucursal_id: string }
+        Returns: {
+          area: string
+          empleado_id: string
+          entrada_at: string
+          estado: string
+          nombre: string
+          orden: number
+        }[]
+      }
+      checar: {
+        Args: { p_empleado_id: string; p_pin: string; p_sucursal_id: string }
+        Returns: Json
+      }
+      checar_pin: {
+        Args: { p_pin: string; p_sucursal_id: string }
+        Returns: Json
+      }
       compras_precios: { Args: { p_pin: string }; Returns: Json }
       compras_validar_pin: { Args: { p_pin: string }; Returns: boolean }
+      crear_pedido_en_linea: {
+        Args: {
+          p_direccion?: string
+          p_items: Json
+          p_nombre_cliente: string
+          p_notas_generales?: string
+          p_referencias?: string
+          p_sucursal_id: string
+          p_telefono: string
+          p_tipo: string
+          p_zona_id?: string
+        }
+        Returns: Json
+      }
       depurar_eliminar: {
         Args: { p_ids: Json; p_token: string }
         Returns: number
@@ -723,6 +2087,24 @@ export type Database = {
         Args: { p_depurado: boolean; p_proveedor_id: string; p_token: string }
         Returns: boolean
       }
+      factura_solicitar: {
+        Args: {
+          p_codigo_postal: string
+          p_email: string
+          p_forma_pago: string
+          p_razon_social: string
+          p_regimen_fiscal: string
+          p_rfc: string
+          p_sucursal_codigo?: string
+          p_telefono: string
+          p_ticket_fecha?: string
+          p_ticket_folio?: string
+          p_ticket_foto_path: string
+          p_ticket_total?: number
+          p_uso_cfdi: string
+        }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -730,15 +2112,85 @@ export type Database = {
         }
         Returns: boolean
       }
-      prov_add_producto: {
-        Args: { p_nombre: string; p_token: string; p_unidad: string }
-        Returns: string
+      horarios_captura_info: { Args: { p_token: string }; Returns: Json }
+      horarios_captura_set: {
+        Args: {
+          p_dia: number
+          p_empleado_id?: string
+          p_rol: string
+          p_token: string
+        }
+        Returns: Json
       }
+      laola_fecha_negocio: { Args: { p_ts?: string }; Returns: string }
+      lealtad_canjear: { Args: { p_telefono: string }; Returns: Json }
+      lealtad_canjear_bienvenida: {
+        Args: { p_sucursal_codigo?: string; p_telefono: string }
+        Returns: Json
+      }
+      lealtad_canjear_cliente: {
+        Args: { p_sucursal_codigo?: string; p_telefono: string }
+        Returns: Json
+      }
+      lealtad_consultar: { Args: { p_telefono: string }; Returns: Json }
+      lealtad_perfil_json: {
+        Args: {
+          p_cliente: Database["public"]["Tables"]["lealtad_clientes"]["Row"]
+        }
+        Returns: Json
+      }
+      lealtad_registrar: {
+        Args: {
+          p_apellido_materno: string
+          p_apellido_paterno: string
+          p_consentimiento?: boolean
+          p_cumpleanos: string
+          p_primer_nombre: string
+          p_segundo_nombre?: string
+          p_sucursal_codigo?: string
+          p_telefono: string
+        }
+        Returns: Json
+      }
+      lealtad_visita: {
+        Args: {
+          p_apellido_materno?: string
+          p_apellido_paterno?: string
+          p_consentimiento?: boolean
+          p_cumpleanos?: string
+          p_folio?: string
+          p_primer_nombre?: string
+          p_segundo_nombre?: string
+          p_sucursal_codigo?: string
+          p_telefono: string
+        }
+        Returns: Json
+      }
+      makatea_push_clientes: {
+        Args: { p_cliente_ids: string[] }
+        Returns: undefined
+      }
+      makatea_reconciliar: { Args: never; Returns: undefined }
+      obtener_pedido_por_token: { Args: { p_token: string }; Returns: Json }
       prov_catalogo: { Args: { p_token: string }; Returns: Json }
+      prov_guardar_precios: {
+        Args: { p_gramajes?: Json; p_normales?: Json; p_token: string }
+        Returns: Json
+      }
+      prov_set_camaron: {
+        Args: { p_items: Json; p_producto_id: string; p_token: string }
+        Returns: boolean
+      }
       prov_set_precio: {
         Args: { p_precio: number; p_producto_id: string; p_token: string }
         Returns: boolean
       }
+      sucursal_en_horario: { Args: { p_sucursal_id: string }; Returns: boolean }
+      sucursal_set_menu: {
+        Args: { p_menu_url: string; p_sucursal_id: string }
+        Returns: undefined
+      }
+      vigilar_cortes: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "user"
