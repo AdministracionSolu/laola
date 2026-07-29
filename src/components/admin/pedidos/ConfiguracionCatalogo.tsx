@@ -38,7 +38,6 @@ interface Asignacion {
   insumo_id: string;
   sucursal_id: string;
   activo: boolean;
-  nivel_par: number | null;
   costo: number | null;
   unidad: string | null;
   orden: number;
@@ -116,7 +115,7 @@ export function ConfiguracionCatalogo() {
 
   const guardarCampo = async (
     asignacionId: string,
-    campo: "nivel_par" | "costo" | "orden" | "unidad",
+    campo: "costo" | "orden" | "unidad",
     valor: number | string | null
   ) => {
     const { error } = await supabase
@@ -263,8 +262,7 @@ export function ConfiguracionCatalogo() {
             {/* Encabezado */}
             <div className="hidden sm:grid grid-cols-12 gap-2 px-4 py-2 text-xs font-medium text-muted-foreground">
               <div className="col-span-1">Pide</div>
-              <div className="col-span-4">Insumo</div>
-              <div className="col-span-2 text-center">Nivel par</div>
+              <div className="col-span-6">Insumo</div>
               <div className="col-span-2 text-center">Costo $</div>
               <div className="col-span-2 text-center">Unidad</div>
               <div className="col-span-1 text-center">Orden</div>
@@ -283,7 +281,7 @@ export function ConfiguracionCatalogo() {
                       onCheckedChange={(v) => toggleAsignacion(insumo, !!v)}
                     />
                   </div>
-                  <div className="col-span-10 sm:col-span-4 text-sm">
+                  <div className="col-span-10 sm:col-span-6 text-sm">
                     {nombreInsumo(insumo)}
                     {!incluido && (
                       <span className="ml-2 text-xs text-muted-foreground">
@@ -293,22 +291,6 @@ export function ConfiguracionCatalogo() {
                   </div>
                   {incluido && asg ? (
                     <>
-                      <div className="col-span-4 sm:col-span-2">
-                        <Input
-                          type="number"
-                          inputMode="decimal"
-                          defaultValue={asg.nivel_par ?? ""}
-                          placeholder="par"
-                          className="h-9 text-center"
-                          onBlur={(e) =>
-                            guardarCampo(
-                              asg.id,
-                              "nivel_par",
-                              e.target.value === "" ? null : parseFloat(e.target.value)
-                            )
-                          }
-                        />
-                      </div>
                       <div className="col-span-4 sm:col-span-2">
                         <Input
                           type="number"
@@ -325,7 +307,7 @@ export function ConfiguracionCatalogo() {
                           }
                         />
                       </div>
-                      <div className="col-span-2 sm:col-span-2">
+                      <div className="col-span-4 sm:col-span-2">
                         <Input
                           defaultValue={asg.unidad ?? ""}
                           placeholder={insumo.unidad || "u"}
@@ -339,7 +321,7 @@ export function ConfiguracionCatalogo() {
                           }
                         />
                       </div>
-                      <div className="col-span-2 sm:col-span-1">
+                      <div className="col-span-4 sm:col-span-1">
                         <Input
                           type="number"
                           defaultValue={asg.orden}
@@ -351,7 +333,7 @@ export function ConfiguracionCatalogo() {
                       </div>
                     </>
                   ) : (
-                    <div className="col-span-12 sm:col-span-7" />
+                    <div className="col-span-12 sm:col-span-5" />
                   )}
                 </div>
               );
@@ -375,7 +357,7 @@ export function ConfiguracionCatalogo() {
                 <div className="text-sm">
                   {nombreInsumo(insumo)}{" "}
                   <Badge variant="outline" className="ml-1 text-xs">
-                    {insumo.unidad}
+                    {infoProteina(insumo.nombre)?.unidad ?? insumo.unidad}
                   </Badge>
                 </div>
                 <Button

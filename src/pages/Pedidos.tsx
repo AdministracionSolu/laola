@@ -43,7 +43,6 @@ interface ItemSucursal {
   nombre: string;
   categoria_id: string;
   unidad: string;
-  nivel_par: number | null;
   costo: number | null;
   orden: number;
 }
@@ -54,13 +53,10 @@ interface Detalle {
   cantidad_sugerida: number | null;
   // El encargado capturó la existencia (la tarjeta queda "lista").
   capturado: boolean;
-  // El encargado editó "Pides" a mano (no volver a sobreescribir con sugerido).
-  pedidoManual: boolean;
 }
 
 type ItemRow = {
   orden: number;
-  nivel_par: number | null;
   costo: number | null;
   unidad: string | null;
   insumos: { id: string; nombre: string; categoria_id: string; unidad: string | null };
@@ -78,7 +74,6 @@ const detalleVacio = (): Detalle => ({
   cantidad_pedida: 0,
   cantidad_sugerida: null,
   capturado: false,
-  pedidoManual: false,
 });
 
 export default function Pedidos() {
@@ -121,7 +116,7 @@ export default function Pedidos() {
         supabase.from("categorias_insumos").select("*").order("orden"),
         supabase
           .from("insumo_sucursal")
-          .select("orden, nivel_par, costo, unidad, insumos!inner(id, nombre, categoria_id, unidad)")
+          .select("orden, costo, unidad, insumos!inner(id, nombre, categoria_id, unidad)")
           .eq("sucursal_id", sucursalId)
           .eq("activo", true)
           .order("orden"),
@@ -153,7 +148,6 @@ export default function Pedidos() {
             // La unidad canónica de la proteína manda: la base tiene 'kg'
             // volcado parejo en todo (Pizzas y Medallón se piden por pieza).
             unidad: p.unidad || r.unidad || r.insumos.unidad || "pz",
-            nivel_par: r.nivel_par,
             costo: r.costo,
             orden: p.orden,
           } as ItemSucursal;
@@ -188,8 +182,6 @@ export default function Pedidos() {
             cantidad_pedida: solicitud,
             cantidad_sugerida: sug,
             capturado: true,
-            // Ya capturado: no recalcular el sugerido al editar existencia.
-            pedidoManual: true,
           };
         });
       }
@@ -240,20 +232,9 @@ export default function Pedidos() {
   const setExistencia = (item: ItemSucursal, value: number) => {
     setDetalles((prev) => {
       const cur = prev[item.insumo_id] || detalleVacio();
-      const sugerido =
-        item.nivel_par != null ? Math.max(0, item.nivel_par - value) : null;
       return {
         ...prev,
-        [item.insumo_id]: {
-          ...cur,
-          existencia: value,
-          capturado: true,
-          cantidad_sugerida: sugerido,
-          // Pre-llenar "Pides" con el sugerido salvo que el encargado ya lo haya tocado.
-          cantidad_pedida: cur.pedidoManual
-            ? cur.cantidad_pedida
-            : sugerido ?? cur.cantidad_pedida,
-        },
+        [item.insumo_id]: { ...cur, existencia: value, capturado: true },
       };
     });
   };
@@ -263,12 +244,7 @@ export default function Pedidos() {
       const cur = prev[item.insumo_id] || detalleVacio();
       return {
         ...prev,
-        [item.insumo_id]: {
-          ...cur,
-          cantidad_pedida: value,
-          pedidoManual: true,
-          capturado: true,
-        },
+        [item.insumo_id]: { ...cur, cantidad_pedida: value, capturado: true },
       };
     });
   };
@@ -631,11 +607,6 @@ export default function Pedidos() {
                             <div className="space-y-1">
                               <Label className="text-xs text-muted-foreground">
                                 Pedido
-                                {item.nivel_par != null && (
-                                  <span className="ml-1 text-muted-foreground/70">
-                                    (par {item.nivel_par})
-                                  </span>
-                                )}
                               </Label>
                               <CantidadStepper
                                 value={d.cantidad_pedida}

@@ -13,7 +13,6 @@ export interface ListaItem {
   nombre: string;
   categoria_id: string;
   unidad: string;
-  nivel_par: number | null;
   costo: number | null;
   orden: number;
   activo: boolean;
@@ -79,7 +78,7 @@ export function useAnaliticaPedidos(desde: string, hasta: string): AnaliticaData
       supabase.from("sucursales").select("id, nombre").order("nombre"),
       supabase
         .from("insumo_sucursal")
-        .select("insumo_id, sucursal_id, nivel_par, costo, unidad, orden, activo, insumos!inner(nombre, categoria_id, unidad)")
+        .select("insumo_id, sucursal_id, costo, unidad, orden, activo, insumos!inner(nombre, categoria_id, unidad)")
         .order("orden"),
       supabase.from("insumos").select("id, nombre, unidad"),
       supabase
@@ -114,7 +113,6 @@ export function useAnaliticaPedidos(desde: string, hasta: string): AnaliticaData
     type ListaRow = {
       insumo_id: string;
       sucursal_id: string;
-      nivel_par: number | null;
       costo: number | null;
       unidad: string | null;
       orden: number;
@@ -132,8 +130,8 @@ export function useAnaliticaPedidos(desde: string, hasta: string): AnaliticaData
             sucursal_id: r.sucursal_id,
             nombre: p.display,
             categoria_id: r.insumos.categoria_id,
-            unidad: r.unidad || p.unidad || r.insumos.unidad || "pz",
-            nivel_par: r.nivel_par,
+            // La unidad canónica de la proteína manda (igual que en Pedidos).
+            unidad: p.unidad || r.unidad || r.insumos.unidad || "pz",
             costo: r.costo,
             orden: p.orden,
             activo: r.activo,

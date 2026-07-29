@@ -11,14 +11,15 @@ interface ProteinaDef {
   orden: number;
 }
 
+// Lista conciliada con sucursal (jul-2026): nombres, unidades y orden finales.
 export const PROTEINAS: ProteinaDef[] = [
   { variantes: ["CAMARON 61-70", "Camarón 61-70"], display: "Camarón 61-70", unidad: "kg", orden: 1 },
   { variantes: ["CAMARON 31-35", "Camarón 31-35"], display: "Camarón 31-35", unidad: "kg", orden: 2 },
   { variantes: ["CAMARON 21-25", "Camarón 21-25"], display: "Camarón 21-25", unidad: "kg", orden: 3 },
   { variantes: ["PULPO 2-4", "Pulpo 2-4"], display: "Pulpo 2-4", unidad: "kg", orden: 4 },
-  { variantes: ["ATÚN MEDALLON pz", "ATUN MEDALLON pz", "Atún medallón", "Medallón de atún"], display: "Medallón de atún", unidad: "pz", orden: 5 },
-  { variantes: ["MARLIN AHUMADO K.", "Marlin ahumado"], display: "Marlin ahumado", unidad: "kg", orden: 6 },
-  { variantes: ["ROBALO (chicharrón)", "ROBALO (chicharron)", "Robalo chico"], display: "Robalo chico", unidad: "kg", orden: 7 },
+  { variantes: ["ATÚN MEDALLON pz", "ATUN MEDALLON pz", "Atún medallón", "Medallón de atún"], display: "Atún medallón", unidad: "pz", orden: 5 },
+  { variantes: ["MARLIN AHUMADO K.", "Marlin ahumado", "Marlín ahumado"], display: "Marlín ahumado", unidad: "kg", orden: 6 },
+  { variantes: ["ROBALO (chicharrón)", "ROBALO (chicharron)", "Robalo chico", "Robalo ch."], display: "Robalo ch.", unidad: "kg", orden: 7 },
   { variantes: ["ROBALO (filete)", "Robalo filete"], display: "Robalo filete", unidad: "kg", orden: 8 },
   { variantes: ["SIERRA", "Sierra"], display: "Sierra", unidad: "kg", orden: 9 },
   { variantes: ["CAMARON VAPOR 25 a 30 gr", "Camarón vapor 25-30"], display: "Camarón vapor 25-30", unidad: "kg", orden: 10 },
@@ -27,12 +28,12 @@ export const PROTEINAS: ProteinaDef[] = [
   { variantes: ["CAMARON SECO K.", "Camarón seco"], display: "Camarón seco", unidad: "kg", orden: 13 },
   { variantes: ["BOLSAS OSTIÓN", "BOLSAS OSTION", "Bolsas ostión"], display: "Bolsas ostión", unidad: "bolsa", orden: 14 },
   { variantes: ["CALLO DE HACHA", "Callo de hacha"], display: "Callo de hacha", unidad: "kg", orden: 15 },
-  { variantes: ["PESCADO P/SARANDEAR", "Pescado p/sarandear"], display: "Pescado p/sarandear", unidad: "pz", orden: 16 },
-  { variantes: ["FILETE DE RES", "Filete de res"], display: "Filete de res", unidad: "kg", orden: 17 },
-  { variantes: ["COSTILLA DE CERDO", "Costilla de cerdo"], display: "Costilla de cerdo", unidad: "kg", orden: 18 },
-  { variantes: ["ALITAS", "Alitas"], display: "Alitas", unidad: "kg", orden: 19 },
-  { variantes: ["BONELESS", "Boneless"], display: "Boneless", unidad: "kg", orden: 20 },
-  { variantes: ["PIZZAS", "Pizzas"], display: "Pizzas", unidad: "pz", orden: 21 },
+  { variantes: ["ALITAS", "Alitas"], display: "Alitas", unidad: "bolsa", orden: 16 },
+  { variantes: ["BONELESS", "Boneless"], display: "Boneless", unidad: "bolsa", orden: 17 },
+  { variantes: ["PIZZAS", "Pizzas"], display: "Pizzas", unidad: "pz", orden: 18 },
+  { variantes: ["FILETE DE RES", "Filete de res"], display: "Filete de res", unidad: "kg", orden: 19 },
+  { variantes: ["COSTILLA DE CERDO", "Costilla de cerdo"], display: "Costilla de cerdo", unidad: "kg", orden: 20 },
+  { variantes: ["PESCADO P/SARANDEAR", "Pescado p/sarandear"], display: "Pescado p/sarandear", unidad: "pz", orden: 21 },
 ];
 
 // Normaliza un nombre: mayúsculas, sin acentos, sin signos, espacios colapsados.
