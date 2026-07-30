@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Store, FileDown, Trash2, ArrowRightLeft, CalendarDays, History } from "lucide-react";
+import { Store, FileDown, Trash2, ArrowRightLeft, CalendarDays, History, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Corte } from "@/hooks/useCortes";
 import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO } from "date-fns";
@@ -41,16 +42,20 @@ interface HistoricoTableProps {
   onDelete?: (corteId: string) => Promise<boolean>;
   onCambiarTipo?: (corteId: string, nuevoTipo: "momento" | "cierre") => Promise<boolean>;
   onCambiarFecha?: (corteId: string, nuevaFecha: string) => Promise<boolean>;
+  onEditar?: (corteId: string, campos: Record<string, number>) => Promise<boolean>;
 }
 
-export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDelete, onCambiarTipo, onCambiarFecha }: HistoricoTableProps) {
+export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDelete, onCambiarTipo, onCambiarFecha, onEditar }: HistoricoTableProps) {
   const [corteAEliminar, setCorteAEliminar] = useState<Corte | null>(null);
   const [corteACambiar, setCorteACambiar] = useState<{ corte: Corte; nuevoTipo: "momento" | "cierre" } | null>(null);
   const [corteAFechar, setCorteAFechar] = useState<Corte | null>(null);
   const [nuevaFecha, setNuevaFecha] = useState("");
+  const [corteAEditar, setCorteAEditar] = useState<Corte | null>(null);
+  const [formEdit, setFormEdit] = useState<Record<string, string>>({});
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCambiando, setIsCambiando] = useState(false);
   const [isFechando, setIsFechando] = useState(false);
+  const [isEditando, setIsEditando] = useState(false);
   const [bitacoraAbierta, setBitacoraAbierta] = useState(false);
 
   // Cierres duplicados (misma sucursal, mismo día de negocio): se marcan
@@ -67,6 +72,65 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
 
   const esDuplicado = (c: Corte) =>
     c.tipo_corte === "cierre" && duplicados.has(`${c.sucursal_id}|${c.fecha_venta}`);
+
+  // ---- Edición de montos (queda en la bitácora vía trigger) ----
+  const num = (v: string | undefined) => {
+    const n = parseFloat(v ?? "");
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  };
+
+  const abrirEdicion = (corte: Corte) => {
+    setFormEdit({
+      corte_x: String(corte.corte_x ?? 0),
+      tarjetas_banregio: String(corte.tarjetas_banregio ?? 0),
+      tarjetas_mercadopago: String(corte.tarjetas_mercadopago ?? 0),
+      tarjetas_haycash: String(corte.tarjetas_haycash ?? 0),
+      tarjetas: String(corte.tarjetas ?? 0),
+      efectivo: String(corte.efectivo ?? 0),
+      cobradas: String(corte.cobradas ?? 0),
+      por_cobrar: String(corte.por_cobrar ?? 0),
+      pago_proveedores: String(corte.pago_proveedores ?? 0),
+      salarios: String(corte.salarios ?? 0),
+      propinas: String(corte.propinas ?? 0),
+      compras: String(corte.compras ?? 0),
+      pago_servicios: String(corte.pago_servicios ?? 0),
+      rappi: String(corte.rappi ?? 0),
+      uber: String(corte.uber ?? 0),
+    });
+    setCorteAEditar(corte);
+  };
+
+  // Mismas reglas que la captura: si hay desglose de tarjetas, tarjetas es
+  // la suma; el total siempre es tarjetas + efectivo + por cobrar.
+  const desgloseTarjetas = num(formEdit.tarjetas_banregio) + num(formEdit.tarjetas_mercadopago) + num(formEdit.tarjetas_haycash);
+  const tarjetasCalc = desgloseTarjetas > 0 ? desgloseTarjetas : num(formEdit.tarjetas);
+  const totalCalc = tarjetasCalc + num(formEdit.efectivo) + num(formEdit.por_cobrar);
+
+  const handleEditar = async () => {
+    if (!corteAEditar || !onEditar) return;
+
+    setIsEditando(true);
+    const ok = await onEditar(corteAEditar.id, {
+      corte_x: num(formEdit.corte_x),
+      tarjetas_banregio: num(formEdit.tarjetas_banregio),
+      tarjetas_mercadopago: num(formEdit.tarjetas_mercadopago),
+      tarjetas_haycash: num(formEdit.tarjetas_haycash),
+      tarjetas: tarjetasCalc,
+      efectivo: num(formEdit.efectivo),
+      cobradas: num(formEdit.cobradas),
+      por_cobrar: num(formEdit.por_cobrar),
+      total: totalCalc,
+      pago_proveedores: num(formEdit.pago_proveedores),
+      salarios: num(formEdit.salarios),
+      propinas: num(formEdit.propinas),
+      compras: num(formEdit.compras),
+      pago_servicios: num(formEdit.pago_servicios),
+      rappi: num(formEdit.rappi),
+      uber: num(formEdit.uber),
+    });
+    setIsEditando(false);
+    if (ok) setCorteAEditar(null);
+  };
 
   const handleCambiarFecha = async () => {
     if (!corteAFechar || !onCambiarFecha || !nuevaFecha) return;
@@ -180,7 +244,7 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
                   <TableHead className="text-right">Servicios</TableHead>
                   <TableHead className="text-right">Rappi</TableHead>
                   <TableHead className="text-right">Uber</TableHead>
-                  {onDelete && <TableHead className="w-12"></TableHead>}
+                  {(onEditar || onDelete) && <TableHead className="w-20"></TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -276,16 +340,31 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
                     <TableCell className="text-right text-muted-foreground">
                       {formatMoney(Number(corte.uber || 0))}
                     </TableCell>
-                    {onDelete && (
+                    {(onEditar || onDelete) && (
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                          onClick={() => setCorteAEliminar(corte)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <div className="flex items-center">
+                          {onEditar && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-primary"
+                              title="Editar montos (queda en la bitácora)"
+                              onClick={() => abrirEdicion(corte)}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {onDelete && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => setCorteAEliminar(corte)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     )}
                   </TableRow>
@@ -384,6 +463,124 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
         </DialogContent>
       </Dialog>
 
+      {/* Diálogo para editar los montos de un corte */}
+      <Dialog open={!!corteAEditar} onOpenChange={(o) => !o && setCorteAEditar(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar corte</DialogTitle>
+            <DialogDescription>
+              {corteAEditar && (
+                <>
+                  Corte de <strong>{corteAEditar.sucursales?.nombre}</strong> del{" "}
+                  <strong>{format(parseISO(corteAEditar.fecha_venta), "d 'de' MMMM", { locale: es })}</strong>,
+                  registrado a las {format(parseISO(corteAEditar.created_at), "HH:mm")}.
+                  Todo cambio queda en la bitácora con tu usuario.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              {([
+                ["corte_x", "Corte X"],
+                ["efectivo", "Efectivo"],
+                ["cobradas", "Cobradas"],
+                ["por_cobrar", "Por Cobrar"],
+              ] as const).map(([campo, label]) => (
+                <div key={campo} className="space-y-1">
+                  <Label htmlFor={`edit_${campo}`}>{label}</Label>
+                  <Input
+                    id={`edit_${campo}`}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formEdit[campo] ?? ""}
+                    onChange={(e) => setFormEdit((f) => ({ ...f, [campo]: e.target.value }))}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div>
+              <p className="text-sm font-medium mb-2">Tarjetas</p>
+              <div className="grid grid-cols-3 gap-3">
+                {([
+                  ["tarjetas_banregio", "Banregio"],
+                  ["tarjetas_mercadopago", "MercadoPago"],
+                  ["tarjetas_haycash", "HayCash"],
+                ] as const).map(([campo, label]) => (
+                  <div key={campo} className="space-y-1">
+                    <Label htmlFor={`edit_${campo}`}>{label}</Label>
+                    <Input
+                      id={`edit_${campo}`}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formEdit[campo] ?? ""}
+                      onChange={(e) => setFormEdit((f) => ({ ...f, [campo]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 space-y-1">
+                <Label htmlFor="edit_tarjetas">
+                  Total tarjetas {desgloseTarjetas > 0 && "(suma del desglose)"}
+                </Label>
+                <Input
+                  id="edit_tarjetas"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  disabled={desgloseTarjetas > 0}
+                  value={desgloseTarjetas > 0 ? desgloseTarjetas.toFixed(2) : (formEdit.tarjetas ?? "")}
+                  onChange={(e) => setFormEdit((f) => ({ ...f, tarjetas: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div>
+              <p className="text-sm font-medium mb-2">Gastos y otros</p>
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  ["pago_proveedores", "Proveedores"],
+                  ["salarios", "Salarios"],
+                  ["propinas", "Propinas"],
+                  ["compras", "Compras"],
+                  ["pago_servicios", "Servicios"],
+                  ["rappi", "Rappi"],
+                  ["uber", "Uber"],
+                ] as const).map(([campo, label]) => (
+                  <div key={campo} className="space-y-1">
+                    <Label htmlFor={`edit_${campo}`}>{label}</Label>
+                    <Input
+                      id={`edit_${campo}`}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formEdit[campo] ?? ""}
+                      onChange={(e) => setFormEdit((f) => ({ ...f, [campo]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-md bg-muted px-3 py-2 text-sm flex items-center justify-between">
+              <span className="text-muted-foreground">Total vendido (tarjetas + efectivo + por cobrar)</span>
+              <span className="font-semibold">{formatMoney(totalCalc)}</span>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCorteAEditar(null)} disabled={isEditando}>Cancelar</Button>
+            <Button onClick={handleEditar} disabled={isEditando}>
+              {isEditando ? "Guardando..." : "Guardar cambios"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {bitacoraAbierta && <BitacoraCortes onClose={() => setBitacoraAbierta(false)} />}
     </Card>
   );
@@ -429,6 +626,10 @@ function BitacoraCortes({ onClose }: { onClose: () => void }) {
     const campos: [string, string][] = [
       ["fecha_venta", "fecha"], ["tipo_corte", "tipo"], ["total", "total"],
       ["efectivo", "efectivo"], ["tarjetas", "tarjetas"], ["corte_x", "corte X"],
+      ["cobradas", "cobradas"], ["por_cobrar", "por cobrar"],
+      ["pago_proveedores", "proveedores"], ["salarios", "salarios"],
+      ["propinas", "propinas"], ["compras", "compras"],
+      ["pago_servicios", "servicios"], ["rappi", "Rappi"], ["uber", "Uber"],
     ];
     for (const [campo, label] of campos) {
       const a = f.antes?.[campo];

@@ -58,6 +58,7 @@ export default function AdminDashboard() {
     deleteCorte,
     cambiarTipoCorte,
     cambiarFechaCorte,
+    editarCorte,
   } = useCortes({
     rango: rangoActual,
     rangoAnterior,
@@ -336,6 +337,7 @@ export default function AdminDashboard() {
                   onDelete={deleteCorte}
                   onCambiarTipo={cambiarTipoCorte}
                   onCambiarFecha={cambiarFechaCorte}
+                  onEditar={editarCorte}
                 />
               </TabsContent>
             </Tabs>

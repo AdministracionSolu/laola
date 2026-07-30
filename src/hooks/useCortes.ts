@@ -74,6 +74,7 @@ export interface UseCortesReturn {
   deleteCorte: (corteId: string) => Promise<boolean>;
   cambiarTipoCorte: (corteId: string, nuevoTipo: "momento" | "cierre") => Promise<boolean>;
   cambiarFechaCorte: (corteId: string, nuevaFecha: string) => Promise<boolean>;
+  editarCorte: (corteId: string, campos: Record<string, number>) => Promise<boolean>;
 }
 
 interface UseCortesOptions {
@@ -229,6 +230,32 @@ export function useCortes(options: UseCortesOptions): UseCortesReturn {
     return true;
   }, [toast, refetch]);
 
+  // Corregir los montos de un corte (p. ej. capturaron mal el efectivo).
+  // El trigger de cortes_audit guarda la fila antes/después y quién editó.
+  const editarCorte = useCallback(async (corteId: string, campos: Record<string, number>): Promise<boolean> => {
+    const { error } = await supabase
+      .from("cortes_caja")
+      .update(campos as never)
+      .eq("id", corteId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo editar el corte",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    toast({
+      title: "Corte actualizado",
+      description: "Los cambios quedaron registrados en la bitácora.",
+    });
+
+    refetch();
+    return true;
+  }, [toast, refetch]);
+
   useEffect(() => {
     fetchSucursales().then(() => setIsLoading(false));
   }, [fetchSucursales]);
@@ -355,5 +382,6 @@ export function useCortes(options: UseCortesOptions): UseCortesReturn {
     deleteCorte,
     cambiarTipoCorte,
     cambiarFechaCorte,
+    editarCorte,
   };
 }
