@@ -68,23 +68,33 @@ export function PedidoDelDiaPanel({ sucursales, pedidosDetalle, insumosOrden, no
   const consolidado = useMemo(() => {
     const pedMap = new Map<string, PedidoDetLite>();
     pedidosDetalle.filter((d) => d.fecha === hasta).forEach((d) => pedMap.set(`${d.sucursal_id}|${d.insumo_id}`, d));
-    return insumosOrden
-      .map((ins) => {
-        const celdas = sucursales.map((s) => {
-          const det = pedMap.get(`${s.id}|${ins}`);
-          return {
-            sucursal_id: s.id,
-            detalleId: det?.id ?? null,
-            existencia: det?.existencia ?? 0,
-            solicitado: det?.cantidad_sugerida ?? 0,
-            pedidoReal: det ? pedidoRealDe(det) : null,
-          };
-        });
-        const totalPed = celdas.reduce((s, c) => s + (c.pedidoReal ?? 0), 0);
-        return { insumo_id: ins, nombre: nombreInsumo.get(ins) || ins, celdas, totalPed };
-      })
-      .filter((r) => r.totalPed > 0 || r.celdas.some((c) => c.solicitado > 0));
+    if (pedMap.size === 0) return [];
+    // TODOS los insumos de la lista, aunque nadie los haya pedido: la
+    // existencia capturada también cuenta, y el "—" delata lo que no llenaron.
+    return insumosOrden.map((ins) => {
+      const celdas = sucursales.map((s) => {
+        const det = pedMap.get(`${s.id}|${ins}`);
+        return {
+          sucursal_id: s.id,
+          detalleId: det?.id ?? null,
+          existencia: det?.existencia ?? 0,
+          solicitado: det?.cantidad_sugerida ?? 0,
+          pedidoReal: det ? pedidoRealDe(det) : null,
+        };
+      });
+      const totalPed = celdas.reduce((s, c) => s + (c.pedidoReal ?? 0), 0);
+      return { insumo_id: ins, nombre: nombreInsumo.get(ins) || ins, celdas, totalPed };
+    });
   }, [hasta, pedidosDetalle, insumosOrden, sucursales, nombreInsumo, pedidoRealDe]);
+
+  // Cuántas existencias capturó cada sucursal (renglones guardados ese día).
+  const capturadas = useMemo(() => {
+    const m = new Map<string, number>();
+    pedidosDetalle
+      .filter((d) => d.fecha === hasta)
+      .forEach((d) => m.set(d.sucursal_id, (m.get(d.sucursal_id) || 0) + 1));
+    return m;
+  }, [pedidosDetalle, hasta]);
 
   const exportar = () => {
     const filas = consolidado.map((r) => {
@@ -109,6 +119,7 @@ export function PedidoDelDiaPanel({ sucursales, pedidosDetalle, insumosOrden, no
             <CardTitle className="text-sm">Pedido del día — {hasta}</CardTitle>
             <CardDescription className="text-xs">
               Por sucursal: <b>Existencia</b> (cuánto tienen) · <b>Pedido sugerido</b> (cuánto solicitó la sucursal) · <b>A comprar</b> (cuánto se va a comprar; captura y guarda).
+              Se muestra la lista completa: un <b>—</b> significa que la sucursal no capturó ese producto.
             </CardDescription>
           </div>
           <Button size="sm" variant="outline" className="gap-1" onClick={exportar} disabled={!consolidado.length}>
@@ -132,7 +143,12 @@ export function PedidoDelDiaPanel({ sucursales, pedidosDetalle, insumosOrden, no
               <tr className="border-b text-xs text-muted-foreground">
                 <th rowSpan={2} className="text-left p-2 sticky left-0 bg-background align-bottom">Insumo</th>
                 {sucursales.map((s) => (
-                  <th key={s.id} colSpan={3} className="p-2 text-center border-l font-semibold">{s.nombre}</th>
+                  <th key={s.id} colSpan={3} className="p-2 text-center border-l font-semibold">
+                    {s.nombre}
+                    <div className="font-normal text-[10px] text-muted-foreground">
+                      {capturadas.get(s.id) || 0}/{insumosOrden.length} existencias
+                    </div>
+                  </th>
                 ))}
                 <th rowSpan={2} className="p-2 text-center align-bottom">Total a comprar</th>
               </tr>
