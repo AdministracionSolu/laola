@@ -10,13 +10,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Wrench, CalendarDays, Lock, ChevronRight, Package, QrCode, ShoppingCart, Store, UtensilsCrossed } from "lucide-react";
+import { Wrench, CalendarDays, Lock, ChevronRight, Package, PiggyBank, QrCode, ShoppingCart, UtensilsCrossed } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ResumenAnual } from "./ResumenAnual";
 
 // Accesos parkeados (fuera del bar principal en lo que se define su uso).
+// Proveedores ya no va aquí: vive como pestaña dentro de Pedidos
+// (/admin/pedido-dia).
 const ACCESOS = [
-  { label: "Proveedores", to: "/admin/proveedores", icon: Store },
   { label: "Insumos & Pedidos", to: "/admin/pedidos", icon: Package },
   { label: "QR de pedidos", to: "/admin/qr-pedidos", icon: QrCode },
   { label: "Menús por sucursal", to: "/admin/menus", icon: UtensilsCrossed },
@@ -118,6 +119,21 @@ export function HerramientasDialog() {
             </div>
           ) : (
             <div className="space-y-2">
+              <button
+                onClick={() => { setAbierto(false); navigate("/admin/ahorros"); }}
+                className="w-full flex items-center justify-between rounded-lg border p-4 text-left hover:bg-accent transition-colors"
+              >
+                <span className="flex items-center gap-3">
+                  <PiggyBank className="w-5 h-5 text-primary" />
+                  <span>
+                    <span className="block font-medium">Ahorros de compras</span>
+                    <span className="block text-xs text-muted-foreground">
+                      Comprando al más barato vs. al más caro (solo Tepic)
+                    </span>
+                  </span>
+                </span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
               <button
                 onClick={() => {
                   setAbierto(false);

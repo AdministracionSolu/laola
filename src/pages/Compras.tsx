@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { format, subDays } from "date-fns";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 import { getFechaNegocio } from "@/lib/fecha";
-import { useAnaliticaPedidos } from "@/hooks/useAnaliticaPedidos";
+import { esSucursalReferencia, useAnaliticaPedidos } from "@/hooks/useAnaliticaPedidos";
 import { PedidoDelDiaPanel } from "@/components/admin/pedidos/PedidoDelDiaPanel";
 import { DondeComprarPanel } from "@/components/admin/pedidos/DondeComprarPanel";
 
@@ -110,6 +110,13 @@ function ComprasContenido({ pin }: { pin: string }) {
     );
   }, [lista, nombreInsumo]);
 
+  // La prueba de proveedores es solo Tepic: Solares (GDL) compra aparte y no
+  // entra a "Dónde comprar".
+  const pedidosDetalleTepic = useMemo(() => {
+    const idsRef = new Set(sucursales.filter((s) => esSucursalReferencia(s.codigo)).map((s) => s.id));
+    return pedidosDetalle.filter((d) => !idsRef.has(d.sucursal_id));
+  }, [pedidosDetalle, sucursales]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/10">
       <div className="bg-background border-b sticky top-0 z-10">
@@ -149,7 +156,7 @@ function ComprasContenido({ pin }: { pin: string }) {
             </TabsContent>
             <TabsContent value="comprar">
               <DondeComprarPanel
-                pedidosDetalle={pedidosDetalle}
+                pedidosDetalle={pedidosDetalleTepic}
                 insumosOrden={insumosOrden}
                 nombreInsumo={nombreInsumo}
                 unidadInsumo={unidadInsumo}

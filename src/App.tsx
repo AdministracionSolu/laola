@@ -19,6 +19,7 @@ import AdminPanelControl from "./pages/admin/PanelControl";
 import AdminPedidos from "./pages/admin/Pedidos";
 import AdminPedidoDia from "./pages/admin/PedidoDia";
 import AdminProveedores from "./pages/admin/Proveedores";
+import AdminAhorros from "./pages/admin/Ahorros";
 import QrPedidos from "./pages/admin/QrPedidos";
 import PedidosHome from "./pages/PedidosHome";
 import EntrarSucursal from "./pages/EntrarSucursal";
@@ -93,6 +94,7 @@ const App = () => (
           <Route path="/admin/pedidos" element={<AdminPedidos />} />
           <Route path="/admin/pedido-dia" element={<AdminPedidoDia />} />
           <Route path="/admin/proveedores" element={<AdminProveedores />} />
+          <Route path="/admin/ahorros" element={<AdminAhorros />} />
           <Route path="/admin/qr-pedidos" element={<QrPedidos />} />
           <Route path="/admin/lealtad" element={<AdminLealtad />} />
           <Route path="/admin/facturacion" element={<AdminFacturacion />} />

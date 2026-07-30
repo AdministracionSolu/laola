@@ -97,7 +97,7 @@ export function DondeComprarPanel({ pedidosDetalle, insumosOrden, nombreInsumo, 
         <div>
           <CardTitle className="text-sm">Dónde comprar — {hasta}</CardTitle>
           <CardDescription className="text-xs">
-            Lo que hay que comprar y el proveedor más barato. Total estimado: <b>{money(totalGasto)}</b>
+            Lo que hay que comprar y el proveedor más barato. Solo sucursales de Tepic (Solares compra aparte). Total estimado: <b>{money(totalGasto)}</b>
             {filasNoConfiables > 0 && (
               <span className="block text-amber-600 mt-0.5">
                 ⚠ {filasNoConfiables} insumo(s) con precio en otra unidad: no se suman al total ni se

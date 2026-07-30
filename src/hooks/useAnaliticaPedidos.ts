@@ -5,7 +5,14 @@ import { infoProteina, esProteina } from "@/lib/proteinas";
 export interface SucursalLite {
   id: string;
   nombre: string;
+  codigo: string; // prefijo_folio (VAL/CER/BRI/SOL)
 }
+
+// Orden operativo de compras: primero Tepic (Valle, Cervecería, Las Brisas)
+// y al final Solares, que está en Guadalajara y compra con sus propios
+// proveedores — en los paneles va solo como referencia.
+const ORDEN_SUCURSALES = ["VAL", "CER", "BRI", "SOL"];
+export const esSucursalReferencia = (codigo: string) => codigo === "SOL";
 
 export interface ListaItem {
   insumo_id: string;
@@ -75,7 +82,7 @@ export function useAnaliticaPedidos(desde: string, hasta: string): AnaliticaData
     setLoading(true);
 
     const [sucRes, listaRes, insRes, pedRes, recRes] = await Promise.all([
-      supabase.from("sucursales").select("id, nombre").order("nombre"),
+      supabase.from("sucursales").select("id, nombre, prefijo_folio"),
       supabase
         .from("insumo_sucursal")
         .select("insumo_id, sucursal_id, costo, unidad, orden, activo, insumos!inner(nombre, categoria_id, unidad)")
@@ -93,7 +100,13 @@ export function useAnaliticaPedidos(desde: string, hasta: string): AnaliticaData
         .lte("fecha", hasta),
     ]);
 
-    const sucs = (sucRes.data || []) as SucursalLite[];
+    const sucs = ((sucRes.data || []) as { id: string; nombre: string; prefijo_folio: string | null }[])
+      .map((s) => ({ id: s.id, nombre: s.nombre, codigo: (s.prefijo_folio || "").toUpperCase() }))
+      .sort((a, b) => {
+        const ia = ORDEN_SUCURSALES.indexOf(a.codigo);
+        const ib = ORDEN_SUCURSALES.indexOf(b.codigo);
+        return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib) || a.nombre.localeCompare(b.nombre);
+      });
     setSucursales(sucs);
 
     // IDs de proteínas (lista oficial). Todo lo demás se ignora en la analítica.

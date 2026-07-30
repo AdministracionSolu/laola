@@ -123,7 +123,8 @@ export function AhorrosPanel({ pedidosDetalle, insumosOrden, nombreInsumo, unida
             <CardTitle className="text-sm">Ahorros potenciales — {hasta}</CardTitle>
             <CardDescription className="text-xs">
               Con los precios vigentes de los proveedores: lo que cuesta el pedido del día
-              eligiendo al más barato vs. al más caro de cada insumo.
+              eligiendo al más barato vs. al más caro de cada insumo. Solo sucursales de
+              Tepic (Solares compra aparte).
               {sinComparar > 0 && (
                 <span className="block text-amber-600 mt-0.5">
                   {sinComparar} insumo(s) sin comparativa (falta precio de 2+ proveedores en la misma unidad): no suman al ahorro.

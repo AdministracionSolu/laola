@@ -4,20 +4,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Grid3x3, Loader2, ShoppingCart, Store } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 import { getFechaNegocio } from "@/lib/fecha";
 import { esSucursalReferencia, useAnaliticaPedidos } from "@/hooks/useAnaliticaPedidos";
-import { PedidoDelDiaPanel } from "@/components/admin/pedidos/PedidoDelDiaPanel";
-import { DondeComprarPanel } from "@/components/admin/pedidos/DondeComprarPanel";
-import { ProveedoresPanel } from "@/components/admin/pedidos/ProveedoresPanel";
+import { AhorrosPanel } from "@/components/admin/pedidos/AhorrosPanel";
 
-// Vista de operación diaria de pedidos para el admin: el consolidado del día
-// (existencia · pidió · a pedir por sucursal), dónde comprar y proveedores.
-// El panel de Ahorros es del dueño y vive en Herramientas (/admin/ahorros);
-// la analítica histórica completa vive aparte en /admin/pedidos.
-export default function AdminPedidoDia() {
+// Reporte de ahorros de compras (barato vs caro). Es información del dueño:
+// se llega desde Herramientas → Reportes del dueño, no desde el panel de
+// pedidos que usan los empleados.
+export default function AdminAhorros() {
   const navigate = useNavigate();
   const [dia, setDia] = useState(getFechaNegocio());
 
@@ -27,7 +23,7 @@ export default function AdminPedidoDia() {
     });
   }, [navigate]);
 
-  const { sucursales, lista, insumosMaster, pedidosDetalle, loading, refetch } = useAnaliticaPedidos(dia, dia);
+  const { sucursales, lista, insumosMaster, pedidosDetalle, loading } = useAnaliticaPedidos(dia, dia);
 
   const nombreInsumo = useMemo(() => {
     const m = new Map<string, string>();
@@ -52,8 +48,7 @@ export default function AdminPedidoDia() {
     );
   }, [lista, nombreInsumo]);
 
-  // La prueba de proveedores es solo Tepic: Solares (GDL) compra aparte y no
-  // entra a "Dónde comprar".
+  // La prueba de proveedores es solo Tepic: Solares (GDL) compra aparte.
   const pedidosDetalleTepic = useMemo(() => {
     const idsRef = new Set(sucursales.filter((s) => esSucursalReferencia(s.codigo)).map((s) => s.id));
     return pedidosDetalle.filter((d) => !idsRef.has(d.sucursal_id));
@@ -69,8 +64,8 @@ export default function AdminPedidoDia() {
             </Button>
             <img src={logoLaOla} alt="La Ola" className="w-9 h-9 rounded-full object-cover" />
             <div>
-              <h1 className="text-lg font-bold">Pedidos</h1>
-              <p className="text-xs text-muted-foreground">Pedido del día, dónde comprar y ahorro</p>
+              <h1 className="text-lg font-bold">Ahorros de compras</h1>
+              <p className="text-xs text-muted-foreground">Comprando al más barato vs. al más caro</p>
             </div>
           </div>
           <div className="space-y-1">
@@ -84,35 +79,13 @@ export default function AdminPedidoDia() {
         {loading ? (
           <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
         ) : (
-          <Tabs defaultValue="pedido">
-            <TabsList className="mb-4">
-              <TabsTrigger value="pedido" className="gap-1 text-xs"><Grid3x3 className="h-3.5 w-3.5" />Pedido del día</TabsTrigger>
-              <TabsTrigger value="comprar" className="gap-1 text-xs"><ShoppingCart className="h-3.5 w-3.5" />Dónde comprar</TabsTrigger>
-              <TabsTrigger value="proveedores" className="gap-1 text-xs"><Store className="h-3.5 w-3.5" />Proveedores</TabsTrigger>
-            </TabsList>
-            <TabsContent value="pedido">
-              <PedidoDelDiaPanel
-                sucursales={sucursales}
-                pedidosDetalle={pedidosDetalle}
-                insumosOrden={insumosOrden}
-                nombreInsumo={nombreInsumo}
-                hasta={dia}
-                refetch={refetch}
-              />
-            </TabsContent>
-            <TabsContent value="comprar">
-              <DondeComprarPanel
-                pedidosDetalle={pedidosDetalleTepic}
-                insumosOrden={insumosOrden}
-                nombreInsumo={nombreInsumo}
-                unidadInsumo={unidadInsumo}
-                hasta={dia}
-              />
-            </TabsContent>
-            <TabsContent value="proveedores">
-              <ProveedoresPanel />
-            </TabsContent>
-          </Tabs>
+          <AhorrosPanel
+            pedidosDetalle={pedidosDetalleTepic}
+            insumosOrden={insumosOrden}
+            nombreInsumo={nombreInsumo}
+            unidadInsumo={unidadInsumo}
+            hasta={dia}
+          />
         )}
       </div>
     </div>
