@@ -85,7 +85,7 @@ function ComprasContenido({ pin }: { pin: string }) {
   const [desde, setDesde] = useState(format(subDays(new Date(), 7), "yyyy-MM-dd"));
   const [hasta, setHasta] = useState(hoy);
 
-  const { sucursales, lista, insumosMaster, pedidosDetalle, loading, refetch } = useAnaliticaPedidos(desde, hasta);
+  const { sucursales, lista, insumosMaster, pedidos, pedidosDetalle, loading, refetch } = useAnaliticaPedidos(desde, hasta);
 
   const nombreInsumo = useMemo(() => {
     const m = new Map<string, string>();
@@ -147,6 +147,7 @@ function ComprasContenido({ pin }: { pin: string }) {
             <TabsContent value="pedido">
               <PedidoDelDiaPanel
                 sucursales={sucursales}
+                pedidos={pedidos}
                 pedidosDetalle={pedidosDetalle}
                 insumosOrden={insumosOrden}
                 nombreInsumo={nombreInsumo}

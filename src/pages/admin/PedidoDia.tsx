@@ -27,7 +27,7 @@ export default function AdminPedidoDia() {
     });
   }, [navigate]);
 
-  const { sucursales, lista, insumosMaster, pedidosDetalle, loading, refetch } = useAnaliticaPedidos(dia, dia);
+  const { sucursales, lista, insumosMaster, pedidos, pedidosDetalle, loading, refetch } = useAnaliticaPedidos(dia, dia);
 
   const nombreInsumo = useMemo(() => {
     const m = new Map<string, string>();
@@ -93,6 +93,7 @@ export default function AdminPedidoDia() {
             <TabsContent value="pedido">
               <PedidoDelDiaPanel
                 sucursales={sucursales}
+                pedidos={pedidos}
                 pedidosDetalle={pedidosDetalle}
                 insumosOrden={insumosOrden}
                 nombreInsumo={nombreInsumo}
