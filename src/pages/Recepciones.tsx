@@ -47,22 +47,49 @@ export default function Recepciones() {
   // Acumulado ya registrado hoy por insumo (no se compara con el pedido).
   const [yaRecibido, setYaRecibido] = useState<Record<string, number>>({});
 
-  // Suma lo ya recibido hoy por insumo (de recepciones previas del pedido).
-  const cargarYaRecibido = useCallback(async (detalleIds: string[]) => {
-    if (detalleIds.length === 0) {
-      setYaRecibido({});
-      return;
-    }
-    const { data } = await supabase
-      .from("recepciones_detalle")
-      .select("insumo_id, cantidad_recibida, pedido_detalle_id")
-      .in("pedido_detalle_id", detalleIds);
-    const acc: Record<string, number> = {};
-    (data || []).forEach((r: { insumo_id: string; cantidad_recibida: number }) => {
-      acc[r.insumo_id] = (acc[r.insumo_id] || 0) + Number(r.cantidad_recibida || 0);
-    });
-    setYaRecibido(acc);
-  }, []);
+  // Suma lo ya recibido por insumo: lo ligado a renglones del pedido MÁS lo
+  // registrado HOY por la sucursal (insumos que llegaron sin venir en el
+  // pedido y por eso no tienen renglón que ligar).
+  const cargarYaRecibido = useCallback(
+    async (detalleIds: string[]) => {
+      const ids = detalleIds.filter(Boolean);
+      const { data: recsHoy } = await supabase
+        .from("recepciones")
+        .select("id")
+        .eq("sucursal_id", sucursalId!)
+        .eq("fecha", getFechaCalendario());
+      const recIds = ((recsHoy ?? []) as { id: string }[]).map((r) => r.id);
+
+      type Fila = { id: string; insumo_id: string; cantidad_recibida: number };
+      const vacio = { data: [] as Fila[] };
+      const [porPedido, deHoy] = await Promise.all([
+        ids.length
+          ? supabase
+              .from("recepciones_detalle")
+              .select("id, insumo_id, cantidad_recibida")
+              .in("pedido_detalle_id", ids)
+          : Promise.resolve(vacio),
+        recIds.length
+          ? supabase
+              .from("recepciones_detalle")
+              .select("id, insumo_id, cantidad_recibida")
+              .in("recepcion_id", recIds)
+          : Promise.resolve(vacio),
+      ]);
+
+      // Las dos consultas pueden traer la misma fila: se deduplica por id.
+      const filas = new Map<string, Fila>();
+      [...((porPedido.data ?? []) as Fila[]), ...((deHoy.data ?? []) as Fila[])].forEach((f) =>
+        filas.set(f.id, f)
+      );
+      const acc: Record<string, number> = {};
+      filas.forEach((f) => {
+        acc[f.insumo_id] = (acc[f.insumo_id] || 0) + Number(f.cantidad_recibida || 0);
+      });
+      setYaRecibido(acc);
+    },
+    [sucursalId]
+  );
 
   useEffect(() => {
     if (!sucursalId) return;
@@ -70,8 +97,13 @@ export default function Recepciones() {
 
     (async () => {
       setLoading(true);
-      const [catRes, pedidoRes] = await Promise.all([
+      const [catRes, itemsRes, pedidoRes] = await Promise.all([
         supabase.from("categorias_insumos").select("*").order("orden"),
+        supabase
+          .from("insumo_sucursal")
+          .select("insumos!inner(id, nombre, categoria_id, unidad)")
+          .eq("sucursal_id", sucursalId)
+          .eq("activo", true),
         // Último pedido ENVIADO (o parcial) de la sucursal = la entrega que se recibe.
         // Se ordena por enviado_at (cuándo se mandó), no por created_at (cuándo se abrió el borrador).
         supabase
@@ -97,32 +129,60 @@ export default function Recepciones() {
 
       setPedidoId(pedido.id);
 
-      // Renglones = lo que se pidió (nombres, SIN mostrar cantidades).
+      // Renglones del pedido: SOLO para ligar la recepción al pedido (no
+      // filtran la lista — lo que llega sin haberse pedido también se registra).
       const { data: det } = await supabase
         .from("pedidos_detalle")
-        .select("id, insumo_id, cantidad_pedida, insumos!inner(nombre, categoria_id, unidad)")
+        .select("id, insumo_id, insumos!inner(nombre, categoria_id, unidad)")
         .eq("pedido_id", pedido.id);
 
       type DetRow = {
         id: string;
         insumo_id: string;
-        cantidad_pedida: number;
         insumos: { nombre: string; categoria_id: string; unidad: string | null };
       };
-      const rs: Renglon[] = ((det ?? []) as unknown as DetRow[])
-        .filter((d) => Number(d.cantidad_pedida) > 0)
-        .map((d) => {
-          const p = infoProteina(d.insumos.nombre);
-          return {
-            insumo_id: d.insumo_id,
-            nombre: p?.display ?? d.insumos.nombre,
-            unidad: p?.unidad || d.insumos.unidad || "pz",
-            categoria_id: d.insumos.categoria_id,
-            pedido_detalle_id: d.id,
-            orden: p?.orden ?? 999,
-          };
-        })
-        .sort((a, b) => a.orden - b.orden);
+      const detRows = (det ?? []) as unknown as DetRow[];
+      const detPorInsumo = new Map(detRows.map((d) => [d.insumo_id, d]));
+
+      // La recepción muestra TODA la lista de proteínas de la sucursal. Antes
+      // solo salían los renglones con cantidad pedida > 0 y, si el pedido de la
+      // noche quedó corto, la mercancía que sí llegaba no se podía registrar
+      // (terminaban anotando cantidades en el campo "Proveedor").
+      type ItemRow = {
+        insumos: { id: string; nombre: string; categoria_id: string; unidad: string | null };
+      };
+      const rs: Renglon[] = [];
+      const vistos = new Set<string>();
+      for (const r of (itemsRes.data ?? []) as unknown as ItemRow[]) {
+        const p = infoProteina(r.insumos.nombre);
+        if (!p || vistos.has(r.insumos.id)) continue;
+        vistos.add(r.insumos.id);
+        rs.push({
+          insumo_id: r.insumos.id,
+          nombre: p.display,
+          unidad: p.unidad || r.insumos.unidad || "pz",
+          categoria_id: r.insumos.categoria_id,
+          pedido_detalle_id: detPorInsumo.get(r.insumos.id)?.id ?? null,
+          orden: p.orden,
+        });
+      }
+      // Renglones del pedido cuyo insumo no está (ya) en la lista de la
+      // sucursal: mejor mostrarlos que perderlos.
+      for (const d of detRows) {
+        if (vistos.has(d.insumo_id)) continue;
+        const p = infoProteina(d.insumos.nombre);
+        if (!p) continue;
+        vistos.add(d.insumo_id);
+        rs.push({
+          insumo_id: d.insumo_id,
+          nombre: p.display,
+          unidad: p.unidad || d.insumos.unidad || "pz",
+          categoria_id: d.insumos.categoria_id,
+          pedido_detalle_id: d.id,
+          orden: p.orden,
+        });
+      }
+      rs.sort((a, b) => a.orden - b.orden);
 
       setRenglones(rs);
       await cargarYaRecibido(rs.map((r) => r.pedido_detalle_id!).filter(Boolean));

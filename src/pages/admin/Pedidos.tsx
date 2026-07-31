@@ -408,6 +408,7 @@ export default function AdminPedidos() {
             <TabsContent value="consolidado">
               <PedidoDelDiaPanel
                 sucursales={sucursales}
+                pedidos={pedidos}
                 pedidosDetalle={pedidosDetalle}
                 insumosOrden={insumosOrden}
                 nombreInsumo={nombreInsumo}

@@ -6,12 +6,13 @@ import { Download, GitCompareArrows, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { exportarExcel } from "@/lib/exportar";
-import { esSucursalReferencia, type SucursalLite, type PedidoDetLite } from "@/hooks/useAnaliticaPedidos";
+import { esSucursalReferencia, type SucursalLite, type PedidoDetLite, type PedidoLite } from "@/hooks/useAnaliticaPedidos";
 
 const num = (n: number) => (Math.round(n * 100) / 100).toString();
 
 interface Props {
   sucursales: SucursalLite[];
+  pedidos: PedidoLite[];
   pedidosDetalle: PedidoDetLite[];
   insumosOrden: string[];
   nombreInsumo: Map<string, string>;
@@ -19,9 +20,20 @@ interface Props {
   refetch: () => void;
 }
 
-export function PedidoDelDiaPanel({ sucursales, pedidosDetalle, insumosOrden, nombreInsumo, hasta, refetch }: Props) {
+export function PedidoDelDiaPanel({ sucursales, pedidos, pedidosDetalle, insumosOrden, nombreInsumo, hasta, refetch }: Props) {
   const [pedidoEdits, setPedidoEdits] = useState<Record<string, number>>({});
+  // "A comprar" capturado en celdas SIN renglón (la sucursal no tocó ese
+  // insumo): clave `${pedido_id}|${insumo_id}`, se insertan al guardar.
+  const [nuevos, setNuevos] = useState<Record<string, number>>({});
   const [guardando, setGuardando] = useState(false);
+
+  // Pedido del día (fecha = hasta) por sucursal, para poder insertar
+  // renglones nuevos aunque la sucursal no los haya capturado.
+  const pedidoDeSucursal = useMemo(() => {
+    const m = new Map<string, string>();
+    pedidos.filter((p) => p.fecha === hasta).forEach((p) => m.set(p.sucursal_id, p.id));
+    return m;
+  }, [pedidos, hasta]);
 
   // Solares (GDL) va solo de referencia: compra con sus propios proveedores,
   // así que no se captura "a comprar" ni entra al total de Tepic.
@@ -51,16 +63,25 @@ export function PedidoDelDiaPanel({ sucursales, pedidosDetalle, insumosOrden, no
 
   const guardar = async () => {
     const entries = Object.entries(pedidoEdits);
-    if (entries.length === 0) {
+    // Solo se insertan renglones nuevos con cantidad > 0 (un 0 tecleado y
+    // borrado no debe crear renglón).
+    const altas = Object.entries(nuevos).filter(([, v]) => v > 0);
+    if (entries.length === 0 && altas.length === 0) {
       toast.error("No hay cambios que guardar");
       return;
     }
     setGuardando(true);
-    const results = await Promise.all(
-      entries.map(([id, value]) =>
+    const inserts = altas.map(([key, value]) => {
+      const [pedido_id, insumo_id] = key.split("|");
+      // cantidad_sugerida null = la sucursal no lo capturó (lo decidió el admin).
+      return { pedido_id, insumo_id, existencia: 0, cantidad_pedida: value, cantidad_sugerida: null };
+    });
+    const results = await Promise.all([
+      ...entries.map(([id, value]) =>
         supabase.from("pedidos_detalle").update({ cantidad_pedida: value }).eq("id", id)
-      )
-    );
+      ),
+      ...(inserts.length ? [supabase.from("pedidos_detalle").insert(inserts)] : []),
+    ]);
     setGuardando(false);
     if (results.find((r) => r.error)) {
       toast.error("No se pudieron guardar todos los renglones");
@@ -68,6 +89,7 @@ export function PedidoDelDiaPanel({ sucursales, pedidosDetalle, insumosOrden, no
     }
     toast.success("Pedido del día guardado ✓");
     setPedidoEdits({});
+    setNuevos({});
     refetch();
   };
 
@@ -80,19 +102,24 @@ export function PedidoDelDiaPanel({ sucursales, pedidosDetalle, insumosOrden, no
     return insumosOrden.map((ins) => {
       const celdas = sucursales.map((s) => {
         const det = pedMap.get(`${s.id}|${ins}`);
+        // Sin renglón pero la sucursal SÍ tiene pedido ese día: celda editable
+        // que inserta el renglón al guardar (antes quedaba como "—" muerta).
+        const pedidoId = det ? null : pedidoDeSucursal.get(s.id) ?? null;
+        const nuevoKey = pedidoId ? `${pedidoId}|${ins}` : null;
         return {
           sucursal_id: s.id,
           referencia: idsReferencia.has(s.id),
           detalleId: det?.id ?? null,
+          nuevoKey,
           existencia: det?.existencia ?? 0,
           solicitado: det?.cantidad_sugerida ?? 0,
-          pedidoReal: det ? pedidoRealDe(det) : null,
+          pedidoReal: det ? pedidoRealDe(det) : nuevoKey ? nuevos[nuevoKey] ?? null : null,
         };
       });
       const totalPed = celdas.reduce((s, c) => s + (c.referencia ? 0 : c.pedidoReal ?? 0), 0);
       return { insumo_id: ins, nombre: nombreInsumo.get(ins) || ins, celdas, totalPed };
     });
-  }, [hasta, pedidosDetalle, insumosOrden, sucursales, nombreInsumo, pedidoRealDe, idsReferencia]);
+  }, [hasta, pedidosDetalle, insumosOrden, sucursales, nombreInsumo, pedidoRealDe, idsReferencia, pedidoDeSucursal, nuevos]);
 
   // Cuántas existencias capturó cada sucursal (renglones guardados ese día).
   const capturadas = useMemo(() => {
@@ -139,7 +166,12 @@ export function PedidoDelDiaPanel({ sucursales, pedidosDetalle, insumosOrden, no
           <Button size="sm" variant="secondary" className="gap-1" onClick={copiarSolicitados} disabled={!consolidado.length}>
             <GitCompareArrows className="h-4 w-4" /> Copiar lo que pidieron
           </Button>
-          <Button size="sm" className="gap-1" onClick={guardar} disabled={guardando || Object.keys(pedidoEdits).length === 0}>
+          <Button
+            size="sm"
+            className="gap-1"
+            onClick={guardar}
+            disabled={guardando || (Object.keys(pedidoEdits).length === 0 && !Object.values(nuevos).some((v) => v > 0))}
+          >
             {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4 rotate-180" />}
             Guardar pedido del día
           </Button>
@@ -192,7 +224,23 @@ export function PedidoDelDiaPanel({ sucursales, pedidosDetalle, insumosOrden, no
                         {c.detalleId ? num(c.solicitado) : <span className="text-muted-foreground/40">—</span>}
                       </td>
                       <td className={`p-2 text-center ${c.referencia ? "bg-muted/30" : ""}`}>
-                        {!c.detalleId ? (
+                        {!c.detalleId && c.nuevoKey && !c.referencia ? (
+                          <div className="flex items-center justify-center">
+                            <Input
+                              type="number"
+                              inputMode="decimal"
+                              value={c.pedidoReal === null ? "" : String(c.pedidoReal)}
+                              onChange={(e) =>
+                                setNuevos((prev) => ({
+                                  ...prev,
+                                  [c.nuevoKey as string]:
+                                    e.target.value === "" ? 0 : parseFloat(e.target.value) || 0,
+                                }))
+                              }
+                              className="h-8 w-16 text-center font-semibold"
+                            />
+                          </div>
+                        ) : !c.detalleId ? (
                           <span className="text-muted-foreground/40">—</span>
                         ) : c.referencia ? (
                           <span className="tabular-nums text-muted-foreground/70">{num(c.pedidoReal ?? 0)}</span>
