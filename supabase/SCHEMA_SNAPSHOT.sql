@@ -29,6 +29,7 @@ CREATE TABLE cortes_caja (
   tarjetas_banregio numeric DEFAULT 0,
   tarjetas_mercadopago numeric DEFAULT 0,
   tarjetas_haycash numeric DEFAULT 0,
+  tarjetas_espiral numeric DEFAULT 0,
   rappi numeric DEFAULT 0,
   uber numeric DEFAULT 0
 );

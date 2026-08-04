@@ -221,6 +221,11 @@ BEGIN
   v_mensaje := terminales_mensaje_dia(v_fecha);
   IF v_mensaje IS NULL THEN RETURN NULL; END IF;
 
+  -- El puente se revisa ANTES del candado: si no hay a dónde mandar, no
+  -- quemamos el envío del día y el siguiente ciclo del cron lo reintenta.
+  SELECT * INTO v_cfg FROM integracion_makatea WHERE id = 1 AND activo;
+  IF NOT FOUND OR v_cfg.base_url LIKE '%PON-AQUI%' THEN RETURN NULL; END IF;
+
   IF p_forzar THEN
     DELETE FROM terminales_aviso_enviado WHERE fecha = v_fecha;
   END IF;
@@ -230,9 +235,6 @@ BEGIN
   VALUES (v_fecha, v_mensaje)
   ON CONFLICT (fecha) DO NOTHING;
   IF NOT FOUND THEN RETURN NULL; END IF;
-
-  SELECT * INTO v_cfg FROM integracion_makatea WHERE id = 1 AND activo;
-  IF NOT FOUND OR v_cfg.base_url LIKE '%PON-AQUI%' THEN RETURN NULL; END IF;
 
   PERFORM net.http_post(
     url     := v_cfg.base_url || '/functions/v1/laola-ops-alert',

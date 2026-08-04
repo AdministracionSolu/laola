@@ -641,6 +641,8 @@ function BitacoraCortes({ onClose }: { onClose: () => void }) {
       ["pago_proveedores", "proveedores"], ["salarios", "salarios"],
       ["propinas", "propinas"], ["compras", "compras"],
       ["pago_servicios", "servicios"], ["rappi", "Rappi"], ["uber", "Uber"],
+      ["tarjetas_banregio", "Banregio"], ["tarjetas_mercadopago", "MercadoPago"],
+      ["tarjetas_haycash", "HayCash"], ["tarjetas_espiral", "Espiral"],
     ];
     for (const [campo, label] of campos) {
       const a = f.antes?.[campo];
