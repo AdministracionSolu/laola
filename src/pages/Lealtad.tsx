@@ -31,6 +31,8 @@ export default function Lealtad() {
   const [sucursalNombre, setSucursalNombre] = useState<string | null>(null);
   const [listo, setListo] = useState(false);
   const [nombreOk, setNombreOk] = useState("");
+  // El teléfono ya existía: no es alta nueva y no le toca regalo otra vez.
+  const [yaEstaba, setYaEstaba] = useState(false);
 
   const [primerNombre, setPrimerNombre] = useState("");
   const [segundoNombre, setSegundoNombre] = useState("");
@@ -106,6 +108,7 @@ export default function Lealtad() {
     }
 
     setNombreOk((data?.nombre ?? primerNombre.trim()).split(" ")[0]);
+    setYaEstaba(data?.nuevo === false);
     setListo(true);
     window.scrollTo({ top: 0 });
   };
@@ -124,6 +127,42 @@ export default function Lealtad() {
       )}
     </div>
   );
+
+  // ============================================================
+  // Ya estaba registrado: no es alta nueva, se le manda a su visita.
+  // El regalo de bienvenida es una sola vez, así que aquí no se promete.
+  // ============================================================
+  if (listo && yaEstaba) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-primary/10 via-background to-background">
+        <div className="max-w-md mx-auto px-4 py-8">
+          <Header titulo={`¡Qué gusto verte, ${nombreOk}!`} sub="Ya eras parte de La Ola 🌊" />
+          <div className="rounded-2xl border bg-card p-6 shadow-sm text-center space-y-4">
+            <Waves className="h-12 w-12 mx-auto text-primary" />
+            <p className="text-muted-foreground">
+              Tu teléfono ya estaba registrado, así que no hace falta inscribirte de nuevo.
+              Dejamos tus datos al día.
+            </p>
+            <Button
+              className="w-full font-semibold"
+              size="lg"
+              onClick={() => navigate(`/visita${suc ? `?suc=${suc}` : ""}`)}
+            >
+              <Ticket className="h-4 w-4 mr-2" />
+              Registrar mi visita de hoy
+            </Button>
+            <div className="flex items-center justify-center gap-2 rounded-xl bg-primary/5 border border-primary/10 p-3 text-sm text-primary font-medium">
+              <Ticket className="h-4 w-4" /> Tu visita se valida con el ticket de tu cuenta.
+            </div>
+            <p className="text-[11px] leading-snug text-muted-foreground/70">
+              El regalo de bienvenida es una sola vez. Si todavía no lo canjeas, ahí te aparece.
+            </p>
+            <Link to="/menu" className="inline-block text-primary font-semibold pt-1">Ver el menú</Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ============================================================
   // Confirmación
