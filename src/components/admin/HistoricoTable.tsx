@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Corte } from "@/hooks/useCortes";
+import { tieneEspiral } from "@/lib/terminales";
 import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
@@ -515,7 +516,10 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
                   ["tarjetas_banregio", "Banregio"],
                   ["tarjetas_mercadopago", "MercadoPago"],
                   ["tarjetas_haycash", "HayCash"],
-                  ["tarjetas_espiral", "Espiral"],
+                  // Espiral solo existe en Valle
+                  ...(tieneEspiral(corteAEditar?.sucursales)
+                    ? ([["tarjetas_espiral", "Espiral"]] as const)
+                    : []),
                 ] as const).map(([campo, label]) => (
                   <div key={campo} className="space-y-1">
                     <Label htmlFor={`edit_${campo}`}>{label}</Label>

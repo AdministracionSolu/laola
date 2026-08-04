@@ -13,10 +13,12 @@ import { CalendarIcon, DollarSign, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { tieneEspiral } from "@/lib/terminales";
 
 interface Sucursal {
   id: string;
   nombre: string;
+  prefijo_folio: string | null;
 }
 
 interface AdminCorteDialogProps {
@@ -60,6 +62,8 @@ export function AdminCorteDialog({ onSuccess }: AdminCorteDialogProps) {
   const SOLARES_ID = "757d25e0-ce84-4d6f-a68a-d4639d3e409f";
   const CERVECERIA_ID = "79324e7b-c8ef-4355-b2b1-6965346a0ab1";
   const esConPlataformas = sucursalId === SOLARES_ID || sucursalId === CERVECERIA_ID;
+  // Espiral solo la tiene Valle.
+  const esConEspiral = tieneEspiral(sucursales.find((s) => s.id === sucursalId));
 
   useEffect(() => {
     if (open) {
@@ -72,11 +76,11 @@ export function AdminCorteDialog({ onSuccess }: AdminCorteDialogProps) {
     if (tipoCorte === "cierre") {
       const banregio = parseFloat(tarjetasBanregio) || 0;
       const mercadopago = parseFloat(tarjetasMercadopago) || 0;
-      const espiral = parseFloat(tarjetasEspiral) || 0;
+      const espiral = esConEspiral ? parseFloat(tarjetasEspiral) || 0 : 0;
       const haycash = parseFloat(tarjetasHaycash) || 0;
       setTarjetas((banregio + mercadopago + haycash + espiral).toFixed(2));
     }
-  }, [tipoCorte, tarjetasBanregio, tarjetasMercadopago, tarjetasHaycash, tarjetasEspiral]);
+  }, [tipoCorte, tarjetasBanregio, tarjetasMercadopago, tarjetasHaycash, tarjetasEspiral, esConEspiral]);
 
   // Auto-calculate total
   useEffect(() => {
@@ -142,7 +146,7 @@ export function AdminCorteDialog({ onSuccess }: AdminCorteDialogProps) {
       pago_servicios: tipoCorte === "cierre" ? (parseFloat(pagoServicios) || 0) : 0,
       tarjetas_banregio: tipoCorte === "cierre" ? (parseFloat(tarjetasBanregio) || 0) : 0,
       tarjetas_mercadopago: tipoCorte === "cierre" ? (parseFloat(tarjetasMercadopago) || 0) : 0,
-      tarjetas_espiral: tipoCorte === "cierre" ? (parseFloat(tarjetasEspiral) || 0) : 0,
+      tarjetas_espiral: tipoCorte === "cierre" && esConEspiral ? (parseFloat(tarjetasEspiral) || 0) : 0,
       tarjetas_haycash: tipoCorte === "cierre" ? (parseFloat(tarjetasHaycash) || 0) : 0,
       rappi: esConPlataformas ? (parseFloat(rappi) || 0) : 0,
       uber: esConPlataformas ? (parseFloat(uber) || 0) : 0,
@@ -285,10 +289,12 @@ export function AdminCorteDialog({ onSuccess }: AdminCorteDialogProps) {
                       <Label className="text-xs">HayCash</Label>
                       <Input type="text" inputMode="decimal" placeholder="0.00" value={tarjetasHaycash} onChange={handleInputChange(setTarjetasHaycash)} />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Espiral</Label>
-                      <Input type="text" inputMode="decimal" placeholder="0.00" value={tarjetasEspiral} onChange={handleInputChange(setTarjetasEspiral)} />
-                    </div>
+                    {esConEspiral && (
+                      <div className="space-y-1">
+                        <Label className="text-xs">Espiral</Label>
+                        <Input type="text" inputMode="decimal" placeholder="0.00" value={tarjetasEspiral} onChange={handleInputChange(setTarjetasEspiral)} />
+                      </div>
+                    )}
                     <div className="space-y-1">
                       <Label className="text-xs">Total Tarjetas</Label>
                       <Input type="text" value={tarjetas} readOnly className="bg-muted" />

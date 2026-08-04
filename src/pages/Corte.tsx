@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { tieneEspiral } from "@/lib/terminales";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,7 @@ interface Props {
 interface Sucursal {
   id: string;
   nombre: string;
+  prefijo_folio: string | null;
 }
 
 // Validación con Zod
@@ -77,6 +79,8 @@ export default function Corte({ onBack }: Props) {
   const SOLARES_ID = "757d25e0-ce84-4d6f-a68a-d4639d3e409f";
   const CERVECERIA_ID = "79324e7b-c8ef-4355-b2b1-6965346a0ab1";
   const esConPlataformas = sucursalId === SOLARES_ID || sucursalId === CERVECERIA_ID;
+  // Espiral solo la tiene Valle: a las demás ni se les muestra la casilla.
+  const esConEspiral = tieneEspiral(sucursales.find((s) => s.id === sucursalId));
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   
@@ -92,11 +96,11 @@ export default function Corte({ onBack }: Props) {
       const banregio = parseFloat(tarjetasBanregio) || 0;
       const mercadopago = parseFloat(tarjetasMercadopago) || 0;
       const haycash = parseFloat(tarjetasHaycash) || 0;
-      const espiral = parseFloat(tarjetasEspiral) || 0;
+      const espiral = esConEspiral ? parseFloat(tarjetasEspiral) || 0 : 0;
       const totalTarjetas = banregio + mercadopago + haycash + espiral;
       setTarjetas(totalTarjetas.toFixed(2));
     }
-  }, [tipoCorte, tarjetasBanregio, tarjetasMercadopago, tarjetasHaycash, tarjetasEspiral]);
+  }, [tipoCorte, tarjetasBanregio, tarjetasMercadopago, tarjetasHaycash, tarjetasEspiral, esConEspiral]);
 
   // Calcular total automáticamente: tarjetas + efectivo + por_cobrar
   // Nota: Rappi y Uber son solo informativos, ya vienen incluidos en efectivo
@@ -112,7 +116,7 @@ export default function Corte({ onBack }: Props) {
   const fetchSucursales = async () => {
     const { data, error } = await supabase
       .from("sucursales")
-      .select("id, nombre")
+      .select("id, nombre, prefijo_folio")
       .order("nombre");
 
     if (error) {
@@ -176,7 +180,7 @@ export default function Corte({ onBack }: Props) {
       tarjetas_banregio: tipoCorte === "cierre" ? (parseFloat(tarjetasBanregio) || 0) : 0,
       tarjetas_mercadopago: tipoCorte === "cierre" ? (parseFloat(tarjetasMercadopago) || 0) : 0,
       tarjetas_haycash: tipoCorte === "cierre" ? (parseFloat(tarjetasHaycash) || 0) : 0,
-      tarjetas_espiral: tipoCorte === "cierre" ? (parseFloat(tarjetasEspiral) || 0) : 0,
+      tarjetas_espiral: tipoCorte === "cierre" && esConEspiral ? (parseFloat(tarjetasEspiral) || 0) : 0,
       // Apps de delivery (Solares y Cervecería)
       rappi: esConPlataformas ? (parseFloat(rappi) || 0) : 0,
       uber: esConPlataformas ? (parseFloat(uber) || 0) : 0,
@@ -416,6 +420,7 @@ export default function Corte({ onBack }: Props) {
                       required
                     />
                   </div>
+                  {esConEspiral && (
                   <div className="space-y-2">
                     <Label htmlFor="tarjetas_espiral">Espiral</Label>
                     <Input
@@ -431,10 +436,8 @@ export default function Corte({ onBack }: Props) {
                         }
                       }}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Si tu sucursal no tiene Espiral, déjalo vacío.
-                    </p>
                   </div>
+                  )}
                   <div className="space-y-2">
                     <Label htmlFor="tarjetas">Total Tarjetas (auto)</Label>
                     <Input

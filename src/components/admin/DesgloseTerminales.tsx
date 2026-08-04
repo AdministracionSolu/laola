@@ -60,6 +60,9 @@ export function DesgloseTerminales({ cortesCierre, sucursales, formatMoney }: De
     return null;
   }
 
+  // Espiral solo la usa Valle: si nadie cobró con ella, la columna no aparece.
+  const hayEspiral = totalesGenerales.espiral > 0;
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -81,7 +84,7 @@ export function DesgloseTerminales({ cortesCierre, sucursales, formatMoney }: De
               <TableHead className="text-right">Banregio</TableHead>
               <TableHead className="text-right">Mercadopago</TableHead>
               <TableHead className="text-right">Haycash</TableHead>
-              <TableHead className="text-right">Espiral</TableHead>
+              {hayEspiral && <TableHead className="text-right">Espiral</TableHead>}
               <TableHead className="text-right font-semibold">Total</TableHead>
             </TableRow>
           </TableHeader>
@@ -92,7 +95,7 @@ export function DesgloseTerminales({ cortesCierre, sucursales, formatMoney }: De
                 <TableCell className="text-right">{formatMoney(sucursal.banregio)}</TableCell>
                 <TableCell className="text-right">{formatMoney(sucursal.mercadopago)}</TableCell>
                 <TableCell className="text-right">{formatMoney(sucursal.haycash)}</TableCell>
-                <TableCell className="text-right">{formatMoney(sucursal.espiral)}</TableCell>
+                {hayEspiral && <TableCell className="text-right">{formatMoney(sucursal.espiral)}</TableCell>}
                 <TableCell className="text-right font-semibold">{formatMoney(sucursal.total)}</TableCell>
               </TableRow>
             ))}
@@ -102,7 +105,7 @@ export function DesgloseTerminales({ cortesCierre, sucursales, formatMoney }: De
               <TableCell className="text-right">{formatMoney(totalesGenerales.banregio)}</TableCell>
               <TableCell className="text-right">{formatMoney(totalesGenerales.mercadopago)}</TableCell>
               <TableCell className="text-right">{formatMoney(totalesGenerales.haycash)}</TableCell>
-              <TableCell className="text-right">{formatMoney(totalesGenerales.espiral)}</TableCell>
+              {hayEspiral && <TableCell className="text-right">{formatMoney(totalesGenerales.espiral)}</TableCell>}
               <TableCell className="text-right text-primary">{formatMoney(totalesGenerales.total)}</TableCell>
             </TableRow>
           </TableBody>
