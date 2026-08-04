@@ -59,7 +59,9 @@ export default function Corte({ onBack }: Props) {
   const [tarjetasBanregio, setTarjetasBanregio] = useState("");
   const [tarjetasMercadopago, setTarjetasMercadopago] = useState("");
   const [tarjetasHaycash, setTarjetasHaycash] = useState("");
-  
+  // Espiral: por ahora solo Valle la tiene, pero cobra igual que MercadoPago
+  const [tarjetasEspiral, setTarjetasEspiral] = useState("");
+
   // Apps de delivery (solo Solares)
   const [rappi, setRappi] = useState("");
   const [uber, setUber] = useState("");
@@ -90,10 +92,11 @@ export default function Corte({ onBack }: Props) {
       const banregio = parseFloat(tarjetasBanregio) || 0;
       const mercadopago = parseFloat(tarjetasMercadopago) || 0;
       const haycash = parseFloat(tarjetasHaycash) || 0;
-      const totalTarjetas = banregio + mercadopago + haycash;
+      const espiral = parseFloat(tarjetasEspiral) || 0;
+      const totalTarjetas = banregio + mercadopago + haycash + espiral;
       setTarjetas(totalTarjetas.toFixed(2));
     }
-  }, [tipoCorte, tarjetasBanregio, tarjetasMercadopago, tarjetasHaycash]);
+  }, [tipoCorte, tarjetasBanregio, tarjetasMercadopago, tarjetasHaycash, tarjetasEspiral]);
 
   // Calcular total automáticamente: tarjetas + efectivo + por_cobrar
   // Nota: Rappi y Uber son solo informativos, ya vienen incluidos en efectivo
@@ -173,6 +176,7 @@ export default function Corte({ onBack }: Props) {
       tarjetas_banregio: tipoCorte === "cierre" ? (parseFloat(tarjetasBanregio) || 0) : 0,
       tarjetas_mercadopago: tipoCorte === "cierre" ? (parseFloat(tarjetasMercadopago) || 0) : 0,
       tarjetas_haycash: tipoCorte === "cierre" ? (parseFloat(tarjetasHaycash) || 0) : 0,
+      tarjetas_espiral: tipoCorte === "cierre" ? (parseFloat(tarjetasEspiral) || 0) : 0,
       // Apps de delivery (Solares y Cervecería)
       rappi: esConPlataformas ? (parseFloat(rappi) || 0) : 0,
       uber: esConPlataformas ? (parseFloat(uber) || 0) : 0,
@@ -217,6 +221,7 @@ export default function Corte({ onBack }: Props) {
     setTarjetasBanregio("");
     setTarjetasMercadopago("");
     setTarjetasHaycash("");
+    setTarjetasEspiral("");
     // Reset apps delivery
     setRappi("");
     setUber("");
@@ -410,6 +415,25 @@ export default function Corte({ onBack }: Props) {
                       }}
                       required
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tarjetas_espiral">Espiral</Label>
+                    <Input
+                      id="tarjetas_espiral"
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      value={tarjetasEspiral}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(",", ".");
+                        if (/^[0-9]*\.?[0-9]*$/.test(value) || value === "") {
+                          setTarjetasEspiral(value);
+                        }
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Si tu sucursal no tiene Espiral, déjalo vacío.
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="tarjetas">Total Tarjetas (auto)</Label>

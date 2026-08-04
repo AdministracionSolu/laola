@@ -85,6 +85,7 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
       tarjetas_banregio: String(corte.tarjetas_banregio ?? 0),
       tarjetas_mercadopago: String(corte.tarjetas_mercadopago ?? 0),
       tarjetas_haycash: String(corte.tarjetas_haycash ?? 0),
+      tarjetas_espiral: String(corte.tarjetas_espiral ?? 0),
       tarjetas: String(corte.tarjetas ?? 0),
       efectivo: String(corte.efectivo ?? 0),
       cobradas: String(corte.cobradas ?? 0),
@@ -102,7 +103,11 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
 
   // Mismas reglas que la captura: si hay desglose de tarjetas, tarjetas es
   // la suma; el total siempre es tarjetas + efectivo + por cobrar.
-  const desgloseTarjetas = num(formEdit.tarjetas_banregio) + num(formEdit.tarjetas_mercadopago) + num(formEdit.tarjetas_haycash);
+  const desgloseTarjetas =
+    num(formEdit.tarjetas_banregio) +
+    num(formEdit.tarjetas_mercadopago) +
+    num(formEdit.tarjetas_haycash) +
+    num(formEdit.tarjetas_espiral);
   const tarjetasCalc = desgloseTarjetas > 0 ? desgloseTarjetas : num(formEdit.tarjetas);
   const totalCalc = tarjetasCalc + num(formEdit.efectivo) + num(formEdit.por_cobrar);
 
@@ -115,6 +120,7 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
       tarjetas_banregio: num(formEdit.tarjetas_banregio),
       tarjetas_mercadopago: num(formEdit.tarjetas_mercadopago),
       tarjetas_haycash: num(formEdit.tarjetas_haycash),
+      tarjetas_espiral: num(formEdit.tarjetas_espiral),
       tarjetas: tarjetasCalc,
       efectivo: num(formEdit.efectivo),
       cobradas: num(formEdit.cobradas),
@@ -509,6 +515,7 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
                   ["tarjetas_banregio", "Banregio"],
                   ["tarjetas_mercadopago", "MercadoPago"],
                   ["tarjetas_haycash", "HayCash"],
+                  ["tarjetas_espiral", "Espiral"],
                 ] as const).map(([campo, label]) => (
                   <div key={campo} className="space-y-1">
                     <Label htmlFor={`edit_${campo}`}>{label}</Label>

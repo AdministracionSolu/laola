@@ -43,6 +43,7 @@ export function AdminCorteDialog({ onSuccess }: AdminCorteDialogProps) {
   // Desglose tarjetas
   const [tarjetasBanregio, setTarjetasBanregio] = useState("");
   const [tarjetasMercadopago, setTarjetasMercadopago] = useState("");
+  const [tarjetasEspiral, setTarjetasEspiral] = useState("");
   const [tarjetasHaycash, setTarjetasHaycash] = useState("");
   
   // Apps delivery
@@ -71,10 +72,11 @@ export function AdminCorteDialog({ onSuccess }: AdminCorteDialogProps) {
     if (tipoCorte === "cierre") {
       const banregio = parseFloat(tarjetasBanregio) || 0;
       const mercadopago = parseFloat(tarjetasMercadopago) || 0;
+      const espiral = parseFloat(tarjetasEspiral) || 0;
       const haycash = parseFloat(tarjetasHaycash) || 0;
-      setTarjetas((banregio + mercadopago + haycash).toFixed(2));
+      setTarjetas((banregio + mercadopago + haycash + espiral).toFixed(2));
     }
-  }, [tipoCorte, tarjetasBanregio, tarjetasMercadopago, tarjetasHaycash]);
+  }, [tipoCorte, tarjetasBanregio, tarjetasMercadopago, tarjetasHaycash, tarjetasEspiral]);
 
   // Auto-calculate total
   useEffect(() => {
@@ -101,6 +103,7 @@ export function AdminCorteDialog({ onSuccess }: AdminCorteDialogProps) {
     setTotal("");
     setTarjetasBanregio("");
     setTarjetasMercadopago("");
+    setTarjetasEspiral("");
     setTarjetasHaycash("");
     setRappi("");
     setUber("");
@@ -139,6 +142,7 @@ export function AdminCorteDialog({ onSuccess }: AdminCorteDialogProps) {
       pago_servicios: tipoCorte === "cierre" ? (parseFloat(pagoServicios) || 0) : 0,
       tarjetas_banregio: tipoCorte === "cierre" ? (parseFloat(tarjetasBanregio) || 0) : 0,
       tarjetas_mercadopago: tipoCorte === "cierre" ? (parseFloat(tarjetasMercadopago) || 0) : 0,
+      tarjetas_espiral: tipoCorte === "cierre" ? (parseFloat(tarjetasEspiral) || 0) : 0,
       tarjetas_haycash: tipoCorte === "cierre" ? (parseFloat(tarjetasHaycash) || 0) : 0,
       rappi: esConPlataformas ? (parseFloat(rappi) || 0) : 0,
       uber: esConPlataformas ? (parseFloat(uber) || 0) : 0,
@@ -280,6 +284,10 @@ export function AdminCorteDialog({ onSuccess }: AdminCorteDialogProps) {
                     <div className="space-y-1">
                       <Label className="text-xs">HayCash</Label>
                       <Input type="text" inputMode="decimal" placeholder="0.00" value={tarjetasHaycash} onChange={handleInputChange(setTarjetasHaycash)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Espiral</Label>
+                      <Input type="text" inputMode="decimal" placeholder="0.00" value={tarjetasEspiral} onChange={handleInputChange(setTarjetasEspiral)} />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Total Tarjetas</Label>

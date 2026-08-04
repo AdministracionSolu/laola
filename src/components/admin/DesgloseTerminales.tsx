@@ -10,6 +10,7 @@ interface Corte {
   tarjetas_banregio?: number;
   tarjetas_mercadopago?: number;
   tarjetas_haycash?: number;
+  tarjetas_espiral?: number;
   fecha_venta: string;
   sucursales: {
     nombre: string;
@@ -36,8 +37,9 @@ export function DesgloseTerminales({ cortesCierre, sucursales, formatMoney }: De
       banregio: acc.banregio + (Number(c.tarjetas_banregio) || 0),
       mercadopago: acc.mercadopago + (Number(c.tarjetas_mercadopago) || 0),
       haycash: acc.haycash + (Number(c.tarjetas_haycash) || 0),
+      espiral: acc.espiral + (Number(c.tarjetas_espiral) || 0),
       total: acc.total + (Number(c.tarjetas) || 0),
-    }), { banregio: 0, mercadopago: 0, haycash: 0, total: 0 });
+    }), { banregio: 0, mercadopago: 0, haycash: 0, espiral: 0, total: 0 });
     
     return {
       nombre: sucursal.nombre,
@@ -50,8 +52,9 @@ export function DesgloseTerminales({ cortesCierre, sucursales, formatMoney }: De
     banregio: acc.banregio + s.banregio,
     mercadopago: acc.mercadopago + s.mercadopago,
     haycash: acc.haycash + s.haycash,
+    espiral: acc.espiral + s.espiral,
     total: acc.total + s.total,
-  }), { banregio: 0, mercadopago: 0, haycash: 0, total: 0 });
+  }), { banregio: 0, mercadopago: 0, haycash: 0, espiral: 0, total: 0 });
 
   if (desglosePorSucursal.length === 0) {
     return null;
@@ -78,6 +81,7 @@ export function DesgloseTerminales({ cortesCierre, sucursales, formatMoney }: De
               <TableHead className="text-right">Banregio</TableHead>
               <TableHead className="text-right">Mercadopago</TableHead>
               <TableHead className="text-right">Haycash</TableHead>
+              <TableHead className="text-right">Espiral</TableHead>
               <TableHead className="text-right font-semibold">Total</TableHead>
             </TableRow>
           </TableHeader>
@@ -88,6 +92,7 @@ export function DesgloseTerminales({ cortesCierre, sucursales, formatMoney }: De
                 <TableCell className="text-right">{formatMoney(sucursal.banregio)}</TableCell>
                 <TableCell className="text-right">{formatMoney(sucursal.mercadopago)}</TableCell>
                 <TableCell className="text-right">{formatMoney(sucursal.haycash)}</TableCell>
+                <TableCell className="text-right">{formatMoney(sucursal.espiral)}</TableCell>
                 <TableCell className="text-right font-semibold">{formatMoney(sucursal.total)}</TableCell>
               </TableRow>
             ))}
@@ -97,6 +102,7 @@ export function DesgloseTerminales({ cortesCierre, sucursales, formatMoney }: De
               <TableCell className="text-right">{formatMoney(totalesGenerales.banregio)}</TableCell>
               <TableCell className="text-right">{formatMoney(totalesGenerales.mercadopago)}</TableCell>
               <TableCell className="text-right">{formatMoney(totalesGenerales.haycash)}</TableCell>
+              <TableCell className="text-right">{formatMoney(totalesGenerales.espiral)}</TableCell>
               <TableCell className="text-right text-primary">{formatMoney(totalesGenerales.total)}</TableCell>
             </TableRow>
           </TableBody>

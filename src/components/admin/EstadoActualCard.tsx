@@ -18,6 +18,7 @@ interface EstadoSucursal {
   tarjetas_banregio?: number;
   tarjetas_mercadopago?: number;
   tarjetas_haycash?: number;
+  tarjetas_espiral?: number;
   rappi?: number;
   uber?: number;
 }
