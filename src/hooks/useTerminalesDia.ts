@@ -10,9 +10,9 @@ import { toast } from "sonner";
  *   - terminales_sucursal   qué terminal TIENE cada sucursal (Espiral solo Valle)
  *   - terminales_asignacion cuál USA hoy
  *
- * Si una sucursal no tiene captura de hoy, hereda las suyas de planta: el
- * mensaje a cajas nunca sale vacío. Por eso nunca dejamos quitar la última
- * terminal de una sucursal, si no volvería a la herencia sin avisar.
+ * El día empieza en blanco: nada viene preseleccionado. Lo que no se marca
+ * sale como "sin asignar" en el mensaje, y si nadie marcó nada no se manda
+ * mensaje. `terminales_sucursal` ya solo decide qué botones se ofrecen.
  */
 
 const db = supabase as any;
@@ -31,10 +31,8 @@ export type SucursalTerminales = {
   codigo: string;
   /** Terminales que la sucursal tiene de planta */
   disponibles: string[];
-  /** Terminales que usa hoy (heredadas si no hay captura) */
+  /** Terminales marcadas para hoy (vacío si nadie ha marcado) */
   hoy: string[];
-  /** false = está heredando; true = alguien capturó hoy */
-  capturadoHoy: boolean;
 };
 export type AvisoConfig = { hora: string; zona: string; activo: boolean };
 
@@ -103,13 +101,10 @@ export function useTerminalesDia() {
   const porSucursal = useMemo<SucursalTerminales[]>(
     () =>
       sucursales.map((s) => {
-        const disp = disponibles[s.id] ?? [];
-        const asig = asignadas[s.id];
         return {
           ...s,
-          disponibles: disp,
-          hoy: asig?.length ? asig : disp,
-          capturadoHoy: Boolean(asig?.length),
+          disponibles: disponibles[s.id] ?? [],
+          hoy: asignadas[s.id] ?? [],
         };
       }),
     [sucursales, disponibles, asignadas]
@@ -120,15 +115,8 @@ export function useTerminalesDia() {
     const fila = porSucursal.find((s) => s.id === sucursalId);
     if (!fila) return;
     const siguiente = new Set(fila.hoy);
-    if (siguiente.has(terminalId)) {
-      if (siguiente.size === 1) {
-        toast.error("Cada sucursal debe quedar con al menos una terminal.");
-        return;
-      }
-      siguiente.delete(terminalId);
-    } else {
-      siguiente.add(terminalId);
-    }
+    if (siguiente.has(terminalId)) siguiente.delete(terminalId);
+    else siguiente.add(terminalId);
 
     const lista = [...siguiente];
     setAsignadas((p) => ({ ...p, [sucursalId]: lista })); // optimista
@@ -205,10 +193,13 @@ export function useTerminalesDia() {
     void cargar();
   };
 
+  const hayCaptura = porSucursal.some((s) => s.hoy.length > 0);
+
   return {
     fecha,
     terminales: terminales.filter((t) => t.activa),
     porSucursal,
+    hayCaptura,
     config,
     enviadoHoy,
     mensaje,

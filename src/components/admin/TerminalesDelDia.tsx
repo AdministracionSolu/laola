@@ -21,6 +21,7 @@ export function TerminalesDelDia() {
   const {
     terminales,
     porSucursal,
+    hayCaptura,
     config,
     enviadoHoy,
     mensaje,
@@ -66,7 +67,7 @@ export function TerminalesDelDia() {
         {modoAjustes && (
           <p className="text-xs text-muted-foreground bg-muted/50 rounded-md p-3">
             Estás editando qué terminales <strong>tiene</strong> cada sucursal, no las de hoy. Solo
-            las que enciendas aquí se pueden elegir en el día.
+            las que enciendas aquí aparecen como opción cada mañana.
           </p>
         )}
 
@@ -109,9 +110,9 @@ export function TerminalesDelDia() {
                   })}
                 </div>
 
-                {!modoAjustes && !s.capturadoHoy && s.disponibles.length > 0 && (
+                {!modoAjustes && s.hoy.length === 0 && s.disponibles.length > 0 && (
                   <Badge variant="secondary" className="ml-auto">
-                    Las de siempre
+                    Sin asignar
                   </Badge>
                 )}
               </div>
@@ -119,10 +120,18 @@ export function TerminalesDelDia() {
           })}
         </div>
 
+        {!modoAjustes && !hayCaptura && (
+          <p className="text-sm text-amber-600 dark:text-amber-500 bg-amber-500/10 rounded-md p-3">
+            Nadie ha marcado terminales para hoy. Mientras esté así no sale ningún mensaje al grupo.
+          </p>
+        )}
+
         {/* Lo que va a llegar al grupo, tal cual */}
         {!modoAjustes && mensaje && (
           <div className="rounded-md border bg-muted/40 p-3">
-            <p className="text-xs text-muted-foreground mb-2">Así llega al grupo de cajas:</p>
+            <p className="text-xs text-muted-foreground mb-2">
+              Así llega al grupo de cajas. Los asteriscos ponen el nombre en negritas en WhatsApp.
+            </p>
             <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed">{mensaje}</pre>
           </div>
         )}
@@ -153,7 +162,13 @@ export function TerminalesDelDia() {
                 Enviado hoy {format(parseISO(enviadoHoy.created_at), "HH:mm")}
               </span>
             )}
-            <Button size="sm" variant="outline" className="gap-2" disabled={enviando} onClick={enviarAhora}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-2"
+              disabled={enviando || !hayCaptura}
+              onClick={enviarAhora}
+            >
               <Send className="w-4 h-4" />
               {enviadoHoy ? "Reenviar" : "Enviar ahora"}
             </Button>
