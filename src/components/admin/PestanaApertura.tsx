@@ -16,6 +16,7 @@ import {
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { useApertura } from "@/hooks/useApertura";
+import { TerminalesDelDia } from "@/components/admin/TerminalesDelDia";
 
 interface PestanaAperturaProps {
   formatMoney: (value: number) => string;
@@ -51,6 +52,10 @@ export function PestanaApertura({ formatMoney }: PestanaAperturaProps) {
 
   return (
     <div className="space-y-6">
+      {/* Lo primero de la mañana: con qué terminal cobra cada sucursal hoy.
+          Va siempre sobre el día de HOY, no sigue al navegador de fechas. */}
+      <TerminalesDelDia />
+
       {/* Encabezado + navegador de día */}
       <Card>
         <CardHeader className="pb-3">
