@@ -452,7 +452,7 @@ export default function AdminLealtad() {
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Regla dura: un folio por teléfono por día. El ciclo y las recompensas cuentan por año natural; el 1 de enero todos arrancan de nuevo. El regalo de bienvenida (balazo + bebida) es una sola vez, de por vida.
+                    Regla dura: un folio por teléfono por día. El ciclo y las recompensas cuentan por año natural; el 1 de enero todos arrancan de nuevo. El regalo de bienvenida (un balazo de tu elección + cerveza o refresco, sin callo de hacha ni cerveza premium) es una sola vez, de por vida, y se canjea en la misma visita del registro.
                   </p>
                 </>
               )}

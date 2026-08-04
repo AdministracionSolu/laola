@@ -305,7 +305,13 @@ export default function Visita() {
           {/* Regalo de bienvenida (una sola vez) */}
           {perfil.bienvenida_disponible && (
             <div className="rounded-2xl border-2 border-primary/40 bg-primary/5 p-4 mt-4 text-center">
-              <p className="font-semibold text-primary">🥂 Tienes pendiente tu regalo de bienvenida: balazo + bebida</p>
+              <p className="font-semibold text-primary">🥂 Tienes pendiente tu regalo de bienvenida</p>
+              <p className="text-sm text-primary/90 mt-0.5">
+                Un balazo de tu elección + cerveza o refresco
+              </p>
+              <p className="text-[11px] leading-snug text-muted-foreground/70 mt-1.5">
+                No incluye balazo de callo de hacha ni cerveza premium.
+              </p>
               {confirmando === "bienvenida" ? (
                 <div className="mt-3 space-y-2">
                   <p className="text-sm font-medium">Canjéalo solo frente a tu mesero. ¿Registrar el canje ahora?</p>

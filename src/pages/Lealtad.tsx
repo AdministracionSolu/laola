@@ -136,12 +136,19 @@ export default function Lealtad() {
           <div className="rounded-2xl border bg-card p-6 shadow-sm text-center space-y-4">
             <PartyPopper className="h-12 w-12 mx-auto text-accent" />
             <div className="rounded-xl border-2 border-accent bg-accent/10 p-3">
-              <p className="font-semibold text-accent">🥂 Tu regalo de bienvenida: balazo + bebida</p>
-              <p className="text-xs text-muted-foreground mt-1">Canjéalo con tu mesero en tu próxima visita.</p>
+              <p className="font-semibold text-accent">🥂 Tu regalo de bienvenida</p>
+              <p className="text-sm text-accent/90 mt-0.5">
+                Un balazo de tu elección + cerveza o refresco
+              </p>
+              {/* Se canjea en esta misma visita, no en la siguiente. */}
+              <p className="text-xs text-muted-foreground mt-1.5">Canjéalo ahora con tu mesero.</p>
+              <p className="text-[11px] leading-snug text-muted-foreground/70 mt-1.5">
+                No incluye balazo de callo de hacha ni cerveza premium.
+              </p>
             </div>
             <p className="text-muted-foreground">
-              La próxima vez que nos visites, escanea el <b>QR de tu ticket</b> y pon el folio para sumar tu visita.
-              Cada 3 visitas ganas una recompensa 🦐
+              La próxima vez que nos visites, vuelve a escanear este QR y entra por{" "}
+              <b>"Ya soy miembro"</b> para sumar tu visita. Cada 3 visitas ganas una recompensa 🦐
             </p>
             <div className="flex items-center justify-center gap-2 rounded-xl bg-primary/5 border border-primary/10 p-3 text-sm text-primary font-medium">
               <Ticket className="h-4 w-4" /> Tu visita se valida con el ticket de tu cuenta.
