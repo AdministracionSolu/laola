@@ -130,7 +130,7 @@ export default function Lealtad() {
 
   // ============================================================
   // Ya estaba registrado: no es alta nueva, se le manda a su visita.
-  // El regalo de bienvenida es una sola vez, así que aquí no se promete.
+  // La Recompensa inicial es una sola vez, así que aquí no se promete.
   // ============================================================
   if (listo && yaEstaba) {
     return (
@@ -155,7 +155,7 @@ export default function Lealtad() {
               <Ticket className="h-4 w-4" /> Tu visita se valida con el ticket de tu cuenta.
             </div>
             <p className="text-[11px] leading-snug text-muted-foreground/70">
-              El regalo de bienvenida es una sola vez. Si todavía no lo canjeas, ahí te aparece.
+              La Recompensa inicial es una sola vez. Si todavía no la canjeas, ahí te aparece.
             </p>
             <Link to="/menu" className="inline-block text-primary font-semibold pt-1">Ver el menú</Link>
           </div>
@@ -175,7 +175,7 @@ export default function Lealtad() {
           <div className="rounded-2xl border bg-card p-6 shadow-sm text-center space-y-4">
             <PartyPopper className="h-12 w-12 mx-auto text-accent" />
             <div className="rounded-xl border-2 border-accent bg-accent/10 p-3">
-              <p className="font-semibold text-accent">🥂 Tu regalo de bienvenida</p>
+              <p className="font-semibold text-accent">🥂 Tu Recompensa inicial</p>
               <p className="text-sm text-accent/90 mt-0.5">
                 Un balazo de tu elección + cerveza o refresco
               </p>
@@ -218,7 +218,7 @@ export default function Lealtad() {
               <div className="min-w-0 flex-1">
                 <p className="font-bold text-lg leading-tight">Es mi primera vez</p>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  Únete al programa y llévate tu regalo de bienvenida.
+                  Únete al programa y llévate tu Recompensa inicial.
                 </p>
               </div>
               <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />

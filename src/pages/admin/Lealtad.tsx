@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { recompensaDeCiclo, RECOMPENSA_INICIAL_ID } from "@/lib/lealtad";
 import { ArrowLeft, LogOut, RefreshCw, Search, Users, UserPlus, Cake, Store, Download, Trophy, Gift, Ticket, Plus, Trash2, Save, Clock } from "lucide-react";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 
@@ -200,12 +201,15 @@ export default function AdminLealtad() {
 
   // ---------- Conciliación del día (empatar vs comandero) ----------
   const conciliacion = useMemo(() => {
-    const porSuc = new Map<string, { total: number; porTitulo: Map<string, number> }>();
+    // Se agrupa por identificador del ciclo (Visita 3, 6, 9, 12) para que
+    // la conciliación se lea igual que lo que vio el mesero en pantalla.
+    const porSuc = new Map<string, { total: number; porTitulo: Map<string, { n: number; posicion: number }> }>();
     for (const c of canjesDia) {
       const k = nombreSucId(c.sucursal_id) === "—" ? "Sin sucursal" : nombreSucId(c.sucursal_id);
       const e = porSuc.get(k) ?? { total: 0, porTitulo: new Map() };
       e.total += 1;
-      e.porTitulo.set(c.titulo, (e.porTitulo.get(c.titulo) ?? 0) + 1);
+      const prev = e.porTitulo.get(c.titulo) ?? { n: 0, posicion: c.posicion };
+      e.porTitulo.set(c.titulo, { n: prev.n + 1, posicion: c.posicion });
       porSuc.set(k, e);
     }
     return [...porSuc.entries()].sort((a, b) => b[1].total - a[1].total);
@@ -402,19 +406,32 @@ export default function AdminLealtad() {
                     <thead className="bg-muted/50 text-left">
                       <tr>
                         <th className="px-3 py-2 font-semibold">Sucursal</th>
+                        <th className="px-3 py-2 font-semibold">Identificador</th>
                         <th className="px-3 py-2 font-semibold">Beneficio</th>
                         <th className="px-3 py-2 font-semibold text-right">Canjes</th>
                       </tr>
                     </thead>
                     <tbody>
                       {conciliacion.flatMap(([suc, e]) =>
-                        [...e.porTitulo.entries()].map(([titulo, n]) => (
-                          <tr key={`${suc}-${titulo}`} className="border-t">
-                            <td className="px-3 py-2">{suc}</td>
-                            <td className="px-3 py-2">{titulo}</td>
-                            <td className="px-3 py-2 text-right font-semibold tabular-nums">{n}</td>
-                          </tr>
-                        ))
+                        [...e.porTitulo.entries()].map(([titulo, d]) => {
+                          const rec = recompensaDeCiclo(d.posicion);
+                          return (
+                            <tr key={`${suc}-${titulo}`} className="border-t">
+                              <td className="px-3 py-2">{suc}</td>
+                              <td className="px-3 py-2">
+                                <span
+                                  className={`inline-block px-2 py-0.5 rounded-full border-2 text-xs font-bold ${
+                                    rec ? `${rec.bg} ${rec.texto} ${rec.borde}` : "bg-card text-foreground border-border"
+                                  }`}
+                                >
+                                  {rec ? rec.identificador : RECOMPENSA_INICIAL_ID}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2">{titulo}</td>
+                              <td className="px-3 py-2 text-right font-semibold tabular-nums">{d.n}</td>
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
@@ -458,7 +475,7 @@ export default function AdminLealtad() {
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Regla dura: un folio por teléfono por día. El ciclo y las recompensas cuentan por año natural; el 1 de enero todos arrancan de nuevo. El regalo de bienvenida (un balazo de tu elección + cerveza o refresco, sin callo de hacha ni cerveza premium) es una sola vez, de por vida, y se canjea en la misma visita del registro.
+                    Regla dura: un folio por teléfono por día. El ciclo y las recompensas cuentan por año natural; el 1 de enero todos arrancan de nuevo. La Recompensa inicial (un balazo de tu elección + cerveza o refresco, sin callo de hacha ni cerveza premium) es una sola vez, de por vida, y se canjea en la misma visita del registro.
                   </p>
                 </>
               )}

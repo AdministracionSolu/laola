@@ -8,10 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Gift, Waves, Trophy, Check, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { recompensaDeCiclo, RECOMPENSA_INICIAL_ID } from "@/lib/lealtad";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 
 // URL del aviso de privacidad (ajústala a la real cuando exista)
 const AVISO_PRIVACIDAD = "/privacidad";
+
+// La pantalla del canje vale 3 minutos. No es para apurar al cliente: es
+// para que una captura de pantalla no sirva mañana en otra sucursal.
+const VIGENCIA_CANJE = 180;
 
 type Perfil = {
   status: string;
@@ -34,7 +39,7 @@ type Perfil = {
   bienvenida_disponible?: boolean;
 };
 
-type Canje = { titulo: string; hora: Date };
+type Canje = { titulo: string; hora: Date; posicion: number | null; nombre: string };
 
 type Paso = "captura" | "registro" | "progreso" | "canjeado";
 
@@ -69,6 +74,8 @@ export default function Visita() {
   const [canje, setCanje] = useState<Canje | null>(null);
   const [confirmando, setConfirmando] = useState<"recompensa" | "bienvenida" | null>(null);
   const [canjeando, setCanjeando] = useState(false);
+  // Late una vez por segundo mientras hay un canje en pantalla.
+  const [ahora, setAhora] = useState(() => Date.now());
 
   useEffect(() => {
     if (!suc) return;
@@ -155,8 +162,17 @@ export default function Visita() {
     window.scrollTo({ top: 0 });
   };
 
+  useEffect(() => {
+    if (paso !== "canjeado") return;
+    const t = setInterval(() => setAhora(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [paso]);
+
   // Canje self-serve: deja registro interno para empatar contra el comandero.
   const canjear = async (tipo: "recompensa" | "bienvenida") => {
+    // La posición se toma del perfil ACTUAL: después del canje ya avanzó
+    // al siguiente escalón del ciclo. La inicial no tiene posición.
+    const posicionCanjeada = tipo === "bienvenida" ? null : perfil?.recompensa_posicion ?? null;
     setCanjeando(true);
     const fn = tipo === "bienvenida" ? "lealtad_canjear_bienvenida" : "lealtad_canjear_cliente";
     const { data, error } = await (supabase.rpc as any)(fn, {
@@ -169,14 +185,15 @@ export default function Visita() {
     if (error) {
       const msg = error.message || "";
       if (msg.includes("SIN_RECOMPENSAS")) toast.error("Aún no tienes recompensa disponible.");
-      else if (msg.includes("YA_CANJEADA")) toast.error("Tu regalo de bienvenida ya fue canjeado.");
+      else if (msg.includes("YA_CANJEADA")) toast.error("Tu Recompensa inicial ya fue canjeada.");
       else toast.error("No pudimos registrar el canje. Intenta de nuevo.");
       return;
     }
 
     const r = data as Perfil & { canje_titulo: string };
     setPerfil(r);
-    setCanje({ titulo: r.canje_titulo, hora: new Date() });
+    setCanje({ titulo: r.canje_titulo, hora: new Date(), posicion: posicionCanjeada, nombre: r.nombre });
+    setAhora(Date.now());
     setPaso("canjeado");
     window.scrollTo({ top: 0 });
   };
@@ -201,19 +218,69 @@ export default function Visita() {
   // PASO 4 — Canje registrado: pantalla para enseñar al mesero
   // ============================================================
   if (paso === "canjeado" && perfil && canje) {
+    const rec = recompensaDeCiclo(canje.posicion);
+    const transcurrido = Math.floor((ahora - canje.hora.getTime()) / 1000);
+    const restante = VIGENCIA_CANJE - transcurrido;
+    const vigente = restante > 0;
+    const mm = Math.floor(Math.max(0, restante) / 60);
+    const ss = String(Math.max(0, restante) % 60).padStart(2, "0");
+
     return (
       <div className="min-h-screen bg-gradient-to-b from-primary/10 via-background to-background">
         <div className="max-w-md mx-auto px-4 py-8">
-          <Header titulo="¡Canje registrado!" sub="Enséñale esta pantalla a tu mesero 🌊" />
-          <div className="rounded-2xl border-2 border-primary bg-primary/5 p-6 text-center shadow-sm">
-            <div className="mx-auto w-16 h-16 rounded-full bg-primary text-white flex items-center justify-center mb-4">
+          <Header
+            titulo={vigente ? "¡Canje registrado!" : "Canje vencido"}
+            sub={vigente ? "Enséñale esta pantalla a tu mesero 🌊" : "Vuelve a abrirlo frente a tu mesero"}
+          />
+          <div
+            className={`rounded-2xl border-2 p-6 text-center shadow-sm ${
+              vigente ? "border-primary bg-primary/5" : "border-muted bg-muted/40 opacity-70"
+            }`}
+          >
+            <div
+              className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+                vigente ? "bg-primary text-white" : "bg-muted-foreground/30 text-white"
+              }`}
+            >
               <Check className="h-9 w-9" />
             </div>
+
+            {/* Identificador y color: el mesero lo reconoce sin leer el detalle */}
+            <div
+              className={`inline-flex items-center gap-2 font-bold px-4 py-1.5 rounded-full border-2 mb-3 ${
+                rec ? `${rec.bg} ${rec.texto} ${rec.borde}` : "bg-card text-foreground border-border"
+              }`}
+            >
+              <Gift className="h-4 w-4" />
+              {rec ? rec.identificador : RECOMPENSA_INICIAL_ID}
+            </div>
+
             <p className="text-xl font-bold">{canje.titulo}</p>
-            <p className="text-sm text-muted-foreground mt-2">
+            <p className="text-sm font-medium mt-1">{canje.nombre}</p>
+            <p className="text-sm text-muted-foreground mt-1">
               {sucursalNombre ? <>{sucursalNombre} · </> : null}
               {canje.hora.toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
             </p>
+
+            {/* Reloj vivo: una captura de pantalla se queda congelada */}
+            {vigente ? (
+              <div className="mt-4 rounded-xl bg-background border-2 border-primary/30 p-3">
+                <p className="text-3xl font-bold tabular-nums text-primary">
+                  {mm}:{ss}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Mesero: los segundos tienen que ir corriendo. Una captura de pantalla no se mueve.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-4 rounded-xl bg-background border-2 border-destructive/40 p-3">
+                <p className="font-bold text-destructive">Ya no es válido</p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Este canje ya se entregó. Si algo falta, el mesero lo revisa en el sistema.
+                </p>
+              </div>
+            )}
+
             <p className="text-xs text-muted-foreground mt-3">
               Tu mesero registra la entrega en el sistema. ¡Disfrútalo!
             </p>
@@ -286,6 +353,16 @@ export default function Visita() {
           {/* Recompensa disponible: canje self-serve frente al mesero */}
           {perfil.recompensas_disponibles > 0 && perfil.recompensa_titulo && (
             <div className="rounded-2xl border-2 border-accent bg-accent/10 p-4 mt-4 text-center">
+              {(() => {
+                const rec = recompensaDeCiclo(perfil.recompensa_posicion);
+                return rec ? (
+                  <div
+                    className={`inline-flex items-center gap-2 font-bold px-3 py-1 rounded-full border-2 mb-2 text-sm ${rec.bg} ${rec.texto} ${rec.borde}`}
+                  >
+                    <Gift className="h-3.5 w-3.5" /> {rec.identificador}
+                  </div>
+                ) : null;
+              })()}
               <p className="font-semibold text-accent">🎁 Te toca: {perfil.recompensa_titulo}</p>
               <p className="text-sm text-muted-foreground mt-1">Elige con tu mesero.</p>
               {confirmando === "recompensa" ? (
@@ -306,10 +383,10 @@ export default function Visita() {
             </div>
           )}
 
-          {/* Regalo de bienvenida (una sola vez) */}
+          {/* Recompensa inicial (una sola vez) */}
           {perfil.bienvenida_disponible && (
             <div className="rounded-2xl border-2 border-primary/40 bg-primary/5 p-4 mt-4 text-center">
-              <p className="font-semibold text-primary">🥂 Tienes pendiente tu regalo de bienvenida</p>
+              <p className="font-semibold text-primary">🥂 Tienes pendiente tu Recompensa inicial</p>
               <p className="text-sm text-primary/90 mt-0.5">
                 Un balazo de tu elección + cerveza o refresco
               </p>
@@ -328,7 +405,7 @@ export default function Visita() {
                 </div>
               ) : (
                 <Button variant="outline" className="mt-3 font-semibold" onClick={() => setConfirmando("bienvenida")}>
-                  Canjear mi bienvenida
+                  Canjear mi Recompensa inicial
                 </Button>
               )}
             </div>
