@@ -14,9 +14,10 @@ import logoLaOla from "@/assets/logo-la-ola.jpeg";
 // URL del aviso de privacidad (ajústala a la real cuando exista)
 const AVISO_PRIVACIDAD = "/privacidad";
 
-// La pantalla del canje vale 3 minutos. No es para apurar al cliente: es
-// para que una captura de pantalla no sirva mañana en otra sucursal.
-const VIGENCIA_CANJE = 180;
+// La pantalla del canje vale 20 minutos: con el negocio lleno, el mesero
+// puede tardar en llegar a la mesa. No es para apurar al cliente, es para
+// que una captura de pantalla no sirva mañana en otra sucursal.
+const VIGENCIA_CANJE = 20 * 60;
 
 type Perfil = {
   status: string;
