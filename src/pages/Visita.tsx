@@ -146,6 +146,10 @@ export default function Visita() {
       toast.error("Ese folio ya se registró. Cada ticket cuenta una sola vez.");
       return;
     }
+    if (r.status === "folio_invalido") {
+      toast.error("Ese folio no parece de un ticket. Revísalo en tu cuenta.");
+      return;
+    }
     setPerfil(r);
     setPaso("progreso");
     window.scrollTo({ top: 0 });

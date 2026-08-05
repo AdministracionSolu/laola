@@ -236,9 +236,15 @@ export default function AdminLealtad() {
       });
 
     // 3) Folios que otros teléfonos intentaron reutilizar (cuentas compartidas)
-    const folioConflicto = intentos.filter((i) => i.motivo === "folio_usado");
+    //    y tickets que alguien quiso volver a cobrar en otro día.
+    const folioConflicto = intentos.filter(
+      (i) => i.motivo === "folio_usado" || i.motivo === "folio_repetido"
+    );
 
-    return { topeRepetido, multiSucursal, folioConflicto };
+    // 4) Folios inventados: no tienen forma de ticket. Señal fuerte.
+    const folioInventado = intentos.filter((i) => i.motivo === "folio_invalido");
+
+    return { topeRepetido, multiSucursal, folioConflicto, folioInventado };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [intentos, visitas30, sucursales]);
 
@@ -608,7 +614,7 @@ export default function AdminLealtad() {
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2"><Search className="w-4 h-4" /> Anomalías</CardTitle>
             <p className="text-xs text-muted-foreground">
-              Señales de abuso: números rotando folios, cuentas compartidas entre sucursales y folios reutilizados. Últimos 30 días.
+              Señales de abuso: números rotando folios, cuentas compartidas entre sucursales, tickets reutilizados y folios inventados. Últimos 30 días.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -641,6 +647,26 @@ export default function AdminLealtad() {
                       <p key={`${m.clienteId}-${m.fecha}`} className="text-sm">
                         <span className="font-medium">{cli?.nombre ?? "—"}</span>
                         <span className="text-muted-foreground"> · {cli?.telefono ?? ""} · {m.fecha} · {m.sucursales}</span>
+                      </p>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-semibold mb-1">Folios inventados (no tienen forma de ticket)</p>
+              {anomalias.folioInventado.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Sin casos.</p>
+              ) : (
+                <div className="space-y-1">
+                  {anomalias.folioInventado.map((i) => {
+                    const cli = clientes.find((c) => c.telefono === i.telefono);
+                    return (
+                      <p key={i.id} className="text-sm">
+                        <span className="font-medium">{cli?.nombre ?? i.telefono}</span>
+                        <span className="text-muted-foreground">
+                          {" "}· {i.telefono} · escribió "{i.folio_norm}" · {i.fecha_negocio}
+                        </span>
                       </p>
                     );
                   })}
