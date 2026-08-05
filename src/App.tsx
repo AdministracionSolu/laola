@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Menu from "./pages/Menu";
 import Sucursales from "./pages/Sucursales";
 import Contacto from "./pages/Contacto";
+import Privacidad from "./pages/Privacidad";
 import CentroOperaciones from "./pages/CentroOperaciones";
 import Corte from "./pages/Corte";
 import Reservaciones from "./pages/Reservaciones";
@@ -55,6 +56,7 @@ const App = () => (
           <Route path="/menu/s/:codigo" element={<MenuSucursal />} />
           <Route path="/sucursales" element={<Sucursales />} />
           <Route path="/contacto" element={<Contacto />} />
+          <Route path="/privacidad" element={<Privacidad />} />
           {/* Pedidos en línea (cliente final, público) */}
           <Route path="/ordenar" element={<Ordenar />} />
           <Route path="/ordenar/:slugSucursal" element={<Ordenar />} />
