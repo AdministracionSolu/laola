@@ -40,6 +40,7 @@ import MenuSucursal from "./pages/MenuSucursal";
 import AdminMenus from "./pages/admin/Menus";
 import AdminHorarios from "./pages/admin/Horarios";
 import Checador from "./pages/Checador";
+import Implementacion from "./pages/Implementacion";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -73,6 +74,8 @@ const App = () => (
           <Route path="/centro-de-operaciones/reservaciones" element={<Reservaciones />} />
           <Route path="/centro-de-operaciones/contadoras" element={<Contadoras />} />
           <Route path="/centro-de-operaciones/checador" element={<Checador />} />
+          {/* Panel de implementación (Alicia): cumplimiento de la operación, con PIN propio */}
+          <Route path="/implementacion" element={<Implementacion />} />
           {/* Liga/QR por sucursal: fija la sucursal (bloqueada) y entra al destino */}
           <Route path="/compras" element={<Compras />} />
           <Route path="/pedidos/s/:sucursalId" element={<EntrarSucursal destino="/pedidos/hacer" />} />
