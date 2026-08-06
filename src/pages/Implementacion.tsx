@@ -117,16 +117,21 @@ export default function Implementacion() {
 
   const validar = async (valor: string) => {
     setValidando(true);
-    const { data: ok } = await rpc("impl_validar_pin", { p_pin: valor });
+    const { data: ok, error } = await rpc("impl_validar_pin", { p_pin: valor });
     setValidando(false);
     if (ok === true) {
       sessionStorage.setItem(SS_PIN, valor);
       setPin(valor);
       setAutorizado(true);
-    } else {
-      toast.error("Código incorrecto");
-      setIntento("");
+      return;
     }
+    // Sin la migración corrida, la función ni existe: decirle "código
+    // incorrecto" a quien teclea bien el PIN manda a buscar el problema al
+    // lugar equivocado.
+    toast.error(
+      error ? "El panel todavía no está instalado en la base de datos" : "Código incorrecto"
+    );
+    setIntento("");
   };
 
   const moverSemana = (dias: number) => {
