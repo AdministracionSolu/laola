@@ -134,6 +134,10 @@ export default function AdminDashboard() {
               <CalendarClock className="w-4 h-4" />
               <span className="hidden sm:inline">Horarios</span>
             </Button>
+            <Button variant="outline" onClick={() => navigate("/implementacion")} className="gap-2">
+              <ClipboardCheck className="w-4 h-4" />
+              <span className="hidden sm:inline">Implementación</span>
+            </Button>
             <HerramientasDialog />
             <Button variant="outline" size="icon" onClick={handleRefresh}>
               <RefreshCw className="w-4 h-4" />

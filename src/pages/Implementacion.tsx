@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import {
+  ArrowLeft,
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
@@ -44,6 +46,7 @@ function sumarDias(iso: string, dias: number): string {
 }
 
 export default function Implementacion() {
+  const navigate = useNavigate();
   const [pin, setPin] = useState<string>(() => sessionStorage.getItem(SS_PIN) || "");
   const [autorizado, setAutorizado] = useState<boolean>(() => !!sessionStorage.getItem(SS_PIN));
   const [intento, setIntento] = useState("");
@@ -53,9 +56,10 @@ export default function Implementacion() {
   const [data, setData] = useState<PanelData | null>(null);
   const [cargando, setCargando] = useState(false);
   const [sucursalId, setSucursalId] = useState<string>("");
+  const [hayAdmin, setHayAdmin] = useState(false);
 
   const cargar = useCallback(
-    async (r: { desde: string; hasta: string } | null, elPin: string) => {
+    async (r: { desde: string; hasta: string } | null, elPin: string, silencioso = false) => {
       setCargando(true);
       const { data: res, error } = await rpc("panel_implementacion", {
         p_pin: elPin,
@@ -64,15 +68,17 @@ export default function Implementacion() {
       });
       setCargando(false);
       if (error) {
-        toast.error("No se pudo cargar el panel");
-        return;
+        if (!silencioso) toast.error("No se pudo cargar el panel");
+        return false;
       }
       const payload = res as PanelData | { ok: false; error: string } | null;
       if (!payload || payload.ok !== true) {
-        sessionStorage.removeItem(SS_PIN);
-        setAutorizado(false);
-        toast.error("Tu acceso ya no es válido");
-        return;
+        if (!silencioso) {
+          sessionStorage.removeItem(SS_PIN);
+          setAutorizado(false);
+          toast.error("Tu acceso ya no es válido");
+        }
+        return false;
       }
       setData(payload);
       setRango({ desde: payload.desde, hasta: payload.hasta });
@@ -81,12 +87,31 @@ export default function Implementacion() {
         const valle = payload.sucursales.find((s) => s.es_valle);
         return valle?.id ?? payload.sucursales[0]?.id ?? "";
       });
+      return true;
     },
     []
   );
 
   useEffect(() => {
-    if (autorizado && pin) cargar(null, pin);
+    supabase.auth.getSession().then(({ data: { session } }) => setHayAdmin(!!session));
+  }, []);
+
+  useEffect(() => {
+    if (autorizado && pin) {
+      cargar(null, pin);
+      return;
+    }
+    if (autorizado) return;
+    // Quien llega desde el dashboard ya trae sesión de admin: el RPC lo deja
+    // pasar sin PIN. Si no lo deja, cae al teclado de siempre sin avisar nada.
+    (async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return;
+      setHayAdmin(true);
+      if (await cargar(null, "", true)) setAutorizado(true);
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autorizado]);
 
@@ -245,6 +270,12 @@ export default function Implementacion() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {hayAdmin && (
+              <Button variant="ghost" size="sm" onClick={() => navigate("/admin/dashboard")} className="gap-1">
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Dashboard</span>
+              </Button>
+            )}
             <Button variant="outline" size="icon" onClick={() => moverSemana(-7)} title="Semana anterior">
               <ChevronLeft className="h-4 w-4" />
             </Button>
