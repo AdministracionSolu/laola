@@ -27,6 +27,7 @@ import { PanelOperacion } from "@/components/implementacion/PanelOperacion";
 import { PanelFacturas } from "@/components/implementacion/PanelFacturas";
 import { PanelResponsables } from "@/components/implementacion/PanelResponsables";
 import { PanelPendientes } from "@/components/implementacion/PanelPendientes";
+import { PanelLealtad } from "@/components/implementacion/PanelLealtad";
 import { PanelData, etiquetaFechaLarga, pct } from "@/components/implementacion/tipos";
 
 const rpc = (fn: string, args: Record<string, unknown>) =>
@@ -57,6 +58,9 @@ export default function Implementacion() {
   const [cargando, setCargando] = useState(false);
   const [sucursalId, setSucursalId] = useState<string>("");
   const [hayAdmin, setHayAdmin] = useState(false);
+  // Sube en cada recarga: es lo que hace que la pestaña de Lealtad, que
+  // trae sus datos por su cuenta, también obedezca al botón de refrescar.
+  const [tick, setTick] = useState(0);
 
   const cargar = useCallback(
     async (r: { desde: string; hasta: string } | null, elPin: string, silencioso = false) => {
@@ -81,6 +85,7 @@ export default function Implementacion() {
         return false;
       }
       setData(payload);
+      setTick((t) => t + 1);
       setRango({ desde: payload.desde, hasta: payload.hasta });
       setSucursalId((actual) => {
         if (actual && payload.sucursales.some((s) => s.id === actual)) return actual;
@@ -337,6 +342,7 @@ export default function Implementacion() {
               <TabsTrigger value="proveedores">Proveedores</TabsTrigger>
               <TabsTrigger value="sucursal">Sucursal</TabsTrigger>
               <TabsTrigger value="facturas">Facturas</TabsTrigger>
+              <TabsTrigger value="lealtad">Lealtad</TabsTrigger>
               <TabsTrigger value="equipo">Equipo</TabsTrigger>
               <TabsTrigger value="pendientes">
                 Pendientes
@@ -372,6 +378,9 @@ export default function Implementacion() {
           </TabsContent>
           <TabsContent value="facturas" className="mt-4">
             <PanelFacturas data={data} sucursalId={sucursalId} />
+          </TabsContent>
+          <TabsContent value="lealtad" className="mt-4">
+            <PanelLealtad key={tick} pin={pin} desde={data.desde} hasta={data.hasta} />
           </TabsContent>
           <TabsContent value="equipo" className="mt-4">
             <PanelResponsables data={data} guardar={guardarCon("impl_responsable_guardar")} />

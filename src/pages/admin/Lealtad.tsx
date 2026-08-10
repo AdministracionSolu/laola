@@ -7,8 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { recompensaDeCiclo, RECOMPENSA_INICIAL_ID } from "@/lib/lealtad";
-import { ArrowLeft, LogOut, RefreshCw, Search, Users, UserPlus, Cake, Store, Download, Trophy, Gift, Ticket, Plus, Trash2, Save, Clock } from "lucide-react";
+import {
+  recompensaDeCiclo,
+  nivelDePosicion,
+  textoSobre,
+  CICLO_RECOMPENSAS,
+  RECOMPENSA_INICIAL_ID,
+} from "@/lib/lealtad";
+import { ArrowLeft, LogOut, RefreshCw, Search, Users, UserPlus, Cake, Store, Download, Trophy, Gift, Ticket, Save, Clock } from "lucide-react";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 
 type Cliente = {
@@ -27,9 +33,11 @@ type Cliente = {
   created_at: string;
   visitas_total: number;
   recompensas_usadas: number;
+  bienvenida_canjeada_at: string | null;
 };
 type Sucursal = { id: string; nombre: string; prefijo_folio: string | null };
-type Nivel = { id: string; nombre: string; min_visitas: number; beneficio: string | null; color: string; orden: number; activo: boolean };
+/** posicion: 0 = Recompensa inicial, 1..4 = paradas del ciclo. */
+type Nivel = { id: string; nombre: string; posicion: number | null; min_visitas: number; beneficio: string | null; color: string; orden: number; activo: boolean };
 type Config = { id: number; meta_visitas: number; tope_visitas_dia: number; recompensa_texto: string };
 type Visita = { id: string; cliente_id: string; sucursal_id: string | null; fecha_negocio: string; origen: string; folio: string | null; created_at: string };
 type Recompensa = { posicion: number; titulo: string; activo: boolean };
@@ -76,7 +84,7 @@ export default function AdminLealtad() {
     const [cli, suc, niv, cfg, vis, rec, int, v30] = await Promise.all([
       db.from("lealtad_clientes").select("*").order("visitas_total", { ascending: false }),
       db.from("sucursales").select("id,nombre,prefijo_folio").order("nombre"),
-      db.from("lealtad_niveles").select("*").order("min_visitas"),
+      db.from("lealtad_niveles").select("*").order("posicion"),
       db.from("lealtad_config").select("*").eq("id", 1).maybeSingle(),
       db.from("lealtad_visitas").select("*").order("created_at", { ascending: false }).limit(60),
       db.from("lealtad_recompensas").select("*").order("posicion"),
@@ -125,12 +133,20 @@ export default function AdminLealtad() {
     c.sucursal_captacion_codigo ?? "Sin sucursal";
   const nombreSucId = (id: string | null) => sucursales.find((s) => s.id === id)?.nombre ?? "—";
 
-  // Nivel de un cliente según sus visitas acumuladas.
-  const nivelDe = (total: number): Nivel | null => {
-    const alcanzados = niveles.filter((n) => n.activo && n.min_visitas <= total);
-    return alcanzados.length ? alcanzados[alcanzados.length - 1] : null;
-  };
   const meta = Math.max(1, config?.meta_visitas ?? 3);
+  const nRecs = Math.max(1, recompensas.filter((r) => r.activo).length || CICLO_RECOMPENSAS.length);
+
+  /**
+   * Nivel de un cliente = la parada del ciclo hacia la que va, no su
+   * acumulado de por vida (misma regla que lealtad_perfil_json). Quien no
+   * ha canjeado su Recompensa inicial se queda en la parada 0.
+   */
+  const nivelDe = (c: Cliente) => {
+    const pos = c.bienvenida_canjeada_at ? ((canAnio.get(c.id) ?? 0) % nRecs) + 1 : 0;
+    const fila = niveles.find((n) => n.posicion === pos);
+    const chip = nivelDePosicion(pos);
+    return { pos, nombre: fila?.nombre ?? chip.identificador, color: fila?.color ?? chip.hex };
+  };
   // v4: recompensas disponibles = ciclo del AÑO natural (visitas y canjes del año)
   const recompDisp = (c: Cliente) =>
     Math.max(0, Math.floor((visAnio.get(c.id) ?? 0) / meta) - (canAnio.get(c.id) ?? 0));
@@ -163,19 +179,14 @@ export default function AdminLealtad() {
     toast.success("Configuración guardada.");
   };
 
+  // Las paradas no se agregan ni se borran desde aquí: son las mismas del
+  // ciclo de recompensas. Aquí solo se corrige cómo se llaman y de qué color.
   const guardarNivel = async (n: Nivel) => {
-    const payload = { nombre: n.nombre, min_visitas: n.min_visitas, beneficio: n.beneficio, color: n.color, orden: n.orden, activo: n.activo };
-    const res = n.id.startsWith("nuevo-")
-      ? await db.from("lealtad_niveles").insert(payload)
-      : await db.from("lealtad_niveles").update(payload).eq("id", n.id);
-    if (res.error) return toast.error("No se pudo guardar el nivel.");
+    const { error } = await db.from("lealtad_niveles")
+      .update({ nombre: n.nombre, color: n.color })
+      .eq("id", n.id);
+    if (error) return toast.error("No se pudo guardar el nivel.");
     toast.success("Nivel guardado.");
-    cargar();
-  };
-  const borrarNivel = async (id: string) => {
-    if (id.startsWith("nuevo-")) { setNiveles((p) => p.filter((n) => n.id !== id)); return; }
-    const { error } = await db.from("lealtad_niveles").delete().eq("id", id);
-    if (error) return toast.error("No se pudo borrar.");
     cargar();
   };
 
@@ -464,14 +475,21 @@ export default function AdminLealtad() {
                   <div className="pt-2 border-t">
                     <p className="text-xs font-semibold text-muted-foreground mb-2">Ciclo de recompensas (en loop, la elección se hace en el comandero)</p>
                     <div className="space-y-2">
-                      {recompensas.map((r) => (
+                      {recompensas.map((r) => {
+                        const rec = recompensaDeCiclo(r.posicion);
+                        return (
                         <div key={r.posicion} className="flex items-center gap-2">
-                          <span className="w-6 h-6 shrink-0 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">{r.posicion}</span>
+                          <span className={`shrink-0 px-2 py-0.5 rounded-full border-2 text-[11px] font-bold whitespace-nowrap ${
+                            rec ? `${rec.bg} ${rec.texto} ${rec.borde}` : "bg-card text-foreground border-border"
+                          }`}>
+                            {rec ? rec.identificador : `#${r.posicion}`}
+                          </span>
                           <Input className="h-9" value={r.titulo}
                             onChange={(e) => setRecompensas((p) => p.map((x) => x.posicion === r.posicion ? { ...x, titulo: e.target.value } : x))} />
                           <Button size="icon" variant="ghost" onClick={() => guardarRecompensa(r)}><Save className="w-4 h-4" /></Button>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -483,31 +501,43 @@ export default function AdminLealtad() {
           </Card>
 
           <Card>
-            <CardHeader className="pb-3"><CardTitle className="text-lg flex items-center gap-2"><Trophy className="w-4 h-4" /> Niveles</CardTitle></CardHeader>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2"><Trophy className="w-4 h-4" /> Niveles</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Los niveles SON las paradas del ciclo: el color es el que se
+                imprime y el que el mesero reconoce. El beneficio se edita
+                arriba, en el ciclo de recompensas, para que no haya dos
+                textos que se contradigan.
+              </p>
+            </CardHeader>
             <CardContent className="space-y-2">
-              {niveles.map((n, i) => (
-                <div key={n.id} className="flex flex-wrap items-end gap-2 border-b pb-2">
-                  <div className="w-24">
-                    <label className="text-[10px] text-muted-foreground">Nombre</label>
-                    <Input className="h-9" value={n.nombre} onChange={(e) => setNiveles((p) => p.map((x, j) => j === i ? { ...x, nombre: e.target.value } : x))} />
+              {niveles.map((n, i) => {
+                const rec = recompensas.find((r) => r.posicion === n.posicion);
+                return (
+                  <div key={n.id} className="flex flex-wrap items-end gap-2 border-b pb-2">
+                    <div className="w-28">
+                      <label className="text-[10px] text-muted-foreground">
+                        {n.posicion === 0 ? "Al inscribirse" : `Visita ${n.min_visitas} del ciclo`}
+                      </label>
+                      <Input className="h-9" value={n.nombre} onChange={(e) => setNiveles((p) => p.map((x, j) => j === i ? { ...x, nombre: e.target.value } : x))} />
+                    </div>
+                    <div className="flex-1 min-w-[160px]">
+                      <label className="text-[10px] text-muted-foreground">Beneficio</label>
+                      <p className="h-9 flex items-center text-sm text-muted-foreground truncate">
+                        {n.beneficio ?? rec?.titulo ?? "—"}
+                      </p>
+                    </div>
+                    <input type="color" value={n.color} className="h-9 w-9 rounded border" title="Color del nivel"
+                      onChange={(e) => setNiveles((p) => p.map((x, j) => j === i ? { ...x, color: e.target.value } : x))} />
+                    <Button size="icon" variant="ghost" onClick={() => guardarNivel(n)}><Save className="w-4 h-4" /></Button>
                   </div>
-                  <div className="w-20">
-                    <label className="text-[10px] text-muted-foreground">Desde (visitas)</label>
-                    <Input className="h-9" type="number" min={0} value={n.min_visitas} onChange={(e) => setNiveles((p) => p.map((x, j) => j === i ? { ...x, min_visitas: Number(e.target.value) || 0 } : x))} />
-                  </div>
-                  <div className="flex-1 min-w-[120px]">
-                    <label className="text-[10px] text-muted-foreground">Beneficio</label>
-                    <Input className="h-9" value={n.beneficio ?? ""} onChange={(e) => setNiveles((p) => p.map((x, j) => j === i ? { ...x, beneficio: e.target.value } : x))} />
-                  </div>
-                  <input type="color" value={n.color} className="h-9 w-9 rounded border" onChange={(e) => setNiveles((p) => p.map((x, j) => j === i ? { ...x, color: e.target.value } : x))} />
-                  <Button size="icon" variant="ghost" onClick={() => guardarNivel(n)}><Save className="w-4 h-4" /></Button>
-                  <Button size="icon" variant="ghost" onClick={() => borrarNivel(n.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
-                </div>
-              ))}
-              <Button variant="outline" size="sm" className="gap-1"
-                onClick={() => setNiveles((p) => [...p, { id: `nuevo-${p.length}`, nombre: "Nuevo nivel", min_visitas: 0, beneficio: "", color: "#0ea5e9", orden: p.length + 1, activo: true }])}>
-                <Plus className="w-4 h-4" /> Agregar nivel
-              </Button>
+                );
+              })}
+              <p className="text-xs text-muted-foreground pt-1">
+                Al llegar a <b>{niveles[niveles.length - 1]?.nombre ?? "Visita 12"}</b> el
+                ciclo vuelve a arrancar en <b>{niveles[1]?.nombre ?? "Visita 3"}</b>. La
+                Recompensa inicial es una sola vez de por vida y no vuelve.
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -560,9 +590,17 @@ export default function AdminLealtad() {
                       <td className="px-4 py-3 tabular-nums">{c.telefono}</td>
                       <td className="px-4 py-3 tabular-nums font-semibold">{c.visitas_total ?? 0}</td>
                       <td className="px-4 py-3">
-                        {(() => { const n = nivelDe(c.visitas_total ?? 0); return n
-                          ? <Badge style={{ backgroundColor: n.color }} className="text-white">{n.nombre}</Badge>
-                          : <span className="text-muted-foreground">—</span>; })()}
+                        {(() => {
+                          const n = nivelDe(c);
+                          return (
+                            <Badge
+                              className="border"
+                              style={{ backgroundColor: n.color, color: textoSobre(n.color), borderColor: "rgba(0,0,0,.15)" }}
+                            >
+                              {n.nombre}
+                            </Badge>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-3">{nombreSucursal(c)}</td>
                       <td className="px-4 py-3">{c.cumpleanos ? c.cumpleanos.slice(5) : "—"}</td>

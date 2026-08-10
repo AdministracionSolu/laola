@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Gift, Waves, Trophy, Check, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { recompensaDeCiclo, RECOMPENSA_INICIAL_ID } from "@/lib/lealtad";
+import { recompensaDeCiclo, nivelDePosicion, textoSobre, RECOMPENSA_INICIAL_ID } from "@/lib/lealtad";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 
 // URL del aviso de privacidad (ajústala a la real cuando exista)
@@ -25,10 +25,9 @@ type Perfil = {
   primer_nombre?: string;
   visitas_total: number;
   nivel: string;
+  nivel_posicion?: number | null;
   nivel_beneficio: string | null;
   nivel_color: string;
-  siguiente_nivel: string | null;
-  faltan_siguiente_nivel: number | null;
   anio?: number;
   visitas_anio?: number;
   meta_visitas: number;
@@ -312,12 +311,30 @@ export default function Visita() {
         <div className="max-w-md mx-auto px-4 py-8">
           <Header titulo={`¡Hola, ${saludo}!`} sub={mensaje} />
 
-          {/* Nivel */}
+          {/* Nivel = la parada del ciclo hacia la que va, con su color */}
           <div className="rounded-2xl border bg-card p-5 shadow-sm text-center">
-            <div className="inline-flex items-center gap-2 font-semibold px-4 py-1.5 rounded-full text-white"
-                 style={{ backgroundColor: perfil.nivel_color }}>
-              <Trophy className="h-4 w-4" /> Nivel {perfil.nivel}
-            </div>
+            {(() => {
+              // Sin nivel_posicion (base todavía sin la migración v5) se
+              // pinta con el hex que mande la base, como siempre.
+              if (perfil.nivel_posicion == null) {
+                return (
+                  <div
+                    className="inline-flex items-center gap-2 font-semibold px-4 py-1.5 rounded-full border-2 border-black/10"
+                    style={{ backgroundColor: perfil.nivel_color, color: textoSobre(perfil.nivel_color) }}
+                  >
+                    <Trophy className="h-4 w-4" /> Nivel {perfil.nivel}
+                  </div>
+                );
+              }
+              const niv = nivelDePosicion(perfil.nivel_posicion);
+              return (
+                <div
+                  className={`inline-flex items-center gap-2 font-semibold px-4 py-1.5 rounded-full border-2 ${niv.bg} ${niv.texto} ${niv.borde}`}
+                >
+                  <Trophy className="h-4 w-4" /> Nivel {perfil.nivel}
+                </div>
+              );
+            })()}
             {perfil.nivel_beneficio && (
               <p className="text-sm text-muted-foreground mt-2">{perfil.nivel_beneficio}</p>
             )}
@@ -410,13 +427,6 @@ export default function Visita() {
                 </Button>
               )}
             </div>
-          )}
-
-          {/* Siguiente nivel */}
-          {perfil.siguiente_nivel && perfil.faltan_siguiente_nivel != null && (
-            <p className="text-center text-sm text-muted-foreground mt-4">
-              A {perfil.faltan_siguiente_nivel} {perfil.faltan_siguiente_nivel === 1 ? "visita" : "visitas"} de subir a <b>{perfil.siguiente_nivel}</b>.
-            </p>
           )}
 
           <div className="flex flex-col items-center gap-3 mt-6">
