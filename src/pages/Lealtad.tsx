@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Waves, Ticket, PartyPopper, Sparkles, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import ActivarWhatsApp from "@/components/ActivarWhatsApp";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 
 // URL del aviso de privacidad (ajústala a la real cuando exista)
@@ -151,6 +152,7 @@ export default function Lealtad() {
               <Ticket className="h-4 w-4 mr-2" />
               Registrar mi visita de hoy
             </Button>
+            <ActivarWhatsApp nombre={nombreOk} contexto="alta" />
             <div className="flex items-center justify-center gap-2 rounded-xl bg-primary/5 border border-primary/10 p-3 text-sm text-primary font-medium">
               <Ticket className="h-4 w-4" /> Tu visita se valida con el ticket de tu cuenta.
             </div>
@@ -185,6 +187,7 @@ export default function Lealtad() {
                 No incluye balazo de callo de hacha ni cerveza premium.
               </p>
             </div>
+            <ActivarWhatsApp nombre={nombreOk} contexto="alta" />
             <p className="text-muted-foreground">
               La próxima vez que nos visites, vuelve a escanear este QR y entra por{" "}
               <b>"Ya soy miembro"</b> para sumar tu visita. Cada 3 visitas ganas una recompensa 🦐

@@ -9,6 +9,7 @@ import { Loader2, Gift, Waves, Trophy, Check, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { recompensaDeCiclo, nivelDePosicion, textoSobre, RECOMPENSA_INICIAL_ID } from "@/lib/lealtad";
+import ActivarWhatsApp from "@/components/ActivarWhatsApp";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 
 // URL del aviso de privacidad (ajústala a la real cuando exista)
@@ -428,6 +429,10 @@ export default function Visita() {
               )}
             </div>
           )}
+
+          <div className="mt-6">
+            <ActivarWhatsApp nombre={saludo} contexto="visita" />
+          </div>
 
           <div className="flex flex-col items-center gap-3 mt-6">
             <Link to="/menu" className="text-primary font-semibold">Ver el menú</Link>
