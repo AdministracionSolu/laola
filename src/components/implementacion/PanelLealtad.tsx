@@ -429,9 +429,7 @@ export function PanelLealtad({
             <Users className="h-4 w-4" /> Padrón ({data.anio})
           </CardTitle>
           <p className="text-xs text-muted-foreground">
-            Los 150 miembros más activos del año. Los teléfonos van
-            enmascarados: este panel es para supervisar la operación, no para
-            contactar clientes.
+            Los 150 miembros más activos del año.
           </p>
         </CardHeader>
         <CardContent className="p-0">

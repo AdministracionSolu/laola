@@ -18,8 +18,7 @@
 -- Recompensa inicial se queda en ese nivel.
 --
 -- Bloque 3: panel_implementacion_lealtad() — el programa completo servido
--- al portal de Alicia (/implementacion) con su PIN, de solo lectura y con
--- los teléfonos enmascarados.
+-- al portal de Alicia (/implementacion) con su PIN, de solo lectura.
 --
 -- Idempotente.
 -- ============================================================
@@ -141,10 +140,12 @@ $$;
 -- BLOQUE 3 — El programa de lealtad completo, para el portal de Alicia
 --
 -- Mismo molde que panel_implementacion: un solo RPC SECURITY DEFINER,
--- PIN propio, nada de abrir RLS a anon. Es de SOLO LECTURA (canjear,
--- editar reglas y dar de baja siguen viviendo en /admin/lealtad) y los
--- teléfonos van enmascarados: Alicia supervisa la operación, no llama
--- a los clientes.
+-- PIN propio, nada de abrir RLS a anon. Es de SOLO LECTURA: canjear,
+-- editar reglas y dar de baja siguen viviendo en /admin/lealtad.
+--
+-- Los teléfonos van completos. Se enmascaraban por default; Diego lo quitó
+-- el 10-ago-2026 porque quien opera el panel necesita poder marcarle al
+-- cliente. El PIN es lo único que separa este padrón de la calle.
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.panel_implementacion_lealtad(
   p_pin   text,
@@ -209,11 +210,9 @@ BEGIN
   FROM (
     SELECT
       cl.nombre,
-      -- Enmascarado: alcanza para casar un caso contra /admin/lealtad,
-      -- no para marcarle a nadie desde un panel con PIN de 4 dígitos.
-      CASE WHEN char_length(cl.telefono) = 10
-           THEN substr(cl.telefono, 1, 3) || '•••••' || right(cl.telefono, 2)
-           ELSE '••••' END                                    AS telefono,
+      -- Teléfono completo por decisión de Diego (10-ago-2026): quien opera el
+      -- panel necesita poder llamarle al cliente, no solo casar un caso.
+      cl.telefono                                             AS telefono,
       COALESCE(s.nombre, cl.sucursal_captacion_codigo, 'Sin sucursal') AS sucursal,
       cl.activo,
       cl.visitas_total,
@@ -340,9 +339,7 @@ BEGIN
       ) ORDER BY t.creado DESC), '[]'::jsonb)
       FROM (
         SELECT cl.nombre AS cliente,
-               CASE WHEN char_length(cl.telefono) = 10
-                    THEN substr(cl.telefono, 1, 3) || '•••••' || right(cl.telefono, 2)
-                    ELSE '••••' END AS telefono,
+               cl.telefono AS telefono,
                COALESCE(s.nombre, 'Sin sucursal') AS sucursal,
                lv.folio,
                lv.fecha_negocio AS fecha,
@@ -365,7 +362,7 @@ BEGIN
         ) ORDER BY t.n DESC), '[]'::jsonb)
         FROM (
           SELECT COALESCE(cl.nombre, 'Sin registro') AS cliente,
-                 substr(li.telefono, 1, 3) || '•••••' || right(li.telefono, 2) AS telefono,
+                 li.telefono AS telefono,
                  count(*) AS n
           FROM lealtad_intentos li
           LEFT JOIN lealtad_clientes cl ON cl.telefono = li.telefono
@@ -397,7 +394,7 @@ BEGIN
           'sucursal', t.sucursal, 'fecha', t.fecha
         ) ORDER BY t.fecha DESC), '[]'::jsonb)
         FROM (
-          SELECT substr(li.telefono, 1, 3) || '•••••' || right(li.telefono, 2) AS telefono,
+          SELECT li.telefono AS telefono,
                  li.folio_norm AS folio, li.motivo,
                  COALESCE(s.nombre, 'Sin sucursal') AS sucursal,
                  li.fecha_negocio AS fecha
