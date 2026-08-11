@@ -27,6 +27,7 @@ import EntrarSucursal from "./pages/EntrarSucursal";
 import Compras from "./pages/Compras";
 import ProveedorPortal from "./pages/ProveedorPortal";
 import HorariosCaptura from "./pages/HorariosCaptura";
+import HorariosSubir from "./pages/HorariosSubir";
 import OperacionesLayout from "./components/operaciones/OperacionesLayout";
 import Ordenar from "./pages/Ordenar";
 import SeguimientoPedido from "./pages/SeguimientoPedido";
@@ -74,6 +75,8 @@ const App = () => (
           <Route path="/centro-de-operaciones/reservaciones" element={<Reservaciones />} />
           <Route path="/centro-de-operaciones/contadoras" element={<Contadoras />} />
           <Route path="/centro-de-operaciones/checador" element={<Checador />} />
+          {/* Cada área sube el horario de su semana (PIN de sucursal, sin login) */}
+          <Route path="/centro-de-operaciones/horarios" element={<HorariosSubir />} />
           {/* Panel de implementación (Alicia): cumplimiento de la operación, con PIN propio */}
           <Route path="/implementacion" element={<Implementacion />} />
           {/* Liga/QR por sucursal: fija la sucursal (bloqueada) y entra al destino */}

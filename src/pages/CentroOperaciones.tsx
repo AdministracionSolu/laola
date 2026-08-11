@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calculator, CalendarDays, Package, ClipboardCheck, Clock } from "lucide-react";
+import { Calculator, CalendarDays, Package, ClipboardCheck, Clock, CalendarClock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 
@@ -61,6 +61,12 @@ const SECCIONES: { area: string; modulos: Modulo[] }[] = [
         icono: <Clock className="w-6 h-6 text-primary" />,
         titulo: "Checador",
         descripcion: "Marcar entrada y salida del personal",
+      },
+      {
+        ruta: "/centro-de-operaciones/horarios",
+        icono: <CalendarClock className="w-6 h-6 text-primary" />,
+        titulo: "Horario de la semana",
+        descripcion: "Subir el horario de tu área",
       },
     ],
   },

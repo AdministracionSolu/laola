@@ -20,8 +20,10 @@ import {
 import { toast } from "sonner";
 import {
   ArrowLeft, LogOut, Plus, Trash2, Users, CalendarClock, ClipboardList, Clock, Pencil, Copy, Link2,
+  FileText,
 } from "lucide-react";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
+import HorariosSemana from "@/components/admin/HorariosSemana";
 
 const db = supabase as any;
 
@@ -137,12 +139,18 @@ export default function AdminHorarios() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-6">
-        <Tabs defaultValue="horarios">
+        <Tabs defaultValue="semana">
           <TabsList className="mb-4 flex-wrap h-auto">
-            <TabsTrigger value="horarios"><CalendarClock className="w-4 h-4 mr-1" /> Horarios</TabsTrigger>
+            <TabsTrigger value="semana"><FileText className="w-4 h-4 mr-1" /> Semana</TabsTrigger>
+            <TabsTrigger value="horarios"><CalendarClock className="w-4 h-4 mr-1" /> Turnos</TabsTrigger>
             <TabsTrigger value="personal"><Users className="w-4 h-4 mr-1" /> Personal</TabsTrigger>
             <TabsTrigger value="asistencias"><ClipboardList className="w-4 h-4 mr-1" /> Asistencias</TabsTrigger>
           </TabsList>
+
+          {/* Lo que cada área entregó esta semana, como archivo */}
+          <TabsContent value="semana">
+            <HorariosSemana sucursales={sucursales} empleados={empleados} />
+          </TabsContent>
 
           {/* Selector de sucursal compartido (excepto Personal) */}
           <TabsContent value="horarios">
