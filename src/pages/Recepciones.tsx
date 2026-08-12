@@ -3,6 +3,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Check, Loader2, MapPin, WifiOff, PackageCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -14,6 +21,11 @@ import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { getFechaCalendario } from "@/lib/fecha";
 import { CantidadStepper } from "@/components/operaciones/CantidadStepper";
 import { infoProteina } from "@/lib/proteinas";
+
+interface ProveedorOpcion {
+  id: string;
+  nombre: string;
+}
 
 interface Categoria {
   id: string;
@@ -40,6 +52,11 @@ export default function Recepciones() {
   const [guardando, setGuardando] = useState(false);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [pedidoId, setPedidoId] = useState<string | null>(null);
+  // El proveedor se ELIGE del catálogo: teclearlo libre es lo que hacía que
+  // "Miguel duran" (que es Marinay) y "Chepe" (que es La Sierra) se contaran
+  // como proveedores distintos. Queda "Otro" para lo que no esté dado de alta.
+  const [proveedores, setProveedores] = useState<ProveedorOpcion[]>([]);
+  const [proveedorId, setProveedorId] = useState<string>("");
   const [proveedor, setProveedor] = useState("");
   const [renglones, setRenglones] = useState<Renglon[]>([]);
   // Lo que se está capturando AHORA (vacío por defecto).
@@ -97,7 +114,7 @@ export default function Recepciones() {
 
     (async () => {
       setLoading(true);
-      const [catRes, itemsRes, pedidoRes] = await Promise.all([
+      const [catRes, itemsRes, pedidoRes, provRes] = await Promise.all([
         supabase.from("categorias_insumos").select("*").order("orden"),
         supabase
           .from("insumo_sucursal")
@@ -114,10 +131,16 @@ export default function Recepciones() {
           .order("enviado_at", { ascending: false, nullsFirst: false })
           .limit(1)
           .maybeSingle(),
+        supabase
+          .from("proveedores")
+          .select("id, nombre")
+          .eq("activo", true)
+          .order("nombre"),
       ]);
 
       if (cancelado) return;
       if (catRes.data) setCategorias(catRes.data);
+      if (provRes.data) setProveedores(provRes.data as ProveedorOpcion[]);
 
       const pedido = pedidoRes.data;
       if (!pedido) {
@@ -230,6 +253,9 @@ export default function Recepciones() {
         .insert({
           sucursal_id: sucursalId,
           proveedor: proveedor.trim(),
+          // El id es lo que sirve para cruzar contra precios; el texto queda
+          // como respaldo de lo que se escribió.
+          proveedor_id: proveedorId || null,
           fecha: getFechaCalendario(),
           registrado_por: registradoPor.trim(),
         })
@@ -252,6 +278,7 @@ export default function Recepciones() {
       await supabase.from("pedidos").update({ estado: "recibido_parcial" }).eq("id", pedidoId);
 
       toast.success(`Registrado lo que llegó (${capturados.length}) ✓`);
+      setProveedorId("");
       // Limpia para la siguiente entrega (otro proveedor / otro momento).
       setRecibido({});
       setProveedor("");
@@ -324,12 +351,38 @@ export default function Recepciones() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-sm">Proveedor *</Label>
-                  <Input
-                    placeholder="Nombre del proveedor que entregó"
-                    value={proveedor}
-                    onChange={(e) => setProveedor(e.target.value)}
-                    className="h-11"
-                  />
+                  <Select
+                    value={proveedorId || (proveedor ? "otro" : "")}
+                    onValueChange={(v) => {
+                      if (v === "otro") {
+                        setProveedorId("");
+                        setProveedor("");
+                      } else {
+                        setProveedorId(v);
+                        setProveedor(proveedores.find((p) => p.id === v)?.nombre ?? "");
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="Elige quién entregó" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {proveedores.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.nombre}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="otro">Otro (escribir)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {!proveedorId && (
+                    <Input
+                      placeholder="¿Quién entregó? Se avisa a central para darlo de alta"
+                      value={proveedor}
+                      onChange={(e) => setProveedor(e.target.value)}
+                      className="h-11"
+                    />
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -1594,6 +1594,7 @@ export type Database = {
           id: string
           notas: string | null
           proveedor: string
+          proveedor_id: string | null
           registrado_por: string | null
           sucursal_id: string
         }
@@ -1612,6 +1613,7 @@ export type Database = {
           id?: string
           notas?: string | null
           proveedor?: string
+          proveedor_id?: string | null
           registrado_por?: string | null
           sucursal_id?: string
         }
