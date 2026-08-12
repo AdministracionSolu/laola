@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Grid3x3, Loader2, ShoppingCart, Store } from "lucide-react";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
-import { getFechaNegocio } from "@/lib/fecha";
+import { getFechaCalendario } from "@/lib/fecha";
 import { esSucursalReferencia, useAnaliticaPedidos } from "@/hooks/useAnaliticaPedidos";
 import { PedidoDelDiaPanel } from "@/components/admin/pedidos/PedidoDelDiaPanel";
 import { DondeComprarPanel } from "@/components/admin/pedidos/DondeComprarPanel";
@@ -19,7 +19,10 @@ import { ProveedoresPanel } from "@/components/admin/pedidos/ProveedoresPanel";
 // la analítica histórica completa vive aparte en /admin/pedidos.
 export default function AdminPedidoDia() {
   const navigate = useNavigate();
-  const [dia, setDia] = useState(getFechaNegocio());
+  // El panel es de REVISIÓN: abre en el día de hoy. Antes usaba la fecha de
+  // negocio, que a partir de la 1pm salta al día siguiente y hacía ver el
+  // tablero vacío cuando en realidad ya habían capturado.
+  const [dia, setDia] = useState(getFechaCalendario());
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {

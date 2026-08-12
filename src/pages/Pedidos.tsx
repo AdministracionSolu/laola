@@ -45,12 +45,18 @@ interface ItemSucursal {
   unidad: string;
   costo: number | null;
   orden: number;
+  // Este insumo se cuenta en dos partes: lo que ya está procesado y lo crudo.
+  // Solo cambia cómo se captura la EXISTENCIA; el pedido sigue siendo uno.
+  desglosa: boolean;
 }
 
 interface Detalle {
   existencia: number;
   cantidad_pedida: number;
   cantidad_sugerida: number | null;
+  // Desglose de la existencia. null en los insumos que no se desglosan.
+  procesado: number | null;
+  noProcesado: number | null;
   // El encargado capturó la existencia (la tarjeta queda "lista").
   capturado: boolean;
 }
@@ -59,7 +65,13 @@ type ItemRow = {
   orden: number;
   costo: number | null;
   unidad: string | null;
-  insumos: { id: string; nombre: string; categoria_id: string; unidad: string | null };
+  insumos: {
+    id: string;
+    nombre: string;
+    categoria_id: string;
+    unidad: string | null;
+    desglosa_procesado?: boolean | null;
+  };
 };
 
 type DetRow = {
@@ -67,14 +79,23 @@ type DetRow = {
   existencia: number | null;
   cantidad_pedida: number;
   cantidad_sugerida: number | null;
+  existencia_procesado?: number | null;
+  existencia_no_procesado?: number | null;
 };
 
 const detalleVacio = (): Detalle => ({
   existencia: 0,
   cantidad_pedida: 0,
   cantidad_sugerida: null,
+  procesado: null,
+  noProcesado: null,
   capturado: false,
 });
+
+// Suma del desglose, tratando el hueco como cero: si solo capturaron una de
+// las dos partes, la existencia es esa parte y no cero.
+const sumaDesglose = (a: number | null, b: number | null) =>
+  Math.round(((a ?? 0) + (b ?? 0)) * 100) / 100;
 
 export default function Pedidos() {
   const navigate = useNavigate();
@@ -116,7 +137,7 @@ export default function Pedidos() {
         supabase.from("categorias_insumos").select("*").order("orden"),
         supabase
           .from("insumo_sucursal")
-          .select("orden, costo, unidad, insumos!inner(id, nombre, categoria_id, unidad)")
+          .select("orden, costo, unidad, insumos!inner(id, nombre, categoria_id, unidad, desglosa_procesado)")
           .eq("sucursal_id", sucursalId)
           .eq("activo", true)
           .order("orden"),
@@ -150,6 +171,8 @@ export default function Pedidos() {
             unidad: p.unidad || r.unidad || r.insumos.unidad || "pz",
             costo: r.costo,
             orden: p.orden,
+            // La base manda; si la columna aún no existe, vale la lista oficial.
+            desglosa: r.insumos.desglosa_procesado ?? p.desglosa ?? false,
           } as ItemSucursal;
         })
         .filter((x): x is ItemSucursal => x !== null)
@@ -177,10 +200,20 @@ export default function Pedidos() {
           // El campo "Pedido" de cocina = la solicitud de la sucursal
           // (cantidad_sugerida). cantidad_pedida la maneja el admin aparte.
           const solicitud = sug ?? ped;
+          const proc =
+            d.existencia_procesado === null || d.existencia_procesado === undefined
+              ? null
+              : Number(d.existencia_procesado);
+          const noProc =
+            d.existencia_no_procesado === null || d.existencia_no_procesado === undefined
+              ? null
+              : Number(d.existencia_no_procesado);
           base[d.insumo_id] = {
             existencia: Number(d.existencia) || 0,
             cantidad_pedida: solicitud,
             cantidad_sugerida: sug,
+            procesado: proc,
+            noProcesado: noProc,
             capturado: true,
           };
         });
@@ -235,6 +268,27 @@ export default function Pedidos() {
       return {
         ...prev,
         [item.insumo_id]: { ...cur, existencia: value, capturado: true },
+      };
+    });
+  };
+
+  // En los insumos que se desglosan, la existencia NO se teclea: es la suma de
+  // lo procesado y lo crudo. Así el total siempre cuadra con sus partes.
+  const setParteExistencia = (
+    item: ItemSucursal,
+    parte: "procesado" | "noProcesado",
+    value: number
+  ) => {
+    setDetalles((prev) => {
+      const cur = prev[item.insumo_id] || detalleVacio();
+      const siguiente = { ...cur, [parte]: value };
+      return {
+        ...prev,
+        [item.insumo_id]: {
+          ...siguiente,
+          existencia: sumaDesglose(siguiente.procesado, siguiente.noProcesado),
+          capturado: true,
+        },
       };
     });
   };
@@ -339,21 +393,35 @@ export default function Pedidos() {
           cantidad_sugerida: d.cantidad_pedida,
           // Renglón ya ajustado por el admin: se respeta su cantidad_pedida.
           cantidad_pedida: previo ? Number(previo.cantidad_pedida) : d.cantidad_pedida,
+          // Desglose: solo en los insumos que lo piden y solo si capturaron algo.
+          existencia_procesado: i.desglosa ? d.procesado ?? 0 : null,
+          existencia_no_procesado: i.desglosa ? d.noProcesado ?? 0 : null,
         };
       });
+      // Si la base todavía no tiene las columnas del desglose, se manda sin
+      // ellas: la existencia total ya va completa y no se pierde la captura.
+      const payloadSinDesglose = payload.map(
+        ({ existencia_procesado, existencia_no_procesado, ...resto }) => resto
+      );
       if (payload.length) {
-        const { error } = await supabase
+        let { error } = await supabase
           .from("pedidos_detalle")
           .upsert(payload, { onConflict: "pedido_id,insumo_id" });
+        // PGRST204 / 42703 = la migración del desglose aún no corre.
+        if (error && (error.code === "PGRST204" || error.code === "42703")) {
+          ({ error } = await supabase
+            .from("pedidos_detalle")
+            .upsert(payloadSinDesglose, { onConflict: "pedido_id,insumo_id" }));
+        }
         if (error && error.code === "42P10") {
           // La base aún no tiene el candado único (pedido, insumo): camino
           // legado mientras se aplica el SQL (insertar nuevos, actualizar existentes).
-          const nuevos = payload.filter((r) => !existentes.has(r.insumo_id));
+          const nuevos = payloadSinDesglose.filter((r) => !existentes.has(r.insumo_id));
           if (nuevos.length) {
             const { error: insErr } = await supabase.from("pedidos_detalle").insert(nuevos);
             if (insErr) throw insErr;
           }
-          const updates = payload
+          const updates = payloadSinDesglose
             .filter((r) => existentes.has(r.insumo_id))
             .map((r) =>
               supabase
@@ -593,29 +661,73 @@ export default function Pedidos() {
                             </Badge>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <Label className="text-xs text-muted-foreground">
-                                Existencia
-                              </Label>
-                              <CantidadStepper
-                                value={d.existencia}
-                                unidad={item.unidad}
-                                onChange={(v) => setExistencia(item, v)}
-                              />
+                          {item.desglosa ? (
+                            <div className="space-y-3">
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">
+                                    Existencia procesado
+                                  </Label>
+                                  <CantidadStepper
+                                    value={d.procesado ?? 0}
+                                    unidad={item.unidad}
+                                    onChange={(v) => setParteExistencia(item, "procesado", v)}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">
+                                    Existencia sin procesar
+                                  </Label>
+                                  <CantidadStepper
+                                    value={d.noProcesado ?? 0}
+                                    unidad={item.unidad}
+                                    onChange={(v) => setParteExistencia(item, "noProcesado", v)}
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex items-center justify-between rounded-md bg-muted/60 px-3 py-2">
+                                <span className="text-xs text-muted-foreground">
+                                  Existencia total
+                                </span>
+                                <span className="text-sm font-semibold tabular-nums">
+                                  {d.existencia} {item.unidad}
+                                </span>
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">Pedido</Label>
+                                <CantidadStepper
+                                  value={d.cantidad_pedida}
+                                  unidad={item.unidad}
+                                  emphasis
+                                  onChange={(v) => setPedida(item, v)}
+                                />
+                              </div>
                             </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs text-muted-foreground">
-                                Pedido
-                              </Label>
-                              <CantidadStepper
-                                value={d.cantidad_pedida}
-                                unidad={item.unidad}
-                                emphasis
-                                onChange={(v) => setPedida(item, v)}
-                              />
+                          ) : (
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">
+                                  Existencia
+                                </Label>
+                                <CantidadStepper
+                                  value={d.existencia}
+                                  unidad={item.unidad}
+                                  onChange={(v) => setExistencia(item, v)}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">
+                                  Pedido
+                                </Label>
+                                <CantidadStepper
+                                  value={d.cantidad_pedida}
+                                  unidad={item.unidad}
+                                  emphasis
+                                  onChange={(v) => setPedida(item, v)}
+                                />
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </CardContent>
                       </Card>
                     );

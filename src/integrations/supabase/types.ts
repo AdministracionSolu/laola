@@ -686,6 +686,7 @@ export type Database = {
         Row: {
           activo: boolean
           categoria_id: string
+          desglosa_procesado: boolean
           created_at: string
           id: string
           nombre: string
@@ -702,6 +703,7 @@ export type Database = {
         Update: {
           activo?: boolean
           categoria_id?: string
+          desglosa_procesado?: boolean
           created_at?: string
           id?: string
           nombre?: string
@@ -1245,6 +1247,8 @@ export type Database = {
           cantidad_sugerida: number | null
           created_at: string
           existencia: number | null
+          existencia_no_procesado: number | null
+          existencia_procesado: number | null
           id: string
           insumo_id: string
           pedido_id: string
@@ -1254,6 +1258,8 @@ export type Database = {
           cantidad_sugerida?: number | null
           created_at?: string
           existencia?: number | null
+          existencia_no_procesado?: number | null
+          existencia_procesado?: number | null
           id?: string
           insumo_id: string
           pedido_id: string
@@ -1263,6 +1269,8 @@ export type Database = {
           cantidad_sugerida?: number | null
           created_at?: string
           existencia?: number | null
+          existencia_no_procesado?: number | null
+          existencia_procesado?: number | null
           id?: string
           insumo_id?: string
           pedido_id?: string

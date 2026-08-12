@@ -9,23 +9,28 @@ interface ProteinaDef {
   display: string;
   unidad: string;
   orden: number;
+  // La existencia se cuenta en dos partes: procesado y no procesado. Solo
+  // afecta la captura de EXISTENCIA; el pedido sigue siendo una sola cantidad.
+  // La base manda (insumos.desglosa_procesado); esto es el valor por omisión
+  // para que la pantalla funcione antes de correr la migración.
+  desglosa?: boolean;
 }
 
 // Lista conciliada con sucursal (jul-2026): nombres, unidades y orden finales.
 export const PROTEINAS: ProteinaDef[] = [
-  { variantes: ["CAMARON 61-70", "Camarón 61-70"], display: "Camarón 61-70", unidad: "kg", orden: 1 },
-  { variantes: ["CAMARON 31-35", "Camarón 31-35"], display: "Camarón 31-35", unidad: "kg", orden: 2 },
-  { variantes: ["CAMARON 21-25", "Camarón 21-25"], display: "Camarón 21-25", unidad: "kg", orden: 3 },
-  { variantes: ["PULPO 2-4", "Pulpo 2-4"], display: "Pulpo 2-4", unidad: "kg", orden: 4 },
+  { variantes: ["CAMARON 61-70", "Camarón 61-70"], display: "Camarón 61-70", unidad: "kg", orden: 1, desglosa: true },
+  { variantes: ["CAMARON 31-35", "Camarón 31-35"], display: "Camarón 31-35", unidad: "kg", orden: 2, desglosa: true },
+  { variantes: ["CAMARON 21-25", "Camarón 21-25"], display: "Camarón 21-25", unidad: "kg", orden: 3, desglosa: true },
+  { variantes: ["PULPO 2-4", "Pulpo 2-4"], display: "Pulpo 2-4", unidad: "kg", orden: 4, desglosa: true },
   { variantes: ["ATÚN MEDALLON pz", "ATUN MEDALLON pz", "Atún medallón", "Medallón de atún"], display: "Atún medallón", unidad: "pz", orden: 5 },
-  { variantes: ["MARLIN AHUMADO K.", "Marlin ahumado", "Marlín ahumado"], display: "Marlín ahumado", unidad: "kg", orden: 6 },
-  { variantes: ["ROBALO (chicharrón)", "ROBALO (chicharron)", "Robalo chico", "Robalo ch."], display: "Robalo ch.", unidad: "kg", orden: 7 },
-  { variantes: ["ROBALO (filete)", "Robalo filete"], display: "Robalo filete", unidad: "kg", orden: 8 },
-  { variantes: ["SIERRA", "Sierra"], display: "Sierra", unidad: "kg", orden: 9 },
+  { variantes: ["MARLIN AHUMADO K.", "Marlin ahumado", "Marlín ahumado"], display: "Marlín ahumado", unidad: "kg", orden: 6, desglosa: true },
+  { variantes: ["ROBALO (chicharrón)", "ROBALO (chicharron)", "Robalo chico", "Robalo ch."], display: "Robalo ch.", unidad: "kg", orden: 7, desglosa: true },
+  { variantes: ["ROBALO (filete)", "Robalo filete"], display: "Robalo filete", unidad: "kg", orden: 8, desglosa: true },
+  { variantes: ["SIERRA", "Sierra"], display: "Sierra", unidad: "kg", orden: 9, desglosa: true },
   { variantes: ["CAMARON VAPOR 25 a 30 gr", "Camarón vapor 25-30"], display: "Camarón vapor 25-30", unidad: "kg", orden: 10 },
   { variantes: ["CAMARON P/VAPOR 20/30", "Camarón p/vapor 20/30", "Camarón p/vapor 20-30"], display: "Camarón p/vapor 20/30", unidad: "kg", orden: 11 },
-  { variantes: ["CAMARON 7 A 11 GR", "Camarón 7-11"], display: "Camarón 7-11", unidad: "kg", orden: 12 },
-  { variantes: ["CAMARON 12 - 25 GR", "Camarón 12-25"], display: "Camarón 12-25", unidad: "kg", orden: 13 },
+  { variantes: ["CAMARON 7 A 11 GR", "Camarón 7-11"], display: "Camarón 7-11", unidad: "kg", orden: 12, desglosa: true },
+  { variantes: ["CAMARON 12 - 25 GR", "Camarón 12-25"], display: "Camarón 12-25", unidad: "kg", orden: 13, desglosa: true },
   { variantes: ["CAMARON SECO K.", "Camarón seco"], display: "Camarón seco", unidad: "kg", orden: 14 },
   { variantes: ["BOLSAS OSTIÓN", "BOLSAS OSTION", "Bolsas ostión"], display: "Bolsas ostión", unidad: "bolsa", orden: 15 },
   { variantes: ["CALLO DE HACHA", "Callo de hacha"], display: "Callo de hacha", unidad: "kg", orden: 16 },
@@ -35,6 +40,9 @@ export const PROTEINAS: ProteinaDef[] = [
   { variantes: ["FILETE DE RES", "Filete de res"], display: "Filete de res", unidad: "kg", orden: 20 },
   { variantes: ["COSTILLA DE CERDO", "Costilla de cerdo"], display: "Costilla de cerdo", unidad: "kg", orden: 21 },
   { variantes: ["PESCADO P/SARANDEAR", "Pescado p/sarandear"], display: "Pescado p/sarandear", unidad: "pz", orden: 22 },
+  // Postres (ago-2026): entran a existencia y pedido como cualquier insumo.
+  { variantes: ["FLAN", "Flan"], display: "Flan", unidad: "pz", orden: 23 },
+  { variantes: ["PAY", "Pay", "PAY DE LA CASA", "Pie"], display: "Pay", unidad: "pz", orden: 24 },
 ];
 
 // Normaliza un nombre: mayúsculas, sin acentos, sin signos, espacios colapsados.

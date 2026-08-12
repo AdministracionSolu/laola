@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, RefreshCw, ShoppingCart, Store, Camera, BarChart3, History, LayoutDashboard, ClipboardCheck, Sunrise, Heart, FileText, CalendarClock } from "lucide-react";
+import { LogOut, RefreshCw, ShoppingCart, Store, Camera, BarChart3, History, LayoutDashboard, ClipboardCheck, Sunrise, Heart, FileText } from "lucide-react";
 import { useEffect } from "react";
 
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
@@ -129,10 +129,6 @@ export default function AdminDashboard() {
             <Button variant="outline" onClick={() => navigate("/admin/facturacion")} className="gap-2">
               <FileText className="w-4 h-4" />
               <span className="hidden sm:inline">Facturación</span>
-            </Button>
-            <Button variant="outline" onClick={() => navigate("/admin/horarios")} className="gap-2">
-              <CalendarClock className="w-4 h-4" />
-              <span className="hidden sm:inline">Horarios</span>
             </Button>
             <Button variant="outline" onClick={() => navigate("/implementacion")} className="gap-2">
               <ClipboardCheck className="w-4 h-4" />

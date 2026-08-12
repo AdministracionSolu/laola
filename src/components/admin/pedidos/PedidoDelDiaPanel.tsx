@@ -112,6 +112,8 @@ export function PedidoDelDiaPanel({ sucursales, pedidos, pedidosDetalle, insumos
           detalleId: det?.id ?? null,
           nuevoKey,
           existencia: det?.existencia ?? 0,
+          procesado: det?.existencia_procesado ?? null,
+          noProcesado: det?.existencia_no_procesado ?? null,
           solicitado: det?.cantidad_sugerida ?? 0,
           pedidoReal: det ? pedidoRealDe(det) : nuevoKey ? nuevos[nuevoKey] ?? null : null,
         };
@@ -137,6 +139,10 @@ export function PedidoDelDiaPanel({ sucursales, pedidos, pedidosDetalle, insumos
         const suc = sucursales.find((x) => x.id === c.sucursal_id);
         const s = (suc?.nombre || "") + (c.referencia ? " (referencia)" : "");
         fila[`${s} existencia`] = c.existencia;
+        if (c.procesado !== null || c.noProcesado !== null) {
+          fila[`${s} exist. procesado`] = c.procesado ?? 0;
+          fila[`${s} exist. sin procesar`] = c.noProcesado ?? 0;
+        }
         fila[`${s} pedido sugerido`] = c.solicitado;
         fila[`${s} a comprar`] = c.pedidoReal ?? "";
       });
@@ -218,7 +224,20 @@ export function PedidoDelDiaPanel({ sucursales, pedidos, pedidosDetalle, insumos
                   {r.celdas.map((c) => (
                     <Fragment key={c.sucursal_id}>
                       <td className={`p-2 text-center tabular-nums border-l ${c.referencia ? "text-muted-foreground/70 bg-muted/30" : ""}`}>
-                        {c.detalleId ? num(c.existencia) : <span className="text-muted-foreground/40">—</span>}
+                        {c.detalleId ? (
+                          <div className="leading-tight">
+                            <div>{num(c.existencia)}</div>
+                            {(c.procesado !== null || c.noProcesado !== null) && (
+                              // Desglose de los insumos que se cuentan en dos:
+                              // P = procesado, S = sin procesar.
+                              <div className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                P {num(c.procesado ?? 0)} · S {num(c.noProcesado ?? 0)}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground/40">—</span>
+                        )}
                       </td>
                       <td className={`p-2 text-center tabular-nums ${c.referencia ? "text-muted-foreground/70 bg-muted/30" : ""}`}>
                         {c.detalleId ? num(c.solicitado) : <span className="text-muted-foreground/40">—</span>}

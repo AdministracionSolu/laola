@@ -40,6 +40,8 @@ export interface PedidoDetLite {
   fecha: string;
   insumo_id: string;
   existencia: number;
+  existencia_procesado: number | null;
+  existencia_no_procesado: number | null;
   cantidad_pedida: number;
   cantidad_sugerida: number | null;
 }
@@ -161,15 +163,27 @@ export function useAnaliticaPedidos(desde: string, hasta: string): AnaliticaData
 
     let pedDet: PedidoDetLite[] = [];
     if (pedIds.length > 0) {
-      const { data } = await supabase
+      const COLS_DESGLOSE =
+        "id, pedido_id, insumo_id, existencia, existencia_procesado, existencia_no_procesado, cantidad_pedida, cantidad_sugerida";
+      const COLS_BASE = "id, pedido_id, insumo_id, existencia, cantidad_pedida, cantidad_sugerida";
+      const conDesglose = await supabase
         .from("pedidos_detalle")
-        .select("id, pedido_id, insumo_id, existencia, cantidad_pedida, cantidad_sugerida")
+        .select(COLS_DESGLOSE)
         .in("pedido_id", pedIds);
+      // La migración del desglose todavía no corre: se lee sin esas columnas.
+      const sinDesglose =
+        conDesglose.error &&
+        (conDesglose.error.code === "PGRST204" || conDesglose.error.code === "42703")
+          ? await supabase.from("pedidos_detalle").select(COLS_BASE).in("pedido_id", pedIds)
+          : null;
+      const data: unknown = sinDesglose ? sinDesglose.data : conDesglose.data;
       type PDRow = {
         id: string;
         pedido_id: string;
         insumo_id: string;
         existencia: number | null;
+        existencia_procesado?: number | null;
+        existencia_no_procesado?: number | null;
         cantidad_pedida: number;
         cantidad_sugerida: number | null;
       };
@@ -182,6 +196,14 @@ export function useAnaliticaPedidos(desde: string, hasta: string): AnaliticaData
           fecha: p?.fecha || "",
           insumo_id: d.insumo_id,
           existencia: Number(d.existencia) || 0,
+          existencia_procesado:
+            d.existencia_procesado === null || d.existencia_procesado === undefined
+              ? null
+              : Number(d.existencia_procesado),
+          existencia_no_procesado:
+            d.existencia_no_procesado === null || d.existencia_no_procesado === undefined
+              ? null
+              : Number(d.existencia_no_procesado),
           cantidad_pedida: Number(d.cantidad_pedida) || 0,
           cantidad_sugerida:
             d.cantidad_sugerida === null ? null : Number(d.cantidad_sugerida),
