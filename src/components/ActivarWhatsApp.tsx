@@ -1,13 +1,5 @@
 import { MessageCircle } from "lucide-react";
-
-// Número que atiende el programa de lealtad. TIENE QUE SER EL MISMO desde el
-// que Makatea manda la bienvenida (organizations.config.laola_goteo.instancia,
-// hoy `restaurante-la-ola-2`). Si apunta a otra línea, el saludo del cliente no
-// abre la ventana de 24 h de la línea que envía y la bienvenida vuelve a ser un
-// primer toque en frío — que es justo lo que bloqueó a la segunda línea el 7 de
-// agosto. La línea de proveedores (523111223365) NO va aquí: ese es el teléfono
-// de la operación de compras y nadie contesta ahí como La Ola.
-const NUMERO_LEALTAD = "523111693323";
+import { WHATSAPP_LEALTAD } from "@/lib/lealtad";
 
 /**
  * Botón "salúdanos por WhatsApp" de las pantallas de confirmación.
@@ -36,7 +28,7 @@ export default function ActivarWhatsApp({
       ? `Hola, soy ${quien || "un nuevo miembro"}. Me acabo de unir al programa de lealtad de La Ola 🌊`
       : `Hola, soy ${quien || "miembro del programa"}. Acabo de registrar mi visita en La Ola 🌊`;
 
-  const href = `https://wa.me/${NUMERO_LEALTAD}?text=${encodeURIComponent(texto)}`;
+  const href = `https://wa.me/${WHATSAPP_LEALTAD}?text=${encodeURIComponent(texto)}`;
 
   return (
     <a

@@ -1,9 +1,10 @@
 import { Layout } from "@/components/layout/Layout";
+import { WHATSAPP_LEALTAD, WHATSAPP_LEALTAD_VISIBLE } from "@/lib/lealtad";
 
 // Aviso de privacidad simplificado (LFPDPPP art. 17). Lo enlazan el
 // formulario de inscripción al programa (/lealtad), el de registro de
 // visita (/visita) y el de facturación (/factura).
-const ACTUALIZADO = "5 de agosto de 2026";
+const ACTUALIZADO = "13 de agosto de 2026";
 
 const Seccion = ({ titulo, children }: { titulo: string; children: React.ReactNode }) => (
   <section className="mb-8">
@@ -77,8 +78,16 @@ export default function Privacidad() {
               que los usemos, y también retirar tu consentimiento para que te escribamos.
             </p>
             <p>
-              Escríbenos por WhatsApp al número del programa o llámanos a la sucursal
-              La Ola Valle, al{" "}
+              Escríbenos por WhatsApp al número del programa,{" "}
+              <a
+                href={`https://wa.me/${WHATSAPP_LEALTAD}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-primary underline"
+              >
+                {WHATSAPP_LEALTAD_VISIBLE}
+              </a>
+              , o llámanos a la sucursal La Ola Valle, al{" "}
               <a href="tel:+523111330891" className="text-primary underline">
                 311 133 0891
               </a>

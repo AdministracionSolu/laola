@@ -1,4 +1,21 @@
 /**
+ * El WhatsApp del programa de lealtad: la línea de la Cervecería.
+ *
+ * TIENE QUE SER EL MISMO número desde el que Makatea manda las bienvenidas
+ * (`organizations.config.laola_goteo.instancia`, hoy `restaurante-la-ola-2`).
+ * La ventana de 24 h de WhatsApp es de un número, no de la marca: si el cliente
+ * saluda a una línea y la bienvenida sale de otra, el mensaje vuelve a ser un
+ * primer toque en frío — lo que bloqueó esa línea el 7 de agosto de 2026.
+ *
+ * La línea de proveedores (523111223365) NO va aquí: es el teléfono de la
+ * operación de compras y del grupo de cajas, y nadie contesta ahí como La Ola.
+ */
+export const WHATSAPP_LEALTAD = "523111693323";
+
+/** El mismo número, para leerlo en pantalla. */
+export const WHATSAPP_LEALTAD_VISIBLE = "311 169 3323";
+
+/**
  * Identificador y color de cada recompensa del ciclo.
  *
  * El ciclo son 4 recompensas, una cada 3 visitas, y al terminar vuelve a
