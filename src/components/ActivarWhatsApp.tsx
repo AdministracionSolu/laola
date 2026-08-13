@@ -1,9 +1,13 @@
 import { MessageCircle } from "lucide-react";
 
-// Número que atiende el programa de lealtad. Es la línea establecida de La Ola
-// (la misma de proveedores): tiene historial real y sobrevivió lo que tumbó a
-// la segunda línea.
-const NUMERO_LEALTAD = "523111223365";
+// Número que atiende el programa de lealtad. TIENE QUE SER EL MISMO desde el
+// que Makatea manda la bienvenida (organizations.config.laola_goteo.instancia,
+// hoy `restaurante-la-ola-2`). Si apunta a otra línea, el saludo del cliente no
+// abre la ventana de 24 h de la línea que envía y la bienvenida vuelve a ser un
+// primer toque en frío — que es justo lo que bloqueó a la segunda línea el 7 de
+// agosto. La línea de proveedores (523111223365) NO va aquí: ese es el teléfono
+// de la operación de compras y nadie contesta ahí como La Ola.
+const NUMERO_LEALTAD = "523111693323";
 
 /**
  * Botón "salúdanos por WhatsApp" de las pantallas de confirmación.
