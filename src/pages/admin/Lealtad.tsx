@@ -65,6 +65,10 @@ export default function AdminLealtad() {
   const [visitas30, setVisitas30] = useState<Visita[]>([]);
   const [fechaConc, setFechaConc] = useState(fechaNegocioHoy());
   const [canjesDia, setCanjesDia] = useState<Canje[]>([]);
+  // Teléfonos de colaboradores (grupo de WhatsApp del equipo). Identificación
+  // solamente: si la tabla aún no existe, el panel funciona igual.
+  const [colaboradores, setColaboradores] = useState<Set<string>>(new Set());
+  const [totalColaboradores, setTotalColaboradores] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -100,6 +104,12 @@ export default function AdminLealtad() {
     setRecompensas((rec.data ?? []) as Recompensa[]);
     setIntentos((int.data ?? []) as Intento[]);
     setVisitas30((v30.data ?? []) as Visita[]);
+    const col = await db.from("lealtad_colaboradores").select("telefono").eq("activo", true);
+    if (!col.error) {
+      const tels = (col.data ?? []).map((r: { telefono: string }) => r.telefono);
+      setColaboradores(new Set(tels));
+      setTotalColaboradores(tels.length);
+    }
     setCargando(false);
   };
 
@@ -285,7 +295,7 @@ export default function AdminLealtad() {
 
   const exportarCSV = () => {
     const filas = [
-      ["primer_nombre", "segundo_nombre", "apellido_paterno", "apellido_materno", "nombre", "telefono", "sucursal_captacion", "cumpleanos", "visitas", "consentimiento", "activo", "fecha_registro"],
+      ["primer_nombre", "segundo_nombre", "apellido_paterno", "apellido_materno", "nombre", "telefono", "sucursal_captacion", "cumpleanos", "visitas", "consentimiento", "activo", "fecha_registro", "colaborador"],
       ...filtrados.map((c) => [
         c.primer_nombre ?? "",
         c.segundo_nombre ?? "",
@@ -299,6 +309,7 @@ export default function AdminLealtad() {
         c.consentimiento_marketing ? "si" : "no",
         c.activo ? "si" : "no",
         c.created_at.slice(0, 10),
+        colaboradores.has(c.telefono) ? "si" : "no",
       ]),
     ];
     const csv = filas.map((f) => f.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -362,6 +373,14 @@ export default function AdminLealtad() {
           />
           <StatCard icon={<Trophy className="w-5 h-5" />} label="Visitas acumuladas" value={clientes.reduce((s, c) => s + (c.visitas_total || 0), 0)} />
           <StatCard icon={<Ticket className="w-5 h-5" />} label="Recompensas por canjear" value={clientes.reduce((s, c) => s + recompDisp(c), 0)} />
+          {totalColaboradores > 0 && (
+            <StatCard
+              icon={<Users className="w-5 h-5" />}
+              label="Colaboradores en el programa"
+              value={clientes.filter((c) => c.activo && colaboradores.has(c.telefono)).length}
+              sub={`de ${totalColaboradores} identificados`}
+            />
+          )}
         </div>
 
         {/* Por sucursal */}
@@ -586,7 +605,14 @@ export default function AdminLealtad() {
                 <tbody>
                   {filtrados.map((c) => (
                     <tr key={c.id} className={`border-t ${!c.activo ? "opacity-50" : ""}`}>
-                      <td className="px-4 py-3 font-medium">{c.nombre}</td>
+                      <td className="px-4 py-3 font-medium">
+                        {c.nombre}
+                        {colaboradores.has(c.telefono) && (
+                          <Badge variant="outline" className="ml-2 align-middle text-xs border-sky-400 text-sky-700">
+                            Colaborador
+                          </Badge>
+                        )}
+                      </td>
                       <td className="px-4 py-3 tabular-nums">{c.telefono}</td>
                       <td className="px-4 py-3 tabular-nums font-semibold">{c.visitas_total ?? 0}</td>
                       <td className="px-4 py-3">
