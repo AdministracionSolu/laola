@@ -8,7 +8,7 @@
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-$GIST_RAW = 'https://gist.githubusercontent.com/AdministracionSolu/84236740eb504a987bff762b15c376c0/raw/agente-pos.ps1'
+$GIST_RAW = 'https://gist.githubusercontent.com/AdministracionSolu/84236740eb504a987bff762b15c376c0/raw/c9e10b9b8de5d3c720f61f6ccb846f9663389597/agente-pos.ps1'
 $SUPABASE_URL = 'https://ctoeckcgrqihsxjefmwg.supabase.co'
 $ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0b2Vja2NncnFpaHN4amVmbXdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc4Mjk3NzgsImV4cCI6MjA4MzQwNTc3OH0.N9FZwtUHlx_jax3YyndymaMIkt73oi6ztXROVONyYb0'
 
@@ -140,7 +140,7 @@ Write-Host 'Tarea programada "LaOlaPOS" registrada (cada 15 minutos).' -Foregrou
 
 # --- 4. Primera corrida (backfill) -----------------------------------
 Write-Host ''
-Write-Host 'Arrancando la primera sincronización (histórico completo, puede tardar varios minutos)...' -ForegroundColor Cyan
+Write-Host 'Arrancando la primera sincronización (solo los últimos 3 días; el histórico completo baja solo en la madrugada)...' -ForegroundColor Cyan
 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $dir 'agente-pos.ps1')
 if ($LASTEXITCODE -eq 0) {
   Write-Host ''

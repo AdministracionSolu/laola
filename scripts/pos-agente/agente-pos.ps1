@@ -78,34 +78,44 @@ function Enviar($tabla, $filas) {
 }
 
 try {
-  # Primera corrida = backfill largo; después, ventana rodante de pocos días
-  # (upsert idempotente: las cuentas reabiertas se corrigen solas).
-  if (Test-Path $marca) { $dias = [int]$cfg.dias_ventana } else { $dias = [int]$cfg.dias_backfill }
+  # Corrida normal = ventana rodante de pocos días (upsert idempotente: las
+  # cuentas reabiertas se corrigen solas). El histórico completo (backfill)
+  # SOLO se descarga en la madrugada (4:00-5:59), cuando el POS está solo,
+  # y una única vez. Todas las lecturas van WITH (NOLOCK) para no estorbar
+  # jamás a la caja.
+  $backfillHecho = Join-Path $dir 'backfill-hecho.txt'
+  $ahora = Get-Date
+  $dias = [int]$cfg.dias_ventana
+  $esBackfill = $false
+  if (-not (Test-Path $backfillHecho) -and $ahora.Hour -ge 4 -and $ahora.Hour -le 5) {
+    $dias = [int]$cfg.dias_backfill
+    $esBackfill = $true
+  }
   Escribir-Log ("inicio ({0}, ventana {1} dias)" -f $cfg.origen, $dias)
 
   $cn = Nueva-Conexion
 
-  $cheques = Consultar $cn "SELECT * FROM cheques WHERE fecha >= DATEADD(day, -$dias, GETDATE())"
+  $cheques = Consultar $cn "SELECT * FROM cheques WITH (NOLOCK) WHERE fecha >= DATEADD(day, -$dias, GETDATE())"
   if ($cheques.Rows.Count -gt 0) { Enviar 'cheques' (Convertir-Filas $cheques) }
 
-  $det = Consultar $cn "SELECT d.* FROM cheqdet d WHERE d.foliodet IN (SELECT folio FROM cheques WHERE fecha >= DATEADD(day, -$dias, GETDATE()))"
+  $det = Consultar $cn "SELECT d.* FROM cheqdet d WITH (NOLOCK) INNER JOIN cheques c WITH (NOLOCK) ON c.folio = d.foliodet WHERE c.fecha >= DATEADD(day, -$dias, GETDATE())"
   if ($det.Rows.Count -gt 0) { Enviar 'cheqdet' (Convertir-Filas $det) }
 
-  $turnos = Consultar $cn "SELECT * FROM turnos WHERE apertura >= DATEADD(day, -$dias, GETDATE())"
+  $turnos = Consultar $cn "SELECT * FROM turnos WITH (NOLOCK) WHERE apertura >= DATEADD(day, -$dias, GETDATE())"
   if ($turnos.Rows.Count -gt 0) { Enviar 'turnos' (Convertir-Filas $turnos) }
 
-  # Catálogo de productos: en el backfill y una vez al día (5:00-5:15)
-  $ahora = Get-Date
+  # Catálogo de productos: en la primera corrida y una vez al día (5:00-5:15)
   if (-not (Test-Path $marca) -or ($ahora.Hour -eq 5 -and $ahora.Minute -lt 15)) {
     try {
-      $prod = Consultar $cn "SELECT p.*, g.descripcion AS grupo FROM productos p LEFT JOIN grupos g ON g.idgrupo = p.idgrupo"
+      $prod = Consultar $cn "SELECT p.*, g.descripcion AS grupo FROM productos p WITH (NOLOCK) LEFT JOIN grupos g WITH (NOLOCK) ON g.idgrupo = p.idgrupo"
     } catch {
-      $prod = Consultar $cn "SELECT * FROM productos"
+      $prod = Consultar $cn "SELECT * FROM productos WITH (NOLOCK)"
     }
     if ($prod.Rows.Count -gt 0) { Enviar 'productos' (Convertir-Filas $prod) }
   }
 
   $cn.Close()
+  if ($esBackfill) { Set-Content -Path $backfillHecho -Value (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') }
   Set-Content -Path $marca -Value (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
   Escribir-Log 'OK'
 } catch {
