@@ -85,7 +85,7 @@ export default function Sucursales() {
                         {s.contacto.amenidades.map((a) => (
                           <span
                             key={a}
-                            className="px-3 py-1 bg-secondary text-secondary-foreground rounded-full text-xs font-medium"
+                            className="px-3 py-1 bg-secondary text-secondary-foreground rounded-md text-xs font-medium"
                           >
                             {a}
                           </span>

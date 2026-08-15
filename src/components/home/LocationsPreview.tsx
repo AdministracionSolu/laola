@@ -21,7 +21,7 @@ export function LocationsPreview() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border rounded-2xl overflow-hidden border border-border">
           {sucursales.map((s) => (
             <div key={s.id} className="bg-background p-6 flex flex-col min-h-[180px] hover:bg-primary/[0.03] transition-colors">
-              <span className="text-xs uppercase tracking-widest text-accent font-semibold">
+              <span className="text-sm text-accent font-semibold">
                 {s.contacto?.ciudad ?? ""}
               </span>
               <h3 className="text-2xl font-display font-bold text-foreground mt-1">

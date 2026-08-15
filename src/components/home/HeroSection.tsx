@@ -35,7 +35,7 @@ export function HeroSection() {
       {/* Content */}
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-3xl">
-          <span className="inline-block px-4 py-1.5 bg-accent/20 text-accent rounded-full text-sm font-medium mb-6 animate-fade-in">
+          <span className="inline-block px-4 py-1.5 bg-accent/20 text-accent rounded-lg text-sm font-medium mb-6 animate-fade-in">
             Desde Mexcaltitán, Nayarit
           </span>
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold text-white mb-6 leading-tight animate-fade-in" style={{ animationDelay: "0.1s" }}>

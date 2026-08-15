@@ -47,7 +47,7 @@ export default function MenuSucursal() {
 
         {estado === "cargando" && (
           <>
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 text-primary mb-3">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-lg bg-primary/10 text-primary mb-3">
               <Loader2 className="h-7 w-7 animate-spin" />
             </div>
             <h1 className="text-2xl font-bold font-display text-primary">Abriendo el menú…</h1>
@@ -57,7 +57,7 @@ export default function MenuSucursal() {
 
         {estado === "sin-menu" && (
           <>
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-accent/20 text-accent-foreground mb-3">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-lg bg-accent/20 text-accent-foreground mb-3">
               <UtensilsCrossed className="h-7 w-7" />
             </div>
             <h1 className="text-2xl font-bold font-display text-primary">

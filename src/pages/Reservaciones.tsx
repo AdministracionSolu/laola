@@ -371,7 +371,7 @@ export default function Reservaciones({ onBack }: Props) {
         <Card className="mb-4 border-primary bg-primary/5 cursor-pointer hover:bg-primary/10 transition-colors" onClick={openNewReservaDialog}>
           <CardContent className="p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary flex items-center justify-center">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-primary flex items-center justify-center">
                 <Plus className="w-5 h-5 sm:w-6 sm:h-6 text-primary-foreground" />
               </div>
               <div>

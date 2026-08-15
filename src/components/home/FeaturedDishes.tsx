@@ -79,7 +79,7 @@ export function FeaturedDishes() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-ocean-dark/90 via-ocean-dark/25 to-transparent" />
                   <div className="absolute inset-x-0 bottom-0 p-6 text-white">
-                    <span className="inline-block text-xs uppercase tracking-widest text-accent font-semibold mb-2">
+                    <span className="inline-block text-sm text-accent font-semibold mb-2">
                       {dish.kicker}
                     </span>
                     <h3 className="text-2xl font-display font-bold leading-tight">{dish.name}</h3>

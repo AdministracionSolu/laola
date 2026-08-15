@@ -122,7 +122,7 @@ export default function Lealtad() {
       <h1 className="text-3xl font-bold font-display text-primary">{titulo}</h1>
       {sub && <p className="text-muted-foreground mt-1">{sub}</p>}
       {sucursalNombre && (
-        <span className="mt-3 inline-block bg-accent text-accent-foreground text-sm font-semibold px-4 py-1 rounded-full">
+        <span className="mt-3 inline-block bg-accent text-accent-foreground text-sm font-semibold px-4 py-1 rounded-md">
           {sucursalNombre}
         </span>
       )}
@@ -215,7 +215,7 @@ export default function Lealtad() {
               onClick={() => setModo("registro")}
               className="w-full rounded-2xl border-2 border-primary/20 bg-card p-5 shadow-sm text-left flex items-center gap-4 transition-all hover:border-primary hover:shadow-md active:scale-[0.99]"
             >
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                 <Sparkles className="h-6 w-6 text-primary" />
               </div>
               <div className="min-w-0 flex-1">
@@ -231,7 +231,7 @@ export default function Lealtad() {
               onClick={() => navigate(`/visita${suc ? `?suc=${suc}` : ""}`)}
               className="w-full rounded-2xl border-2 border-accent/30 bg-card p-5 shadow-sm text-left flex items-center gap-4 transition-all hover:border-accent hover:shadow-md active:scale-[0.99]"
             >
-              <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
                 <Ticket className="h-6 w-6 text-accent" />
               </div>
               <div className="min-w-0 flex-1">

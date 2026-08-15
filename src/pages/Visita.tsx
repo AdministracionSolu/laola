@@ -208,7 +208,7 @@ export default function Visita() {
       <h1 className="text-3xl font-bold font-display text-primary">{titulo}</h1>
       {sub && <p className="text-muted-foreground mt-1">{sub}</p>}
       {sucursalNombre && (
-        <span className="mt-3 inline-block bg-accent text-accent-foreground text-sm font-semibold px-4 py-1 rounded-full">
+        <span className="mt-3 inline-block bg-accent text-accent-foreground text-sm font-semibold px-4 py-1 rounded-md">
           {sucursalNombre}
         </span>
       )}
@@ -239,7 +239,7 @@ export default function Visita() {
             }`}
           >
             <div
-              className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+              className={`mx-auto w-16 h-16 rounded-lg flex items-center justify-center mb-4 ${
                 vigente ? "bg-primary text-white" : "bg-muted-foreground/30 text-white"
               }`}
             >
@@ -248,7 +248,7 @@ export default function Visita() {
 
             {/* Identificador y color: el mesero lo reconoce sin leer el detalle */}
             <div
-              className={`inline-flex items-center gap-2 font-bold px-4 py-1.5 rounded-full border-2 mb-3 ${
+              className={`inline-flex items-center gap-2 font-bold px-4 py-1.5 rounded-md border-2 mb-3 ${
                 rec ? `${rec.bg} ${rec.texto} ${rec.borde}` : "bg-card text-foreground border-border"
               }`}
             >
@@ -320,7 +320,7 @@ export default function Visita() {
               if (perfil.nivel_posicion == null) {
                 return (
                   <div
-                    className="inline-flex items-center gap-2 font-semibold px-4 py-1.5 rounded-full border-2 border-black/10"
+                    className="inline-flex items-center gap-2 font-semibold px-4 py-1.5 rounded-md border-2 border-black/10"
                     style={{ backgroundColor: perfil.nivel_color, color: textoSobre(perfil.nivel_color) }}
                   >
                     <Trophy className="h-4 w-4" /> Nivel {perfil.nivel}
@@ -330,7 +330,7 @@ export default function Visita() {
               const niv = nivelDePosicion(perfil.nivel_posicion);
               return (
                 <div
-                  className={`inline-flex items-center gap-2 font-semibold px-4 py-1.5 rounded-full border-2 ${niv.bg} ${niv.texto} ${niv.borde}`}
+                  className={`inline-flex items-center gap-2 font-semibold px-4 py-1.5 rounded-md border-2 ${niv.bg} ${niv.texto} ${niv.borde}`}
                 >
                   <Trophy className="h-4 w-4" /> Nivel {perfil.nivel}
                 </div>
@@ -376,7 +376,7 @@ export default function Visita() {
                 const rec = recompensaDeCiclo(perfil.recompensa_posicion);
                 return rec ? (
                   <div
-                    className={`inline-flex items-center gap-2 font-bold px-3 py-1 rounded-full border-2 mb-2 text-sm ${rec.bg} ${rec.texto} ${rec.borde}`}
+                    className={`inline-flex items-center gap-2 font-bold px-3 py-1 rounded-md border-2 mb-2 text-sm ${rec.bg} ${rec.texto} ${rec.borde}`}
                   >
                     <Gift className="h-3.5 w-3.5" /> {rec.identificador}
                   </div>
