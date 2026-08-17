@@ -2077,6 +2077,8 @@ export type Database = {
       }
       compras_precios: { Args: { p_pin: string }; Returns: Json }
       compras_validar_pin: { Args: { p_pin: string }; Returns: boolean }
+      contadoras_validar_pin: { Args: { p_pin: string }; Returns: boolean }
+      herramientas_validar_clave: { Args: { p_clave: string }; Returns: boolean }
       crear_pedido_en_linea: {
         Args: {
           p_direccion?: string

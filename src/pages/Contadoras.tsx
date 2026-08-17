@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 import { DateRange } from "react-day-picker";
 
-const PIN_CONTADORAS = "8534";
+// El PIN de contadoras se valida en el servidor (RPC contadoras_validar_pin).
 
 // Sucursales que tienen plataformas de delivery
 const SUCURSALES_CON_PLATAFORMAS = ["Solares", "Cervecería"];
@@ -66,9 +66,12 @@ export default function Contadoras() {
     }
   };
 
-  const handlePinSubmit = (e: React.FormEvent) => {
+  const handlePinSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (pin === PIN_CONTADORAS) {
+    const { data: ok, error } = await supabase.rpc("contadoras_validar_pin", {
+      p_pin: pin,
+    });
+    if (!error && ok) {
       setAutenticado(true);
       setPinError(false);
     } else {

@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Wrench, CalendarDays, Lock, ChevronRight, Package, PiggyBank, QrCode, ShoppingCart, UtensilsCrossed } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { ResumenAnual } from "./ResumenAnual";
 
 // Accesos parkeados (fuera del bar principal en lo que se define su uso).
@@ -24,8 +25,7 @@ const ACCESOS = [
   { label: "Pedido del día (código compras)", to: "/compras", icon: ShoppingCart },
 ];
 
-// Contraseña de nivel administrador dueño (no visible para contadoras).
-const CLAVE_HERRAMIENTAS = "Coctel Danilo";
+// La clave de herramientas se valida en el servidor (RPC herramientas_validar_clave).
 const STORAGE_KEY = "laola_herramientas_ok";
 
 export function HerramientasDialog() {
@@ -38,8 +38,11 @@ export function HerramientasDialog() {
   const [clave, setClave] = useState("");
   const [resumenAbierto, setResumenAbierto] = useState(false);
 
-  const intentarDesbloquear = () => {
-    if (clave.trim() === CLAVE_HERRAMIENTAS) {
+  const intentarDesbloquear = async () => {
+    const { data: ok, error } = await supabase.rpc("herramientas_validar_clave", {
+      p_clave: clave.trim(),
+    });
+    if (!error && ok) {
       sessionStorage.setItem(STORAGE_KEY, "1");
       setDesbloqueado(true);
       setClave("");
