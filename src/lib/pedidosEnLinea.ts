@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { telefonoMx10 } from "@/lib/telefono";
 
 // Las tablas de este módulo todavía no existen en types.ts (lo regenera Lovable
 // al aplicar el SQL), por lo que se usa un cliente sin tipos generados y se
@@ -211,11 +212,13 @@ export function dinero(n: number): string {
   })}`;
 }
 
+/**
+ * Los diez dígitos, o cadena vacía si el número no es reconocible (quien llama
+ * ya valida con `length !== 10`). La regla vive en lib/telefono.ts, que además
+ * entiende el 1 viejo de móvil y el 00 de marcación.
+ */
 export function normalizarTelefono(telefono: string): string {
-  let digitos = telefono.replace(/\D/g, "");
-  if (digitos.length === 13 && digitos.startsWith("521")) digitos = digitos.slice(3);
-  else if (digitos.length === 12 && digitos.startsWith("52")) digitos = digitos.slice(2);
-  return digitos;
+  return telefonoMx10(telefono) ?? "";
 }
 
 export const DIAS_SEMANA = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];

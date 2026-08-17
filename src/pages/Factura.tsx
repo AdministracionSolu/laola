@@ -8,6 +8,7 @@ import { Loader2, CheckCircle2, FileText, Camera, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
+import { telefonoMx10 } from "@/lib/telefono";
 
 // Catálogos SAT (subconjunto usual para consumo en restaurante)
 const REGIMENES = [
@@ -78,7 +79,9 @@ export default function Factura() {
   }, [suc]);
 
   const rfcUpper = useMemo(() => rfc.toUpperCase().replace(/\s/g, ""), [rfc]);
-  const telLimpio = useMemo(() => telefono.replace(/\D/g, ""), [telefono]);
+  // Se acepta con lada ("+52 311..."), no sólo diez dígitos pelones: la
+  // regla vive en lib/telefono.ts y es la misma que usa el backend.
+  const telLimpio = useMemo(() => telefonoMx10(telefono) ?? "", [telefono]);
   const rfcOk = RFC_RE.test(rfcUpper);
   const cpOk = /^\d{5}$/.test(cp);
   const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());

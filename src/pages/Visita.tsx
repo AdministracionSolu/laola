@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { recompensaDeCiclo, nivelDePosicion, textoSobre, RECOMPENSA_INICIAL_ID } from "@/lib/lealtad";
 import ActivarWhatsApp from "@/components/ActivarWhatsApp";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
+import { telefonoMx10 } from "@/lib/telefono";
 
 // URL del aviso de privacidad (ajústala a la real cuando exista)
 const AVISO_PRIVACIDAD = "/privacidad";
@@ -88,7 +89,9 @@ export default function Visita() {
       .then(({ data }) => setSucursalNombre(data?.nombre ?? null));
   }, [suc]);
 
-  const telLimpio = useMemo(() => telefono.replace(/\D/g, ""), [telefono]);
+  // Se acepta con lada ("+52 311..."), no sólo diez dígitos pelones: la
+  // regla vive en lib/telefono.ts y es la misma que usa el backend.
+  const telLimpio = useMemo(() => telefonoMx10(telefono) ?? "", [telefono]);
   const telValido = telLimpio.length === 10;
   const folioLimpio = useMemo(() => folio.replace(/\s/g, ""), [folio]);
   const folioValido = folioLimpio.length >= 1;
