@@ -74,6 +74,16 @@ export default function AdminDashboard() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       navigate("/admin/login");
+      return;
+    }
+    // Autenticarse no basta: se exige rol admin en user_roles.
+    const { data: esAdmin, error } = await supabase.rpc("has_role", {
+      _user_id: session.user.id,
+      _role: "admin",
+    });
+    if (error || !esAdmin) {
+      await supabase.auth.signOut();
+      navigate("/admin/login");
     }
   };
 

@@ -3,115 +3,50 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 
-const ADMIN_EMAIL = "admin@laola.mx";
-const ADMIN_PASSWORD = "LaOla1278!";
-const CORRECT_PIN = "1278";
-
 export default function AdminLogin() {
-  const [pin, setPin] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        navigate("/admin/dashboard");
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) navigate("/admin/dashboard");
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate("/admin/dashboard");
-      }
+      if (session) navigate("/admin/dashboard");
     });
 
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const handlePinComplete = async (value: string) => {
-    if (value.length !== 4) return;
-    
-    if (value !== CORRECT_PIN) {
-      toast({
-        title: "PIN incorrecto",
-        description: "Verifica el código de acceso",
-        variant: "destructive",
-      });
-      setPin("");
-      return;
-    }
-
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) return;
     setIsLoading(true);
 
-    // Intentar login
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: ADMIN_EMAIL,
-      password: ADMIN_PASSWORD,
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
     });
 
-    if (signInError) {
-      // Si el usuario no existe, crearlo usando Edge Function
-      if (signInError.message.includes("Invalid login credentials")) {
-        try {
-          // Llamar a la Edge Function para crear el usuario admin
-          const { error: setupError } = await supabase.functions.invoke('setup-admin');
-          
-          if (setupError) {
-            console.error("Setup error:", setupError);
-            toast({
-              title: "Error de configuración",
-              description: "No se pudo crear la cuenta de administrador",
-              variant: "destructive",
-            });
-            setIsLoading(false);
-            setPin("");
-            return;
-          }
-
-          // Intentar login de nuevo después de crear
-          const { error: retryError } = await supabase.auth.signInWithPassword({
-            email: ADMIN_EMAIL,
-            password: ADMIN_PASSWORD,
-          });
-
-          if (retryError) {
-            console.error("Retry login error:", retryError);
-            toast({
-              title: "Error de acceso",
-              description: "Intenta ingresar el PIN nuevamente",
-              variant: "destructive",
-            });
-            setIsLoading(false);
-            setPin("");
-            return;
-          }
-        } catch (err) {
-          console.error("Unexpected error:", err);
-          toast({
-            title: "Error inesperado",
-            description: "Intenta de nuevo en unos segundos",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          setPin("");
-          return;
-        }
-      } else {
-        toast({
-          title: "Error de acceso",
-          description: "No se pudo iniciar sesión",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        setPin("");
-        return;
-      }
+    if (error) {
+      toast({
+        title: "No se pudo iniciar sesión",
+        description: "Correo o contraseña incorrectos.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      setPassword("");
+      return;
     }
 
     navigate("/admin/dashboard");
@@ -125,33 +60,38 @@ export default function AdminLogin() {
             <img src={logoLaOla} alt="La Ola" className="w-full h-full object-cover" />
           </div>
           <CardTitle className="text-2xl">Panel Administrativo</CardTitle>
-          <CardDescription>
-            Ingresa el PIN de acceso
-          </CardDescription>
+          <CardDescription>Inicia sesión con tu cuenta</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col items-center gap-6">
-          <InputOTP
-            maxLength={4}
-            value={pin}
-            onChange={setPin}
-            onComplete={handlePinComplete}
-            disabled={isLoading}
-          >
-            <InputOTPGroup>
-              <InputOTPSlot index={0} className="w-14 h-14 text-2xl" />
-              <InputOTPSlot index={1} className="w-14 h-14 text-2xl" />
-              <InputOTPSlot index={2} className="w-14 h-14 text-2xl" />
-              <InputOTPSlot index={3} className="w-14 h-14 text-2xl" />
-            </InputOTPGroup>
-          </InputOTP>
-
-          <Button 
-            onClick={() => handlePinComplete(pin)}
-            className="w-full" 
-            disabled={isLoading || pin.length !== 4}
-          >
-            {isLoading ? "Ingresando..." : "Ingresar"}
-          </Button>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="email">Correo</Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="username"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="password">Contraseña</Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+                required
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={isLoading || !email || !password}>
+              {isLoading ? "Ingresando..." : "Ingresar"}
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </div>
