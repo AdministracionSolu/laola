@@ -46,7 +46,14 @@ export default function AdminFacturacion() {
 
   useEffect(() => {
     (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      // La sesión puede tardar un instante en quedar escrita justo después del
+      // login (o en Safari, que es lento guardando). Reintentamos antes de
+      // rebotar al login: si no, se hace un ciclo login → facturación → login.
+      let session = (await supabase.auth.getSession()).data.session;
+      if (!session) {
+        await new Promise((r) => setTimeout(r, 600));
+        session = (await supabase.auth.getSession()).data.session;
+      }
       if (!session) { navigate("/admin/login"); return; }
       const { data: rolAdmin } = await supabase.rpc("has_role", {
         _user_id: session.user.id,

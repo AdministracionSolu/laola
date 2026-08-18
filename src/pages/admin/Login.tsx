@@ -25,16 +25,15 @@ export default function AdminLogin() {
     navigate(esAdmin ? "/admin/dashboard" : "/admin/facturacion");
   };
 
+  // OJO: nada de llamar supabase.rpc() dentro de onAuthStateChange (el cliente
+  // sostiene su candado durante el callback y la llamada se queda colgada).
+  // Con revisar la sesión al montar basta; el envío del formulario navega solo.
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) irADondeCorresponde(session.user.id);
-    });
-
+    let vivo = true;
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) irADondeCorresponde(session.user.id);
+      if (vivo && session) irADondeCorresponde(session.user.id);
     });
-
-    return () => subscription.unsubscribe();
+    return () => { vivo = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
