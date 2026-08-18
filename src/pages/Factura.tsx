@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 import { telefonoMx10 } from "@/lib/telefono";
+import { useSucursales, nombreCorto } from "@/lib/sucursales";
 
 // Catálogos SAT (subconjunto usual para consumo en restaurante)
 const REGIMENES = [
@@ -39,9 +40,13 @@ const inicioMesLocal = () => hoyLocal().slice(0, 8) + "01";
 
 export default function Factura() {
   const [params] = useSearchParams();
-  const suc = (params.get("suc") ?? "").trim().toUpperCase();
+  const sucQr = (params.get("suc") ?? "").trim().toUpperCase();
 
-  const [sucursalNombre, setSucursalNombre] = useState<string | null>(null);
+  // La sucursal es OBLIGATORIA. El QR de la mesa la trae en ?suc=, pero la
+  // mayoría llega por la liga pelona de WhatsApp; sin selector esas
+  // solicitudes caían en "GEN" y la contadora no sabía a quién facturar.
+  const { sucursales, cargando: cargandoSucursales } = useSucursales();
+  const [suc, setSuc] = useState("");
   const [rfc, setRfc] = useState("");
   const [razon, setRazon] = useState("");
   const [regimen, setRegimen] = useState("");
@@ -72,11 +77,17 @@ export default function Factura() {
     setFoto(f);
   };
 
+  // El código del QR sólo se acepta si corresponde a una sucursal real;
+  // cualquier otra cosa deja el selector vacío y el cliente elige.
   useEffect(() => {
-    if (!suc) return;
-    supabase.from("sucursales").select("nombre,prefijo_folio").eq("prefijo_folio", suc).maybeSingle()
-      .then(({ data }) => setSucursalNombre(data?.nombre ?? null));
-  }, [suc]);
+    if (!sucQr || suc) return;
+    if (sucursales.some((s) => s.codigo === sucQr)) setSuc(sucQr);
+  }, [sucQr, suc, sucursales]);
+
+  const sucursalNombre = useMemo(
+    () => sucursales.find((s) => s.codigo === suc)?.nombre ?? null,
+    [sucursales, suc]
+  );
 
   const rfcUpper = useMemo(() => rfc.toUpperCase().replace(/\s/g, ""), [rfc]);
   // Se acepta con lada ("+52 311..."), no sólo diez dígitos pelones: la
@@ -89,16 +100,16 @@ export default function Factura() {
   const fechaOk = !!fecha && fecha >= inicioMesLocal() && fecha <= hoyLocal();
   const consumoOk = ticket.trim().length > 0 && Number(total) > 0 && fechaOk && !!foto;
   const puedeEnviar =
-    rfcOk && razon.trim().length >= 3 && regimen && cpOk && uso && emailOk &&
+    !!suc && rfcOk && razon.trim().length >= 3 && regimen && cpOk && uso && emailOk &&
     telOk && formaPago && consumoOk && !enviando;
 
   const solicitar = async () => {
-    if (!puedeEnviar || !foto) return;
+    if (!puedeEnviar || !foto || !suc) return;
     setEnviando(true);
 
     // 1) Sube la foto del ticket (obligatoria) al bucket privado.
     const ext = (foto.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-    const path = `${suc || "GEN"}/${crypto.randomUUID()}.${ext}`;
+    const path = `${suc}/${crypto.randomUUID()}.${ext}`;
     const up = await supabase.storage.from("factura-tickets").upload(path, foto, {
       contentType: foto.type || "image/jpeg",
       upsert: false,
@@ -120,7 +131,7 @@ export default function Factura() {
       p_telefono: telLimpio,
       p_forma_pago: formaPago,
       p_ticket_foto_path: path,
-      p_sucursal_codigo: suc || null,
+      p_sucursal_codigo: suc,
       p_ticket_folio: ticket.trim(),
       p_ticket_total: Number(total),
       p_ticket_fecha: fecha,
@@ -128,7 +139,8 @@ export default function Factura() {
     setEnviando(false);
     if (error) {
       const m = error.message || "";
-      if (m.includes("RFC_INVALIDO")) toast.error("Revisa tu RFC.");
+      if (m.includes("SUCURSAL")) toast.error("Elige la sucursal donde consumiste.");
+      else if (m.includes("RFC_INVALIDO")) toast.error("Revisa tu RFC.");
       else if (m.includes("CP_INVALIDO")) toast.error("El código postal debe tener 5 dígitos.");
       else if (m.includes("EMAIL_INVALIDO")) toast.error("Revisa tu correo.");
       else if (m.includes("TELEFONO_INVALIDO")) toast.error("El teléfono debe tener 10 dígitos.");
@@ -159,6 +171,9 @@ export default function Factura() {
           <div className="mt-6 rounded-2xl border bg-card p-5 shadow-sm">
             <p className="text-sm text-muted-foreground">Folio de seguimiento</p>
             <p className="text-2xl font-bold tracking-wide text-primary mt-1">{folio}</p>
+            {sucursalNombre && (
+              <p className="text-sm text-muted-foreground mt-2">{nombreCorto(sucursalNombre)}</p>
+            )}
           </div>
           <Link to="/" className="inline-block mt-6 text-primary font-semibold">Volver al inicio</Link>
         </div>
@@ -177,14 +192,38 @@ export default function Factura() {
             <FileText className="h-7 w-7" /> Tu factura
           </h1>
           <p className="text-muted-foreground mt-1">Captura tus datos fiscales y te la enviamos por correo.</p>
-          {sucursalNombre && (
-            <span className="mt-3 inline-block bg-accent text-accent-foreground text-sm font-semibold px-4 py-1 rounded-full">
-              {sucursalNombre}
-            </span>
-          )}
         </div>
 
         <div className="rounded-2xl border bg-card p-5 shadow-sm space-y-4">
+          <div className="space-y-1.5">
+            <Label>Sucursal donde consumiste</Label>
+            {cargandoSucursales ? (
+              <div className="h-12 rounded-xl border bg-muted/40 animate-pulse" />
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {sucursales.map((s) => (
+                  <button
+                    key={s.codigo}
+                    type="button"
+                    onClick={() => setSuc(s.codigo)}
+                    className={`h-12 rounded-xl border text-sm font-semibold transition-all active:scale-[0.98] ${
+                      suc === s.codigo
+                        ? "bg-primary text-primary-foreground border-primary shadow"
+                        : "bg-card text-foreground/80 hover:border-primary/60"
+                    }`}
+                  >
+                    {nombreCorto(s.nombre)}
+                  </button>
+                ))}
+              </div>
+            )}
+            {!cargandoSucursales && !suc && (
+              <p className="text-[11px] text-muted-foreground">
+                Elige tu sucursal para poder solicitar la factura.
+              </p>
+            )}
+          </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="rfc">RFC</Label>
             <Input id="rfc" value={rfc} onChange={(e) => setRfc(e.target.value)}
