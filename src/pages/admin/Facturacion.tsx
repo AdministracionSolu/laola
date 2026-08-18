@@ -42,11 +42,17 @@ export default function AdminFacturacion() {
   const [busqueda, setBusqueda] = useState("");
   const [fEstado, setFEstado] = useState("pendiente");
   const [fSuc, setFSuc] = useState("todas");
+  const [esAdmin, setEsAdmin] = useState(false);
 
   useEffect(() => {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { navigate("/admin/login"); return; }
+      const { data: rolAdmin } = await supabase.rpc("has_role", {
+        _user_id: session.user.id,
+        _role: "admin",
+      });
+      setEsAdmin(!!rolAdmin);
       await cargar();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -158,7 +164,9 @@ export default function AdminFacturacion() {
       <header className="bg-card border-b sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-2">
           <div className="flex items-center gap-3 min-w-0">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/admin/dashboard")}><ArrowLeft className="w-5 h-5" /></Button>
+            {esAdmin && (
+              <Button variant="ghost" size="icon" onClick={() => navigate("/admin/dashboard")}><ArrowLeft className="w-5 h-5" /></Button>
+            )}
             <img src={logoLaOla} alt="La Ola" className="w-10 h-10 rounded-full object-cover shrink-0" />
             <h1 className="text-xl font-bold truncate">Facturación</h1>
           </div>

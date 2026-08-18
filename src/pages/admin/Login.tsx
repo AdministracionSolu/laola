@@ -16,16 +16,26 @@ export default function AdminLogin() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Admin → dashboard completo. Cuenta sin rol admin (contadoras) → solo facturación.
+  const irADondeCorresponde = async (userId: string) => {
+    const { data: esAdmin } = await supabase.rpc("has_role", {
+      _user_id: userId,
+      _role: "admin",
+    });
+    navigate(esAdmin ? "/admin/dashboard" : "/admin/facturacion");
+  };
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) navigate("/admin/dashboard");
+      if (session) irADondeCorresponde(session.user.id);
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) navigate("/admin/dashboard");
+      if (session) irADondeCorresponde(session.user.id);
     });
 
     return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,7 +43,7 @@ export default function AdminLogin() {
     if (!email || !password) return;
     setIsLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
@@ -49,7 +59,7 @@ export default function AdminLogin() {
       return;
     }
 
-    navigate("/admin/dashboard");
+    if (data.session) await irADondeCorresponde(data.session.user.id);
   };
 
   return (

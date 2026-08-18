@@ -81,10 +81,13 @@ export default function AdminDashboard() {
       _user_id: session.user.id,
       _role: "admin",
     });
-    if (error || !esAdmin) {
+    if (error) {
       await supabase.auth.signOut();
       navigate("/admin/login");
+      return;
     }
+    // Cuenta válida sin rol admin (contadoras): su panel es facturación, no se le cierra la sesión.
+    if (!esAdmin) navigate("/admin/facturacion");
   };
 
   const handleLogout = async () => {
