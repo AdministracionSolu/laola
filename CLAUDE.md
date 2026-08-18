@@ -6,8 +6,12 @@ sincroniza el frontend, **nada más**.
 ## Antes de tocar nada
 
 ```sh
-bash scripts/verificar-realidad.sh
+bash scripts/verificar-realidad.sh          # sólo este proyecto
+bash ~/bin/verificar-todo.sh                # la ronda por todos
 ```
+
+La ronda completa corre sola cada mañana y deja el reporte en
+`~/verificaciones/ultima.txt`.
 
 ## Migraciones (IMPORTANTE)
 
