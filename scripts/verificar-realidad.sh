@@ -3,14 +3,18 @@
 # verificar-realidad.sh — ¿lo que está escrito sigue siendo cierto?
 # ============================================================================
 # En La Ola, Lovable NO aplica las migraciones: se le pasan a Diego en bloques
-# para que las corra a mano en el SQL Editor. Eso significa que un archivo
-# `.sql` commiteado aquí **no prueba absolutamente nada**: puede llevar semanas
-# en el repo sin que exista en la base, y desde el código se ve idéntico.
+# para que las corra a mano en el SQL Editor. Un archivo `.sql` commiteado aquí
+# **no prueba nada** — puede llevar semanas en el repo sin existir en la base, y
+# desde el código se ve idéntico. Este script es el que nota la diferencia.
 #
-# Como tampoco hay Management API para este proyecto, el script no pregunta por
-# information_schema: le pregunta a PostgREST, que contesta 404 cuando una tabla
-# o una función no existe. Entra como el admin del panel, que es un usuario real
-# de GoTrue, porque casi todas las policies son `TO authenticated`.
+# No hay Management API para este proyecto (la cuenta no tiene privilegios), así
+# que se le pregunta a PostgREST, que contesta 404 cuando una tabla no existe y
+# 400 cuando una columna no existe. Eso sí es fiable.
+#
+# Lo que NO se puede verificar así: si una FUNCIÓN existe. PostgREST responde
+# exactamente el mismo 404 para una función ausente y para una que existe con
+# otros argumentos, así que preguntarlo sólo daría falsas alarmas. Para las
+# funciones hace falta SQL, y para eso hace falta Diego.
 #
 #     bash scripts/verificar-realidad.sh
 #
@@ -28,76 +32,50 @@ tema() { printf "\n%s%s%s\n" "$B" "$1" "$F"; }
 
 URL=$(grep VITE_SUPABASE_URL "$REPO/.env" | cut -d'"' -f2)
 ANON=$(grep VITE_SUPABASE_PUBLISHABLE_KEY "$REPO/.env" | cut -d'"' -f2)
-# Las credenciales del admin viven en el propio login del panel: el PIN sólo
-# dispara este signInWithPassword.
-EMAIL=$(grep -oE 'ADMIN_EMAIL *= *"[^"]+"' "$REPO/src/pages/admin/Login.tsx" 2>/dev/null | cut -d'"' -f2)
-PASS=$(grep -oE 'ADMIN_PASSWORD *= *"[^"]+"' "$REPO/src/pages/admin/Login.tsx" 2>/dev/null | cut -d'"' -f2)
+codigo() { curl -s -o /dev/null -m 25 -w "%{http_code}" "$URL/rest/v1/$1" -H "apikey: $ANON"; }
 
 echo "La Ola · verificación de realidad · $(date '+%Y-%m-%d %H:%M')"
 
 # ---------------------------------------------------------------------------
-tema "1. Se puede entrar como el panel"
-TOKEN=$(curl -s -m 25 -X POST "$URL/auth/v1/token?grant_type=password" \
-  -H "apikey: $ANON" -H "Content-Type: application/json" \
-  -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}" \
-  | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null)
-if [ -n "$TOKEN" ]; then ok "sesión de $EMAIL abierta"
-else mal "no pude entrar como $EMAIL — ¿cambió la contraseña del panel?"; TOKEN="$ANON"; fi
-
-get()  { curl -s -o /dev/null -m 25 -w "%{http_code}" "$URL/rest/v1/$1" -H "apikey: $ANON" -H "Authorization: Bearer $TOKEN"; }
-body() { curl -s -m 25 "$URL/rest/v1/$1" -H "apikey: $ANON" -H "Authorization: Bearer $TOKEN"; }
-cuenta() { curl -s -m 25 -I "$URL/rest/v1/$1" -H "apikey: $ANON" -H "Authorization: Bearer $TOKEN" \
-             -H "Prefer: count=exact" -H "Range: 0-0" | grep -i content-range | sed 's|.*/||' | tr -d '\r'; }
+tema "1. La base responde"
+if [ "$(codigo 'sucursales?select=id&limit=1')" = "200" ]; then ok "PostgREST contesta"
+else mal "no pude hablarle a la base ($URL)"; fi
 
 # ---------------------------------------------------------------------------
-tema "2. Lo que crean las últimas migraciones existe de verdad"
+tema "2. Las tablas y columnas de las últimas migraciones existen"
 pendientes=0
-for archivo in $(ls "$REPO/supabase/migrations"/*.sql 2>/dev/null | tail -8); do
+for archivo in $(ls "$REPO/supabase/migrations"/*.sql 2>/dev/null | tail -10); do
   faltan=""
   for tb in $(grep -oiE "CREATE TABLE (IF NOT EXISTS )?(public\.)?[a-z_0-9]+" "$archivo" | tr 'A-Z' 'a-z' | sed -E 's/.*(exists |table )(public\.)?//' | sort -u); do
-    [ "$(get "$tb?select=*&limit=1")" = "404" ] && faltan="$faltan tabla:$tb"
+    [ "$(codigo "$tb?select=*&limit=1")" = "404" ] && faltan="$faltan tabla:$tb"
   done
-  for fn in $(grep -oiE "CREATE (OR REPLACE )?FUNCTION (public\.)?[a-z_0-9]+" "$archivo" | tr 'A-Z' 'a-z' | sed -E 's/.*function (public\.)?//' | sort -u); do
-    codigo=$(curl -s -o /dev/null -m 25 -w "%{http_code}" -X POST "$URL/rest/v1/rpc/$fn" \
-      -H "apikey: $ANON" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{}')
-    [ "$codigo" = "404" ] && faltan="$faltan fn:$fn"
-  done
+  # ALTER TABLE x ADD COLUMN y  →  se pregunta por la columna en su tabla
+  while read -r tabla columna; do
+    [ -z "$tabla" ] && continue
+    [ "$(codigo "$tabla?select=$columna&limit=1")" = "400" ] && faltan="$faltan $tabla.$columna"
+  done < <(grep -oiE "ALTER TABLE (IF EXISTS )?(public\.)?[a-z_0-9]+[[:space:]]+ADD COLUMN (IF NOT EXISTS )?[a-z_0-9]+" "$archivo" \
+           | tr 'A-Z' 'a-z' | sed -E 's/alter table (if exists )?(public\.)?//; s/[[:space:]]+add column (if not exists )?/ /' | sort -u)
   [ -n "$faltan" ] && { mal "$(basename "$archivo") NO está aplicada — falta:$faltan"; pendientes=$((pendientes+1)); }
 done
-[ "$pendientes" = "0" ] && ok "las últimas 8 migraciones están aplicadas"
+if [ "$pendientes" = "0" ]; then
+  ok "las últimas 10 migraciones están aplicadas"
+else
+  printf "      → se le pasan a Diego en bloques para el SQL Editor; el archivo solo no sirve\n"
+fi
 
 # ---------------------------------------------------------------------------
-tema "3. Lo que el panel llama sigue existiendo"
-# Una función que se borra o se renombra no rompe el build: rompe la pantalla.
-faltantes=""
-for fn in $(grep -rhoE "rpc\(\"[a-z_]+\"|rpc\('[a-z_]+'" "$REPO/src" | sed -E "s/rpc\(['\"]//" | sort -u); do
-  codigo=$(curl -s -o /dev/null -m 25 -w "%{http_code}" -X POST "$URL/rest/v1/rpc/$fn" \
-    -H "apikey: $ANON" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{}')
-  [ "$codigo" = "404" ] && faltantes="$faltantes $fn"
-done
-[ -z "$faltantes" ] && ok "todas las funciones que llama el panel existen" \
-                    || mal "el panel llama funciones que no existen:$faltantes"
-
-# ---------------------------------------------------------------------------
-tema "4. La operación del día"
-hoy=$(date -u +%Y-%m-%d)
-cortes=$(cuenta "cortes_caja?select=id&fecha_venta=eq.$hoy")
-printf "      → cortes de caja de hoy: %s\n" "${cortes:-?}"
-pedidos=$(cuenta "pedidos?select=id&created_at=gte.${hoy}T00:00:00")
-printf "      → pedidos en línea de hoy: %s\n" "${pedidos:-?}"
-
-# ---------------------------------------------------------------------------
-tema "5. El anónimo sólo ve lo que debe"
-# El barrido de agosto cerró las tablas de operación al anónimo; el menú público
-# y la liga de proveedor siguen abiertos a propósito.
-for tabla in cortes_caja pedidos proveedor_productos; do
-  codigo=$(curl -s -o /dev/null -m 25 -w "%{http_code}" "$URL/rest/v1/$tabla?select=*&limit=1" -H "apikey: $ANON")
-  if [ "$codigo" = "200" ]; then
-    filas=$(curl -s -m 25 "$URL/rest/v1/$tabla?select=*&limit=1" -H "apikey: $ANON" | head -c 3)
-    [ "$filas" = "[]" ] && ok "$tabla: el anónimo no ve filas" || mal "$tabla: el ANÓNIMO PUEDE LEERLA"
-  else
-    ok "$tabla: cerrada al anónimo ($codigo)"
-  fi
+tema "3. El anónimo sólo ve lo que debe"
+# El menú público y la liga del proveedor están abiertos a propósito. Lo demás
+# es operación interna y no tiene por qué asomarse.
+for tabla in pedidos pedidos_detalle cortes_caja recepciones colaboradores reservaciones proveedor_productos; do
+  c=$(codigo "$tabla?select=*&limit=1")
+  case "$c" in
+    404) printf "      → %s: no existe\n" "$tabla" ;;
+    200) filas=$(curl -s -m 25 "$URL/rest/v1/$tabla?select=*&limit=1" -H "apikey: $ANON" | head -c 3)
+         if [ "$filas" = "[]" ]; then ok "$tabla: el anónimo no ve filas"
+         else mal "$tabla: el ANÓNIMO PUEDE LEERLA"; fi ;;
+    *)   ok "$tabla: cerrada al anónimo ($c)" ;;
+  esac
 done
 
 # ---------------------------------------------------------------------------
