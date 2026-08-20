@@ -196,8 +196,10 @@ BEGIN
     );
   EXCEPTION WHEN unique_violation THEN
     -- Dos envíos del mismo ticket al mismo tiempo: gana el primero.
-    GET STACKED DIAGNOSTICS v_constraint = PG_EXCEPTION_CONSTRAINT;
-    IF v_constraint = 'factura_solicitudes_ticket_unico_idx' THEN
+    -- (El item es CONSTRAINT_NAME; PG_EXCEPTION_CONSTRAINT no existe.)
+    GET STACKED DIAGNOSTICS v_constraint = CONSTRAINT_NAME;
+    IF v_constraint = 'factura_solicitudes_ticket_unico_idx'
+       OR SQLERRM LIKE '%ticket_unico%' THEN
       RAISE EXCEPTION 'TICKET_YA_USADO';
     END IF;
     RAISE;
