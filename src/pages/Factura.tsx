@@ -32,6 +32,11 @@ const FORMAS_PAGO = ["Efectivo", "Tarjeta de débito", "Tarjeta de crédito", "T
 
 const RFC_RE = /^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/;
 
+// Un ticket se factura una sola vez por sucursal (el mismo número existe en
+// otra sucursal y ahí sí es un consumo distinto).
+const TEL_FACTURACION = "311 225 8335";
+const MSG_FOLIO_USADO = "Este folio ya se utilizó para factura.";
+
 // Fecha de hoy en horario local (YYYY-MM-DD), para pre-llenar el campo.
 const hoyLocal = () => new Date().toLocaleDateString("en-CA");
 // Primer día del mes en curso: se puede facturar cualquier consumo del mes,
@@ -62,6 +67,8 @@ export default function Factura() {
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [folio, setFolio] = useState<string | null>(null);
+  const [folioUsado, setFolioUsado] = useState(false);
+  const [verificandoTicket, setVerificandoTicket] = useState(false);
 
   useEffect(() => {
     if (!foto) { setFotoPreview(null); return; }
@@ -101,11 +108,34 @@ export default function Factura() {
   const consumoOk = ticket.trim().length > 0 && Number(total) > 0 && fechaOk && !!foto;
   const puedeEnviar =
     !!suc && rfcOk && razon.trim().length >= 3 && regimen && cpOk && uso && emailOk &&
-    telOk && formaPago && consumoOk && !enviando;
+    telOk && formaPago && consumoOk && !folioUsado && !verificandoTicket && !enviando;
+
+  // Un ticket no se factura dos veces en la misma sucursal. Se pregunta antes
+  // de subir la foto: el bucket no da DELETE, una foto de más se queda ahí.
+  const ticketDisponible = async (): Promise<boolean> => {
+    const t = ticket.trim();
+    if (!suc || !t) return true;
+    setVerificandoTicket(true);
+    const { data, error } = await (supabase.rpc as any)("factura_ticket_disponible", {
+      p_sucursal_codigo: suc,
+      p_ticket_folio: t,
+    });
+    setVerificandoTicket(false);
+    if (error) return true; // si no se pudo consultar, que decida la RPC de alta
+    const libre = data !== false;
+    setFolioUsado(!libre);
+    return libre;
+  };
 
   const solicitar = async () => {
     if (!puedeEnviar || !foto || !suc) return;
     setEnviando(true);
+
+    if (!(await ticketDisponible())) {
+      setEnviando(false);
+      toast.error(`${MSG_FOLIO_USADO} Comunícate al ${TEL_FACTURACION}.`);
+      return;
+    }
 
     // 1) Sube la foto del ticket (obligatoria) al bucket privado.
     const ext = (foto.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
@@ -139,7 +169,11 @@ export default function Factura() {
     setEnviando(false);
     if (error) {
       const m = error.message || "";
-      if (m.includes("SUCURSAL")) toast.error("Elige la sucursal donde consumiste.");
+      if (m.includes("TICKET_YA_USADO")) {
+        setFolioUsado(true);
+        toast.error(`${MSG_FOLIO_USADO} Comunícate al ${TEL_FACTURACION}.`);
+      }
+      else if (m.includes("SUCURSAL")) toast.error("Elige la sucursal donde consumiste.");
       else if (m.includes("RFC_INVALIDO")) toast.error("Revisa tu RFC.");
       else if (m.includes("CP_INVALIDO")) toast.error("El código postal debe tener 5 dígitos.");
       else if (m.includes("EMAIL_INVALIDO")) toast.error("Revisa tu correo.");
@@ -205,7 +239,7 @@ export default function Factura() {
                   <button
                     key={s.codigo}
                     type="button"
-                    onClick={() => setSuc(s.codigo)}
+                    onClick={() => { setSuc(s.codigo); setFolioUsado(false); }}
                     className={`h-12 rounded-xl border text-sm font-semibold transition-all active:scale-[0.98] ${
                       suc === s.codigo
                         ? "bg-primary text-primary-foreground border-primary shadow"
@@ -304,13 +338,33 @@ export default function Factura() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="ticket" className="text-xs">Número de ticket</Label>
-                <Input id="ticket" value={ticket} onChange={(e) => setTicket(e.target.value)} placeholder="Ej. 0154" className="h-12 text-base" />
+                <Input
+                  id="ticket"
+                  value={ticket}
+                  onChange={(e) => { setTicket(e.target.value); setFolioUsado(false); }}
+                  onBlur={() => { void ticketDisponible(); }}
+                  placeholder="Ej. 0154"
+                  className={`h-12 text-base ${folioUsado ? "border-destructive" : ""}`}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="total" className="text-xs">Total $</Label>
                 <Input id="total" value={total} onChange={(e) => setTotal(e.target.value.replace(/[^\d.]/g, ""))} placeholder="0.00" inputMode="decimal" className="h-12 text-base" />
               </div>
             </div>
+
+            {folioUsado && (
+              <div className="mt-3 rounded-xl border border-destructive/40 bg-destructive/5 p-3">
+                <p className="text-sm font-semibold text-destructive">{MSG_FOLIO_USADO}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Si tienes alguna situación, puedes comunicarte al{" "}
+                  <a href={`tel:+52${TEL_FACTURACION.replace(/\D/g, "")}`} className="font-semibold text-destructive underline">
+                    {TEL_FACTURACION}
+                  </a>
+                  .
+                </p>
+              </div>
+            )}
             <div className="space-y-1.5 mt-3">
               <Label htmlFor="fecha" className="text-xs">Fecha de tu visita</Label>
               <Input

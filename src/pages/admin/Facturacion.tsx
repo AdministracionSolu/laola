@@ -112,7 +112,14 @@ export default function AdminFacturacion() {
 
   const setEstado = async (r: Solicitud, estado: Solicitud["estado"]) => {
     const { error } = await db.from("factura_solicitudes").update({ estado }).eq("id", r.id);
-    if (error) return toast.error("No se pudo actualizar.");
+    if (error) {
+      // El candado de ticket único: reactivar una rechazada cuyo folio ya lo
+      // tomó otra solicitud de la misma sucursal.
+      if ((error.message || "").includes("ticket_unico")) {
+        return toast.error("Ese ticket ya está en otra solicitud activa de la misma sucursal.");
+      }
+      return toast.error("No se pudo actualizar.");
+    }
     setRows((p) => p.map((x) => (x.id === r.id ? { ...x, estado } : x)));
   };
 
