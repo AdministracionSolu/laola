@@ -210,6 +210,10 @@ END;
 $fac$;
 
 -- ---------- BLOQUE 5: consulta previa (antes de subir la foto) ----------
+-- Sin dollar-quoting (BEGIN ATOMIC, PG14+): el editor de Supabase cortó el
+-- cuerpo antes del cierre $disp$ y el server contestó "unterminated
+-- dollar-quoted string". Así el cuerpo es SQL normal, sin comillas que cerrar.
+-- El `= factura_ticket_norm(...)` ya descarta los NULL por sí solo.
 CREATE OR REPLACE FUNCTION public.factura_ticket_disponible(
   p_sucursal_codigo text,
   p_ticket_folio text
@@ -219,15 +223,9 @@ LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public
-AS $disp$
-  SELECT NOT EXISTS (
-    SELECT 1 FROM public.factura_solicitudes s
-    WHERE s.sucursal_codigo = upper(NULLIF(trim(COALESCE(p_sucursal_codigo, '')), ''))
-      AND s.ticket_folio_norm IS NOT NULL
-      AND s.ticket_folio_norm = public.factura_ticket_norm(p_ticket_folio)
-      AND s.estado <> 'rechazada'
-  );
-$disp$;
+BEGIN ATOMIC
+  SELECT NOT EXISTS (SELECT 1 FROM public.factura_solicitudes s WHERE s.sucursal_codigo = upper(btrim(p_sucursal_codigo)) AND s.ticket_folio_norm = public.factura_ticket_norm(p_ticket_folio) AND s.estado <> 'rechazada');
+END;
 
 REVOKE ALL ON FUNCTION public.factura_ticket_disponible(text, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.factura_ticket_disponible(text, text) TO anon, authenticated;
