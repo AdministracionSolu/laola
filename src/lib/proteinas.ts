@@ -43,6 +43,8 @@ export const PROTEINAS: ProteinaDef[] = [
   // Postres (ago-2026): entran a existencia y pedido como cualquier insumo.
   { variantes: ["FLAN", "Flan"], display: "Flan", unidad: "pz", orden: 23 },
   { variantes: ["PAY", "Pay", "PAY DE LA CASA", "Pie"], display: "Pay", unidad: "pz", orden: 24 },
+  { variantes: ["TARTA VASCA", "Tarta vasca", "Tarta Vasca", "TARTA DE QUESO VASCA"], display: "Tarta vasca", unidad: "pz", orden: 25 },
+  { variantes: ["BROWNIE", "Brownie", "BROWNIES"], display: "Brownie", unidad: "pz", orden: 26 },
 ];
 
 // Normaliza un nombre: mayúsculas, sin acentos, sin signos, espacios colapsados.
