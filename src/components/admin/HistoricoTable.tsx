@@ -101,7 +101,9 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
       rappi: String(corte.rappi ?? 0),
       uber: String(corte.uber ?? 0),
     });
+    setFechaEdit(corte.fecha_venta);
     setCorteAEditar(corte);
+
   };
 
   // Mismas reglas que la captura: si hay desglose de tarjetas, tarjetas es
