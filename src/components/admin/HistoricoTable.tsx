@@ -488,7 +488,19 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
           </DialogHeader>
 
           <div className="space-y-4">
+            {onCambiarFecha && (
+              <div className="space-y-1">
+                <Label htmlFor="edit_fecha">Fecha de venta</Label>
+                <Input
+                  id="edit_fecha"
+                  type="date"
+                  value={fechaEdit}
+                  onChange={(e) => setFechaEdit(e.target.value)}
+                />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
+
               {([
                 ["corte_x", "Corte X"],
                 ["efectivo", "Efectivo"],
