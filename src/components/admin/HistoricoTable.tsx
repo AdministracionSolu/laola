@@ -139,9 +139,16 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
       rappi: num(formEdit.rappi),
       uber: num(formEdit.uber),
     });
+    // La fecha va aparte: la mueve la misma ruta que el cambio de fecha,
+    // para que quede igual asentada en la bitácora.
+    let okFecha = true;
+    if (ok && onCambiarFecha && fechaEdit && fechaEdit !== corteAEditar.fecha_venta) {
+      okFecha = await onCambiarFecha(corteAEditar.id, fechaEdit);
+    }
     setIsEditando(false);
-    if (ok) setCorteAEditar(null);
+    if (ok && okFecha) setCorteAEditar(null);
   };
+
 
   const handleCambiarFecha = async () => {
     if (!corteAFechar || !onCambiarFecha || !nuevaFecha) return;
