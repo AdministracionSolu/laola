@@ -53,6 +53,8 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
   const [nuevaFecha, setNuevaFecha] = useState("");
   const [corteAEditar, setCorteAEditar] = useState<Corte | null>(null);
   const [formEdit, setFormEdit] = useState<Record<string, string>>({});
+  const [fechaEdit, setFechaEdit] = useState("");
+
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCambiando, setIsCambiando] = useState(false);
   const [isFechando, setIsFechando] = useState(false);
