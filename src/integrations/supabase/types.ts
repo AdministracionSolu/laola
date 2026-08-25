@@ -424,6 +424,7 @@ export type Database = {
           telefono: string | null
           ticket_fecha: string | null
           ticket_folio: string | null
+          ticket_folio_norm: string | null
           ticket_foto_path: string | null
           ticket_total: number | null
           timbrada_at: string | null
@@ -448,6 +449,7 @@ export type Database = {
           telefono?: string | null
           ticket_fecha?: string | null
           ticket_folio?: string | null
+          ticket_folio_norm?: string | null
           ticket_foto_path?: string | null
           ticket_total?: number | null
           timbrada_at?: string | null
@@ -472,6 +474,7 @@ export type Database = {
           telefono?: string | null
           ticket_fecha?: string | null
           ticket_folio?: string | null
+          ticket_folio_norm?: string | null
           ticket_foto_path?: string | null
           ticket_total?: number | null
           timbrada_at?: string | null
@@ -628,6 +631,97 @@ export type Database = {
           },
         ]
       }
+      impl_pendientes: {
+        Row: {
+          area: string | null
+          created_at: string
+          estado: string
+          id: string
+          notas: string | null
+          responsable: string | null
+          semana_objetivo: string | null
+          sucursal_id: string | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          area?: string | null
+          created_at?: string
+          estado?: string
+          id?: string
+          notas?: string | null
+          responsable?: string | null
+          semana_objetivo?: string | null
+          sucursal_id?: string | null
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          area?: string | null
+          created_at?: string
+          estado?: string
+          id?: string
+          notas?: string | null
+          responsable?: string | null
+          semana_objetivo?: string | null
+          sucursal_id?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "impl_pendientes_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      impl_responsables: {
+        Row: {
+          activo: boolean
+          id: string
+          notas: string | null
+          persona: string
+          proceso: string
+          puesto: string | null
+          sucursal_id: string | null
+          telefono: string | null
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          id?: string
+          notas?: string | null
+          persona: string
+          proceso: string
+          puesto?: string | null
+          sucursal_id?: string | null
+          telefono?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          id?: string
+          notas?: string | null
+          persona?: string
+          proceso?: string
+          puesto?: string | null
+          sucursal_id?: string | null
+          telefono?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "impl_responsables_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       insumo_sucursal: {
         Row: {
           activo: boolean
@@ -635,7 +729,6 @@ export type Database = {
           created_at: string
           id: string
           insumo_id: string
-          nivel_par: number | null
           orden: number
           sucursal_id: string
           unidad: string | null
@@ -647,7 +740,6 @@ export type Database = {
           created_at?: string
           id?: string
           insumo_id: string
-          nivel_par?: number | null
           orden?: number
           sucursal_id: string
           unidad?: string | null
@@ -659,7 +751,6 @@ export type Database = {
           created_at?: string
           id?: string
           insumo_id?: string
-          nivel_par?: number | null
           orden?: number
           sucursal_id?: string
           unidad?: string | null
@@ -686,8 +777,8 @@ export type Database = {
         Row: {
           activo: boolean
           categoria_id: string
-          desglosa_procesado: boolean
           created_at: string
+          desglosa_procesado: boolean
           id: string
           nombre: string
           unidad: string | null
@@ -696,6 +787,7 @@ export type Database = {
           activo?: boolean
           categoria_id: string
           created_at?: string
+          desglosa_procesado?: boolean
           id?: string
           nombre: string
           unidad?: string | null
@@ -703,8 +795,8 @@ export type Database = {
         Update: {
           activo?: boolean
           categoria_id?: string
-          desglosa_procesado?: boolean
           created_at?: string
+          desglosa_procesado?: boolean
           id?: string
           nombre?: string
           unidad?: string | null
@@ -865,6 +957,39 @@ export type Database = {
           },
         ]
       }
+      lealtad_colaboradores: {
+        Row: {
+          activo: boolean
+          admin_grupo: boolean
+          agregado_at: string
+          nombre_wa: string | null
+          notas: string | null
+          origen: string
+          telefono: string
+          telefono_wa: string | null
+        }
+        Insert: {
+          activo?: boolean
+          admin_grupo?: boolean
+          agregado_at?: string
+          nombre_wa?: string | null
+          notas?: string | null
+          origen?: string
+          telefono: string
+          telefono_wa?: string | null
+        }
+        Update: {
+          activo?: boolean
+          admin_grupo?: boolean
+          agregado_at?: string
+          nombre_wa?: string | null
+          notas?: string | null
+          origen?: string
+          telefono?: string
+          telefono_wa?: string | null
+        }
+        Relationships: []
+      }
       lealtad_config: {
         Row: {
           id: number
@@ -936,6 +1061,7 @@ export type Database = {
           min_visitas: number
           nombre: string
           orden: number
+          posicion: number | null
         }
         Insert: {
           activo?: boolean
@@ -945,6 +1071,7 @@ export type Database = {
           min_visitas: number
           nombre: string
           orden?: number
+          posicion?: number | null
         }
         Update: {
           activo?: boolean
@@ -954,6 +1081,7 @@ export type Database = {
           min_visitas?: number
           nombre?: string
           orden?: number
+          posicion?: number | null
         }
         Relationships: []
       }
@@ -1436,6 +1564,67 @@ export type Database = {
           },
         ]
       }
+      prov_gracias_enviados: {
+        Row: {
+          created_at: string
+          fecha: string
+          proveedor_id: string
+          request_id: number | null
+        }
+        Insert: {
+          created_at?: string
+          fecha: string
+          proveedor_id: string
+          request_id?: number | null
+        }
+        Update: {
+          created_at?: string
+          fecha?: string
+          proveedor_id?: string
+          request_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prov_gracias_enviados_proveedor_id_fkey"
+            columns: ["proveedor_id"]
+            isOneToOne: false
+            referencedRelation: "proveedores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proveedor_alias: {
+        Row: {
+          alias: string
+          alias_norm: string | null
+          created_at: string
+          id: string
+          proveedor_id: string
+        }
+        Insert: {
+          alias: string
+          alias_norm?: string | null
+          created_at?: string
+          id?: string
+          proveedor_id: string
+        }
+        Update: {
+          alias?: string
+          alias_norm?: string | null
+          created_at?: string
+          id?: string
+          proveedor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proveedor_alias_proveedor_id_fkey"
+            columns: ["proveedor_id"]
+            isOneToOne: false
+            referencedRelation: "proveedores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       proveedor_envios: {
         Row: {
           created_at: string
@@ -1604,6 +1793,7 @@ export type Database = {
           id?: string
           notas?: string | null
           proveedor: string
+          proveedor_id?: string | null
           registrado_por?: string | null
           sucursal_id: string
         }
@@ -1618,6 +1808,13 @@ export type Database = {
           sucursal_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "recepciones_proveedor_id_fkey"
+            columns: ["proveedor_id"]
+            isOneToOne: false
+            referencedRelation: "proveedores"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "recepciones_sucursal_id_fkey"
             columns: ["sucursal_id"]
@@ -1789,6 +1986,138 @@ export type Database = {
           zona_horaria?: string
         }
         Relationships: []
+      }
+      terminales: {
+        Row: {
+          activa: boolean
+          created_at: string
+          id: string
+          nombre: string
+          orden: number
+        }
+        Insert: {
+          activa?: boolean
+          created_at?: string
+          id?: string
+          nombre: string
+          orden?: number
+        }
+        Update: {
+          activa?: boolean
+          created_at?: string
+          id?: string
+          nombre?: string
+          orden?: number
+        }
+        Relationships: []
+      }
+      terminales_asignacion: {
+        Row: {
+          created_at: string
+          fecha: string
+          sucursal_id: string
+          terminal_id: string
+        }
+        Insert: {
+          created_at?: string
+          fecha: string
+          sucursal_id: string
+          terminal_id: string
+        }
+        Update: {
+          created_at?: string
+          fecha?: string
+          sucursal_id?: string
+          terminal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "terminales_asignacion_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "terminales_asignacion_terminal_id_fkey"
+            columns: ["terminal_id"]
+            isOneToOne: false
+            referencedRelation: "terminales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      terminales_aviso_config: {
+        Row: {
+          activo: boolean
+          hora: string
+          id: number
+          updated_at: string
+          zona: string
+        }
+        Insert: {
+          activo?: boolean
+          hora?: string
+          id?: number
+          updated_at?: string
+          zona?: string
+        }
+        Update: {
+          activo?: boolean
+          hora?: string
+          id?: number
+          updated_at?: string
+          zona?: string
+        }
+        Relationships: []
+      }
+      terminales_aviso_enviado: {
+        Row: {
+          created_at: string
+          fecha: string
+          mensaje: string | null
+        }
+        Insert: {
+          created_at?: string
+          fecha: string
+          mensaje?: string | null
+        }
+        Update: {
+          created_at?: string
+          fecha?: string
+          mensaje?: string | null
+        }
+        Relationships: []
+      }
+      terminales_sucursal: {
+        Row: {
+          sucursal_id: string
+          terminal_id: string
+        }
+        Insert: {
+          sucursal_id: string
+          terminal_id: string
+        }
+        Update: {
+          sucursal_id?: string
+          terminal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "terminales_sucursal_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "terminales_sucursal_terminal_id_fkey"
+            columns: ["terminal_id"]
+            isOneToOne: false
+            referencedRelation: "terminales"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       turno_excepciones: {
         Row: {
@@ -2048,6 +2377,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      avisar_terminales_dia: { Args: { p_forzar?: boolean }; Returns: string }
       checador_estado: {
         Args: { p_sucursal_id: string }
         Returns: {
@@ -2118,6 +2448,11 @@ export type Database = {
         }
         Returns: Json
       }
+      factura_ticket_disponible: {
+        Args: { p_sucursal_codigo: string; p_ticket_folio: string }
+        Returns: boolean
+      }
+      factura_ticket_norm: { Args: { p_folio: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2135,6 +2470,36 @@ export type Database = {
         }
         Returns: Json
       }
+      impl_pendiente_guardar: {
+        Args: {
+          p_area?: string
+          p_borrar?: boolean
+          p_estado?: string
+          p_id?: string
+          p_notas?: string
+          p_pin: string
+          p_responsable?: string
+          p_semana?: string
+          p_sucursal_id?: string
+          p_titulo?: string
+        }
+        Returns: Json
+      }
+      impl_responsable_guardar: {
+        Args: {
+          p_borrar?: boolean
+          p_id?: string
+          p_notas?: string
+          p_persona?: string
+          p_pin: string
+          p_proceso?: string
+          p_puesto?: string
+          p_sucursal_id?: string
+          p_telefono?: string
+        }
+        Returns: Json
+      }
+      impl_validar_pin: { Args: { p_pin: string }; Returns: boolean }
       laola_fecha_negocio: { Args: { p_ts?: string }; Returns: string }
       lealtad_canjear: { Args: { p_telefono: string }; Returns: Json }
       lealtad_canjear_bienvenida: {
@@ -2184,8 +2549,28 @@ export type Database = {
         Returns: undefined
       }
       makatea_reconciliar: { Args: never; Returns: undefined }
+      norm_proveedor: { Args: { txt: string }; Returns: string }
       obtener_pedido_por_token: { Args: { p_token: string }; Returns: Json }
+      panel_implementacion: {
+        Args: { p_desde?: string; p_hasta?: string; p_pin: string }
+        Returns: Json
+      }
+      panel_implementacion_lealtad: {
+        Args: { p_desde?: string; p_hasta?: string; p_pin: string }
+        Returns: Json
+      }
       prov_catalogo: { Args: { p_token: string }; Returns: Json }
+      prov_gracias_diagnostico: {
+        Args: { p_dias?: number }
+        Returns: {
+          error: string
+          fecha: string
+          proveedor: string
+          respuesta: string
+          status: number
+          telefono: string
+        }[]
+      }
       prov_guardar_precios: {
         Args: { p_gramajes?: Json; p_normales?: Json; p_token: string }
         Returns: Json
@@ -2203,6 +2588,7 @@ export type Database = {
         Args: { p_menu_url: string; p_sucursal_id: string }
         Returns: undefined
       }
+      terminales_mensaje_dia: { Args: { p_fecha?: string }; Returns: string }
       vigilar_cortes: { Args: never; Returns: undefined }
     }
     Enums: {
