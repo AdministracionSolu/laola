@@ -37,7 +37,7 @@ if (typeof c.randomUUID !== 'function') {
   };
 
   if (globalThis.crypto) {
-    (globalThis.crypto as CryptoConRandomUUID).randomUUID = uuid;
+    (globalThis.crypto as CryptoConRandomUUID).randomUUID = uuid as Crypto["randomUUID"];
   } else {
     (globalThis as unknown as { crypto: CryptoConRandomUUID }).crypto = { randomUUID: uuid } as CryptoConRandomUUID;
   }

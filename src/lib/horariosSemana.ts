@@ -89,5 +89,5 @@ export function diasDeSemana(semanaISO: string): Date[] {
 export function estadoSemana(semanaISO: string, hoy: Date = new Date()) {
   const actual = isoFecha(lunesDe(hoy));
   if (semanaISO === actual) return "en curso" as const;
-  return (semanaISO > actual ? "próxima" : "pasada") as const;
+  return semanaISO > actual ? ("próxima" as const) : ("pasada" as const);
 }

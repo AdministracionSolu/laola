@@ -53,6 +53,8 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
   const [nuevaFecha, setNuevaFecha] = useState("");
   const [corteAEditar, setCorteAEditar] = useState<Corte | null>(null);
   const [formEdit, setFormEdit] = useState<Record<string, string>>({});
+  const [fechaEdit, setFechaEdit] = useState("");
+
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCambiando, setIsCambiando] = useState(false);
   const [isFechando, setIsFechando] = useState(false);
@@ -99,7 +101,9 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
       rappi: String(corte.rappi ?? 0),
       uber: String(corte.uber ?? 0),
     });
+    setFechaEdit(corte.fecha_venta);
     setCorteAEditar(corte);
+
   };
 
   // Mismas reglas que la captura: si hay desglose de tarjetas, tarjetas es
@@ -135,9 +139,16 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
       rappi: num(formEdit.rappi),
       uber: num(formEdit.uber),
     });
+    // La fecha va aparte: la mueve la misma ruta que el cambio de fecha,
+    // para que quede igual asentada en la bitácora.
+    let okFecha = true;
+    if (ok && onCambiarFecha && fechaEdit && fechaEdit !== corteAEditar.fecha_venta) {
+      okFecha = await onCambiarFecha(corteAEditar.id, fechaEdit);
+    }
     setIsEditando(false);
-    if (ok) setCorteAEditar(null);
+    if (ok && okFecha) setCorteAEditar(null);
   };
+
 
   const handleCambiarFecha = async () => {
     if (!corteAFechar || !onCambiarFecha || !nuevaFecha) return;
@@ -488,7 +499,19 @@ export function HistoricoTable({ cortes, formatMoney, mostrarFecha = false, onDe
           </DialogHeader>
 
           <div className="space-y-4">
+            {onCambiarFecha && (
+              <div className="space-y-1">
+                <Label htmlFor="edit_fecha">Fecha de venta</Label>
+                <Input
+                  id="edit_fecha"
+                  type="date"
+                  value={fechaEdit}
+                  onChange={(e) => setFechaEdit(e.target.value)}
+                />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
+
               {([
                 ["corte_x", "Corte X"],
                 ["efectivo", "Efectivo"],

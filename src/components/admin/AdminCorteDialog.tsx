@@ -91,7 +91,7 @@ export function AdminCorteDialog({ onSuccess }: AdminCorteDialogProps) {
   }, [tarjetas, efectivo, porCobrar]);
 
   const fetchSucursales = async () => {
-    const { data } = await supabase.from("sucursales").select("id, nombre").order("nombre");
+    const { data } = await supabase.from("sucursales").select("id, nombre, prefijo_folio").order("nombre");
     if (data) setSucursales(data);
   };
 
