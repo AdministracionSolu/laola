@@ -118,6 +118,10 @@ export default function Pedidos() {
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [revisar, setRevisar] = useState(false);
+  // Se prende cuando alguien intenta enviar con renglones sin tocar: a partir
+  // de ahí los pendientes se pintan en ámbar. No arranca prendido para no
+  // recibir a nadie con la lista en rojo.
+  const [mostrarFaltantes, setMostrarFaltantes] = useState(false);
   const [draftCargado, setDraftCargado] = useState(false);
   // Pantalla de éxito con lo que el SERVIDOR confirmó tras enviar.
   const [exito, setExito] = useState<{
@@ -313,6 +317,35 @@ export default function Pedidos() {
     [items, detalles]
   );
 
+  // Lo que NADIE tocó. Un renglón en blanco y un renglón en cero se veían
+  // igual en el panel ("—" contra 0) y no lo son: uno dice "no hay" y el otro
+  // dice "no lo contamos". De ahí venía la profundidad baja — quien capturaba
+  // abría nueve renglones de veintiséis y el pedido se mandaba igual.
+  const faltantes = useMemo(
+    () => items.filter((i) => !detalles[i.insumo_id]?.capturado),
+    [items, detalles]
+  );
+
+  // "No tengo" = existencia 0 y pedido 0, declarado a propósito. Es un toque,
+  // pero es un toque POR INSUMO: no hay un botón que ponga todo en cero de
+  // golpe, porque entonces volveríamos a no saber si lo contaron.
+  const marcarEnCero = (item: ItemSucursal) => {
+    setDetalles((prev) => {
+      const cur = prev[item.insumo_id] || detalleVacio();
+      return {
+        ...prev,
+        [item.insumo_id]: {
+          ...cur,
+          existencia: 0,
+          cantidad_pedida: 0,
+          procesado: item.desglosa ? 0 : null,
+          noProcesado: item.desglosa ? 0 : null,
+          capturado: true,
+        },
+      };
+    });
+  };
+
   const yaRecibido = estadoPedido === "recibido" || estadoPedido === "recibido_parcial" || estadoPedido === "cerrado";
 
   const handleEnviar = async () => {
@@ -323,6 +356,25 @@ export default function Pedidos() {
     }
     if (renglonesPedido.length === 0) {
       toast.error("Agrega al menos un insumo con cantidad a pedir");
+      return;
+    }
+    // La lista va COMPLETA o no va. Dejar un renglón en blanco no es "cero":
+    // es un hueco, y el panel no puede distinguirlo de "no lo contamos".
+    if (faltantes.length > 0) {
+      setMostrarFaltantes(true);
+      setRevisar(false);
+      toast.error(
+        faltantes.length === 1
+          ? `Falta 1 renglón: ${faltantes[0].nombre}. Pon 0 si no tienes.`
+          : `Faltan ${faltantes.length} renglones. Pon 0 en lo que no tengas.`
+      );
+      // Llevarlo al primero pendiente: con veintiséis tarjetas, decirle
+      // "falta uno" sin enseñárselo es mandarlo a buscar.
+      requestAnimationFrame(() => {
+        document
+          .getElementById(`insumo-${faltantes[0].insumo_id}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
       return;
     }
     setEnviando(true);
@@ -580,6 +632,11 @@ export default function Pedidos() {
             <div className="flex items-center justify-between text-xs mb-1">
               <span className="font-medium">
                 {listos} de {total} listos
+                {faltantes.length > 0 && (
+                  <span className={mostrarFaltantes ? "text-amber-700" : "text-muted-foreground"}>
+                    {" "}· faltan {faltantes.length}
+                  </span>
+                )}
               </span>
               {estadoPedido === "enviado" && enviadoAt && (
                 <span className="text-emerald-600 font-medium">
@@ -639,11 +696,17 @@ export default function Pedidos() {
                   </h2>
                   {its.map((item) => {
                     const d = detalles[item.insumo_id] || detalleVacio();
+                    const pendiente = !d.capturado;
                     return (
                       <Card
                         key={item.insumo_id}
+                        id={`insumo-${item.insumo_id}`}
                         className={
-                          d.capturado ? "border-emerald-300 bg-emerald-50/40" : ""
+                          d.capturado
+                            ? "border-emerald-300 bg-emerald-50/40"
+                            : mostrarFaltantes
+                              ? "border-amber-400 bg-amber-50/50"
+                              : ""
                         }
                       >
                         <CardContent className="p-4 space-y-3">
@@ -651,7 +714,11 @@ export default function Pedidos() {
                             {d.capturado ? (
                               <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
                             ) : (
-                              <Circle className="h-5 w-5 text-muted-foreground/40 shrink-0" />
+                              <Circle
+                                className={`h-5 w-5 shrink-0 ${
+                                  mostrarFaltantes ? "text-amber-500" : "text-muted-foreground/40"
+                                }`}
+                              />
                             )}
                             <span className="font-semibold text-base flex-1">
                               {item.nombre}
@@ -660,6 +727,22 @@ export default function Pedidos() {
                               {item.unidad}
                             </Badge>
                           </div>
+
+                          {/* Atajo para el renglón que no se tiene. Mientras no
+                              se toque, la tarjeta sigue contando como hueco. */}
+                          {pendiente && (
+                            <button
+                              type="button"
+                              onClick={() => marcarEnCero(item)}
+                              className={`w-full rounded-md border border-dashed py-2 text-sm font-medium transition-colors ${
+                                mostrarFaltantes
+                                  ? "border-amber-500 text-amber-800 bg-amber-100/60 hover:bg-amber-100"
+                                  : "border-muted-foreground/30 text-muted-foreground hover:bg-muted/60"
+                              }`}
+                            >
+                              No tengo · poner 0
+                            </button>
+                          )}
 
                           {item.desglosa ? (
                             <div className="space-y-3">
@@ -761,6 +844,20 @@ export default function Pedidos() {
           <SheetHeader>
             <SheetTitle>Revisar pedido · {sucursalNombre}</SheetTitle>
           </SheetHeader>
+          {faltantes.length > 0 && (
+            <div className="rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900">
+              <p className="font-semibold">
+                La lista está incompleta: {faltantes.length} de {total} sin capturar.
+              </p>
+              <p className="mt-0.5">
+                Pon <b>0</b> en lo que no tengas. Dejarlo en blanco no es cero: en el
+                panel se ve como “no lo contamos”.
+              </p>
+              <p className="mt-1.5 text-[13px] leading-snug">
+                {faltantes.map((f) => f.nombre).join(" · ")}
+              </p>
+            </div>
+          )}
           <div className="flex-1 overflow-y-auto py-2 divide-y">
             {renglonesPedido.length === 0 ? (
               <p className="text-center text-muted-foreground py-8 text-sm">
