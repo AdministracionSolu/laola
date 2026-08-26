@@ -111,16 +111,27 @@ export default function Lealtad() {
     // Recompensa inicial lista para canjear ahí mismo. Antes esto terminaba
     // en un "gracias" y para canjear había que volver a empezar pidiendo el
     // folio de un ticket — ese brinco es donde se caían los clientes.
+    //
+    // `meta_visitas` es el pulso de la migración v6: si la base todavía trae
+    // la RPC vieja, la respuesta no tiene perfil y esa pantalla se pintaría
+    // vacía frente a un cliente en la mesa. En ese caso se le manda al
+    // camino de siempre. Se puede quitar en cuanto la v6 esté aplicada.
+    const conPerfil = data?.meta_visitas != null;
+    if (!conPerfil) {
+      toast.success("¡Listo! Ya eres parte de La Ola 🌊");
+    }
     navigate(`/visita${suc ? `?suc=${suc}` : ""}`, {
       replace: true,
-      state: {
-        perfil: data,
-        telefono: telLimpio,
-        // Sin folio de por medio: en esta pantalla solo se ofrece la
-        // Recompensa inicial (una vez de por vida). Las del ciclo siguen
-        // pidiendo ticket, que es lo único que impide sumar desde el sofá.
-        desdeRegistro: true,
-      },
+      state: conPerfil
+        ? {
+            perfil: data,
+            telefono: telLimpio,
+            // Sin folio de por medio: en esta pantalla solo se ofrece la
+            // Recompensa inicial (una vez de por vida). Las del ciclo siguen
+            // pidiendo ticket, que es lo único que impide sumar desde el sofá.
+            desdeRegistro: true,
+          }
+        : { telefono: telLimpio },
     });
   };
 
