@@ -10,23 +10,15 @@ import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
-  ClipboardCheck,
   Loader2,
   Lock,
   RefreshCw,
-  Truck,
-  FileText,
   Store,
 } from "lucide-react";
 import { toast } from "sonner";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 import { Indicador } from "@/components/implementacion/Celdas";
-import { PanelCortes } from "@/components/implementacion/PanelCortes";
-import { PanelProveedores } from "@/components/implementacion/PanelProveedores";
 import { PanelOperacion } from "@/components/implementacion/PanelOperacion";
-import { PanelFacturas } from "@/components/implementacion/PanelFacturas";
-import { PanelResponsables } from "@/components/implementacion/PanelResponsables";
-import { PanelPendientes } from "@/components/implementacion/PanelPendientes";
 import { PanelLealtad } from "@/components/implementacion/PanelLealtad";
 import { PanelData, etiquetaFechaLarga, pct } from "@/components/implementacion/tipos";
 
@@ -151,44 +143,13 @@ export default function Implementacion() {
     cargar(null, pin);
   };
 
-  /** Escribe un pendiente o un responsable y recarga. Devuelve si guardó. */
-  const guardarCon = useCallback(
-    (fn: string) => async (args: Record<string, unknown>) => {
-      const { data: res, error } = await rpc(fn, { p_pin: pin, ...args });
-      const r = res as { ok: boolean; error?: string } | null;
-      if (error || !r?.ok) {
-        toast.error(r?.error ? `No se guardó (${r.error})` : "No se pudo guardar");
-        return false;
-      }
-      toast.success("Guardado");
-      await cargar(rango, pin);
-      return true;
-    },
-    [pin, rango, cargar]
-  );
-
   const resumen = useMemo(() => {
     if (!data) return null;
-    const evaluablesTotales = (dias: { fecha: string }[]) =>
-      dias.filter((d) => d.fecha < data.hoy).length;
 
-    // Cortes de cierre: todas las sucursales
-    let cortesTotal = 0;
-    let cortesHechos = 0;
-    for (const f of data.cortes) {
-      cortesTotal += evaluablesTotales(f.dias);
-      cortesHechos += f.dias.filter((d) => d.fecha < data.hoy && d.cierre).length;
-    }
-
-    // Proveedores: días con al menos un precio
-    let provTotal = 0;
-    let provHechos = 0;
-    for (const p of data.proveedores) {
-      provTotal += evaluablesTotales(p.dias);
-      provHechos += p.dias.filter((d) => d.fecha < data.hoy && d.productos > 0).length;
-    }
-
-    // Operación de la sucursal seleccionada: los tres pasos juntos
+    // Operación de la sucursal seleccionada: los tres pasos juntos.
+    // Es lo único que se calcula desde que el panel se quedó en Sucursal y
+    // Lealtad; el resto del payload sigue llegando de la RPC pero ya no se
+    // pinta en ningún lado.
     const op = data.operacion.find((o) => o.sucursal_id === sucursalId);
     let opTotal = 0;
     let opHechos = 0;
@@ -202,16 +163,7 @@ export default function Implementacion() {
       }
     }
 
-    const fact = data.facturas.find((f) => f.sucursal_id === sucursalId);
-    const solicitadas = fact ? fact.dias.reduce((a, d) => a + d.solicitadas, 0) : 0;
-
-    return {
-      cortes: pct(cortesHechos, cortesTotal),
-      proveedores: pct(provHechos, provTotal),
-      operacion: pct(opHechos, opTotal),
-      facturas: solicitadas,
-      abiertos: data.pendientes.filter((p) => p.estado !== "hecho").length,
-    };
+    return { operacion: pct(opHechos, opTotal) };
   }, [data, sucursalId]);
 
   if (!autorizado) {
@@ -306,52 +258,28 @@ export default function Implementacion() {
       </header>
 
       <main className="mx-auto max-w-7xl px-4 py-6 space-y-6">
+        {/* Quedó un solo indicador: los de cortes, proveedores y facturas se
+            fueron con sus pestañas. Dejarlos arriba habría sido quitar la
+            sección y seguir enseñando el número. */}
         {resumen && (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Indicador
-              titulo="Cortes de cierre"
-              valor={resumen.cortes}
-              leyenda="todas las sucursales"
-              icono={<ClipboardCheck className="h-3.5 w-3.5" />}
-            />
-            <Indicador
-              titulo="Carga de proveedores"
-              valor={resumen.proveedores}
-              leyenda="días con precios subidos"
-              icono={<Truck className="h-3.5 w-3.5" />}
-            />
+          <div className="grid gap-3 sm:max-w-xs">
             <Indicador
               titulo={`Operación ${sucursalNombre}`}
               valor={resumen.operacion}
               leyenda="pedido + existencias + recepción"
               icono={<Store className="h-3.5 w-3.5" />}
             />
-            <Indicador
-              titulo={`Facturas QR ${sucursalNombre}`}
-              valor={String(resumen.facturas)}
-              leyenda="solicitadas en el periodo"
-              icono={<FileText className="h-3.5 w-3.5" />}
-            />
           </div>
         )}
 
-        <Tabs defaultValue="cortes">
+        {/* Dos pestañas y nada más (Diego, 26-ago-2026): Cortes, Proveedores,
+            Facturas, Equipo y Pendientes salieron de aquí. No es el trabajo de
+            implementación — se sigue viendo completo en /admin. */}
+        <Tabs defaultValue="sucursal">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <TabsList className="flex-wrap h-auto">
-              <TabsTrigger value="cortes">Cortes</TabsTrigger>
-              <TabsTrigger value="proveedores">Proveedores</TabsTrigger>
               <TabsTrigger value="sucursal">Sucursal</TabsTrigger>
-              <TabsTrigger value="facturas">Facturas</TabsTrigger>
               <TabsTrigger value="lealtad">Lealtad</TabsTrigger>
-              <TabsTrigger value="equipo">Equipo</TabsTrigger>
-              <TabsTrigger value="pendientes">
-                Pendientes
-                {resumen && resumen.abiertos > 0 && (
-                  <span className="ml-1.5 rounded-full bg-amber-100 text-amber-800 px-1.5 text-xs">
-                    {resumen.abiertos}
-                  </span>
-                )}
-              </TabsTrigger>
             </TabsList>
             <Select value={sucursalId} onValueChange={setSucursalId}>
               <SelectTrigger className="w-[200px]">
@@ -367,26 +295,11 @@ export default function Implementacion() {
             </Select>
           </div>
 
-          <TabsContent value="cortes" className="mt-4">
-            <PanelCortes data={data} />
-          </TabsContent>
-          <TabsContent value="proveedores" className="mt-4">
-            <PanelProveedores data={data} />
-          </TabsContent>
           <TabsContent value="sucursal" className="mt-4">
             <PanelOperacion data={data} sucursalId={sucursalId} />
           </TabsContent>
-          <TabsContent value="facturas" className="mt-4">
-            <PanelFacturas data={data} sucursalId={sucursalId} />
-          </TabsContent>
           <TabsContent value="lealtad" className="mt-4">
             <PanelLealtad key={tick} pin={pin} desde={data.desde} hasta={data.hasta} />
-          </TabsContent>
-          <TabsContent value="equipo" className="mt-4">
-            <PanelResponsables data={data} guardar={guardarCon("impl_responsable_guardar")} />
-          </TabsContent>
-          <TabsContent value="pendientes" className="mt-4">
-            <PanelPendientes data={data} guardar={guardarCon("impl_pendiente_guardar")} />
           </TabsContent>
         </Tabs>
       </main>
