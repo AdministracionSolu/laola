@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Waves, Ticket, PartyPopper, Sparkles, ChevronRight } from "lucide-react";
+import { Loader2, Waves, Ticket, Sparkles, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import ActivarWhatsApp from "@/components/ActivarWhatsApp";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 import { telefonoMx10 } from "@/lib/telefono";
 
@@ -31,10 +30,6 @@ export default function Lealtad() {
     params.get("modo") === "registro" ? "registro" : "elige"
   );
   const [sucursalNombre, setSucursalNombre] = useState<string | null>(null);
-  const [listo, setListo] = useState(false);
-  const [nombreOk, setNombreOk] = useState("");
-  // El teléfono ya existía: no es alta nueva y no le toca regalo otra vez.
-  const [yaEstaba, setYaEstaba] = useState(false);
 
   const [primerNombre, setPrimerNombre] = useState("");
   const [segundoNombre, setSegundoNombre] = useState("");
@@ -111,10 +106,22 @@ export default function Lealtad() {
       return;
     }
 
-    setNombreOk((data?.nombre ?? primerNombre.trim()).split(" ")[0]);
-    setYaEstaba(data?.nuevo === false);
-    setListo(true);
-    window.scrollTo({ top: 0 });
+    // Inscribirse ES la visita 1 (26-ago-2026): la RPC ya devolvió el perfil,
+    // así que se entra directo a la pantalla de su promoción, con su
+    // Recompensa inicial lista para canjear ahí mismo. Antes esto terminaba
+    // en un "gracias" y para canjear había que volver a empezar pidiendo el
+    // folio de un ticket — ese brinco es donde se caían los clientes.
+    navigate(`/visita${suc ? `?suc=${suc}` : ""}`, {
+      replace: true,
+      state: {
+        perfil: data,
+        telefono: telLimpio,
+        // Sin folio de por medio: en esta pantalla solo se ofrece la
+        // Recompensa inicial (una vez de por vida). Las del ciclo siguen
+        // pidiendo ticket, que es lo único que impide sumar desde el sofá.
+        desdeRegistro: true,
+      },
+    });
   };
 
   const Header = ({ titulo, sub }: { titulo: string; sub?: React.ReactNode }) => (
@@ -131,79 +138,6 @@ export default function Lealtad() {
       )}
     </div>
   );
-
-  // ============================================================
-  // Ya estaba registrado: no es alta nueva, se le manda a su visita.
-  // La Recompensa inicial es una sola vez, así que aquí no se promete.
-  // ============================================================
-  if (listo && yaEstaba) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-primary/10 via-background to-background">
-        <div className="max-w-md mx-auto px-4 py-8">
-          <Header titulo={`¡Qué gusto verte, ${nombreOk}!`} sub="Ya eras parte de La Ola 🌊" />
-          <div className="rounded-2xl border bg-card p-6 shadow-sm text-center space-y-4">
-            <Waves className="h-12 w-12 mx-auto text-primary" />
-            <p className="text-muted-foreground">
-              Tu teléfono ya estaba registrado, así que no hace falta inscribirte de nuevo.
-              Dejamos tus datos al día.
-            </p>
-            <Button
-              className="w-full font-semibold"
-              size="lg"
-              onClick={() => navigate(`/visita${suc ? `?suc=${suc}` : ""}`)}
-            >
-              <Ticket className="h-4 w-4 mr-2" />
-              Registrar mi visita de hoy
-            </Button>
-            <ActivarWhatsApp nombre={nombreOk} contexto="alta" />
-            <div className="flex items-center justify-center gap-2 rounded-xl bg-primary/5 border border-primary/10 p-3 text-sm text-primary font-medium">
-              <Ticket className="h-4 w-4" /> Tu visita se valida con el ticket de tu cuenta.
-            </div>
-            <p className="text-[11px] leading-snug text-muted-foreground/70">
-              La Recompensa inicial es una sola vez. Si todavía no la canjeas, ahí te aparece.
-            </p>
-            <Link to="/menu" className="inline-block text-primary font-semibold pt-1">Ver el menú</Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ============================================================
-  // Confirmación
-  // ============================================================
-  if (listo) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-primary/10 via-background to-background">
-        <div className="max-w-md mx-auto px-4 py-8">
-          <Header titulo={`¡Bienvenido, ${nombreOk}!`} sub="Ya eres parte de La Ola 🌊" />
-          <div className="rounded-2xl border bg-card p-6 shadow-sm text-center space-y-4">
-            <PartyPopper className="h-12 w-12 mx-auto text-accent" />
-            <div className="rounded-xl border-2 border-accent bg-accent/10 p-3">
-              <p className="font-semibold text-accent">🥂 Tu Recompensa inicial</p>
-              <p className="text-sm text-accent/90 mt-0.5">
-                Un balazo de tu elección + cerveza o refresco
-              </p>
-              {/* Se canjea en esta misma visita, no en la siguiente. */}
-              <p className="text-xs text-muted-foreground mt-1.5">Canjéalo ahora con tu mesero.</p>
-              <p className="text-[11px] leading-snug text-muted-foreground/70 mt-1.5">
-                No incluye balazo de callo de hacha ni cerveza premium.
-              </p>
-            </div>
-            <ActivarWhatsApp nombre={nombreOk} contexto="alta" />
-            <p className="text-muted-foreground">
-              La próxima vez que nos visites, vuelve a escanear este QR y entra por{" "}
-              <b>"Ya soy miembro"</b> para sumar tu visita. Cada 3 visitas ganas una recompensa 🦐
-            </p>
-            <div className="flex items-center justify-center gap-2 rounded-xl bg-primary/5 border border-primary/10 p-3 text-sm text-primary font-medium">
-              <Ticket className="h-4 w-4" /> Tu visita se valida con el ticket de tu cuenta.
-            </div>
-            <Link to="/menu" className="inline-block text-primary font-semibold pt-2">Ver el menú</Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // ============================================================
   // Bifurcación: ¿primera vez o registrar visita?

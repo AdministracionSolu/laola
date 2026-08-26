@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,14 +52,26 @@ const MESES = [
 
 export default function Visita() {
   const [params] = useSearchParams();
+  const location = useLocation();
   const suc = (params.get("suc") ?? "").trim().toUpperCase();
 
+  // Llega de acabarse de inscribir en /lealtad: la inscripción ES la visita 1
+  // y la RPC ya devolvió el perfil, así que esta pantalla abre en su
+  // promoción sin pedir folio. La bandera además decide qué se puede canjear
+  // aquí: solo la Recompensa inicial (ver más abajo).
+  const entrada = (location.state ?? {}) as {
+    perfil?: Perfil;
+    telefono?: string;
+    desdeRegistro?: boolean;
+  };
+  const desdeRegistro = entrada.desdeRegistro === true && !!entrada.perfil;
+
   const [sucursalNombre, setSucursalNombre] = useState<string | null>(null);
-  const [paso, setPaso] = useState<Paso>("captura");
+  const [paso, setPaso] = useState<Paso>(desdeRegistro ? "progreso" : "captura");
 
   // Paso 1
   const [folio, setFolio] = useState("");
-  const [telefono, setTelefono] = useState("");
+  const [telefono, setTelefono] = useState(entrada.telefono ?? "");
 
   // Paso 2 (alta)
   const [primerNombre, setPrimerNombre] = useState("");
@@ -72,7 +84,7 @@ export default function Visita() {
   const [acepto, setAcepto] = useState(false);
 
   const [enviando, setEnviando] = useState(false);
-  const [perfil, setPerfil] = useState<Perfil | null>(null);
+  const [perfil, setPerfil] = useState<Perfil | null>(entrada.perfil ?? null);
   const [canje, setCanje] = useState<Canje | null>(null);
   const [confirmando, setConfirmando] = useState<"recompensa" | "bienvenida" | null>(null);
   const [canjeando, setCanjeando] = useState(false);
@@ -303,17 +315,19 @@ export default function Visita() {
   // ============================================================
   if (paso === "progreso" && perfil) {
     const mensaje =
-      perfil.status === "registrado" ? "¡Bienvenido! Contamos tu primera visita 🌊"
+      perfil.status === "registrado" ? "Ya eres parte de La Ola. Ésta es tu visita 1 🌊"
+      : perfil.status === "ya_estaba" ? "Ya eras parte de La Ola 🌊"
       : perfil.status === "ya_hoy" ? "Ya contamos tu visita de hoy 😉"
       : "¡Visita registrada! 🌊";
     const meta = perfil.meta_visitas;
     const sellos = perfil.sellos;
     const saludo = perfil.primer_nombre || perfil.nombre.split(" ")[0];
+    const titulo = perfil.status === "registrado" ? `¡Bienvenido, ${saludo}!` : `¡Hola, ${saludo}!`;
 
     return (
       <div className="min-h-screen bg-gradient-to-b from-primary/10 via-background to-background">
         <div className="max-w-md mx-auto px-4 py-8">
-          <Header titulo={`¡Hola, ${saludo}!`} sub={mensaje} />
+          <Header titulo={titulo} sub={mensaje} />
 
           {/* Nivel = la parada del ciclo hacia la que va, con su color */}
           <div className="rounded-2xl border bg-card p-5 shadow-sm text-center">
@@ -372,8 +386,13 @@ export default function Visita() {
             </p>
           </div>
 
-          {/* Recompensa disponible: canje self-serve frente al mesero */}
-          {perfil.recompensas_disponibles > 0 && perfil.recompensa_titulo && (
+          {/* Recompensa disponible: canje self-serve frente al mesero.
+              Aquí NO cuando se viene del alta: esa pantalla se abre sin
+              folio, y las recompensas del ciclo sí se ganan con tickets.
+              Quien acaba de inscribirse no tiene ninguna todavía; el
+              candado es para el que ya venía sumando y vuelve a llenar el
+              formulario de inscripción. */}
+          {!desdeRegistro && perfil.recompensas_disponibles > 0 && perfil.recompensa_titulo && (
             <div className="rounded-2xl border-2 border-accent bg-accent/10 p-4 mt-4 text-center">
               {(() => {
                 const rec = recompensaDeCiclo(perfil.recompensa_posicion);
@@ -426,18 +445,39 @@ export default function Visita() {
                   </div>
                 </div>
               ) : (
-                <Button variant="outline" className="mt-3 font-semibold" onClick={() => setConfirmando("bienvenida")}>
+                // Recién inscrito no tiene otra recompensa compitiendo: ésta
+                // es LA acción de la pantalla y se ve como tal.
+                <Button
+                  variant={desdeRegistro ? "default" : "outline"}
+                  className="mt-3 font-semibold"
+                  onClick={() => setConfirmando("bienvenida")}
+                >
                   Canjear mi Recompensa inicial
                 </Button>
               )}
             </div>
           )}
 
+          {desdeRegistro && (
+            <div className="mt-4 rounded-xl bg-primary/5 border border-primary/10 p-3 text-sm text-primary text-center font-medium flex items-center justify-center gap-2">
+              <Ticket className="h-4 w-4 shrink-0" />
+              De la próxima visita en adelante, súmala con el folio de tu ticket.
+            </div>
+          )}
+
           <div className="mt-6">
-            <ActivarWhatsApp nombre={saludo} contexto="visita" />
+            <ActivarWhatsApp nombre={saludo} contexto={perfil.status === "registrado" ? "alta" : "visita"} />
           </div>
 
           <div className="flex flex-col items-center gap-3 mt-6">
+            {desdeRegistro && perfil.status === "ya_estaba" && (
+              <button
+                onClick={() => { setPaso("captura"); window.scrollTo({ top: 0 }); }}
+                className="text-primary font-semibold"
+              >
+                Registrar mi visita de hoy
+              </button>
+            )}
             <Link to="/menu" className="text-primary font-semibold">Ver el menú</Link>
           </div>
         </div>

@@ -71,3 +71,22 @@ export const CLAVES_CATALOGO = new Set(CATALOGO_PRODUCTOS.map((c) => claveProduc
 export function itemPorClave(clave: string): CatalogoItem | undefined {
   return CATALOGO_PRODUCTOS.find((c) => claveProducto(c.nombre) === clave);
 }
+
+// Posición de un producto EN LA LISTA, para ordenar igual en todos lados.
+//
+// Diego, 26-ago-2026: la comparativa de proveedores salía en orden alfabético
+// (atún, camarón, …) mientras Pedido del día y Dónde comprar salen en el orden
+// de los insumos. Quien revisa los precios ya trae la lista en la cabeza en un
+// orden y en la pantalla la encontraba en otro.
+//
+// Tres escalones, y dentro de cada uno se respeta el orden de la lista:
+//   1-99      proteína del catálogo interno (claveProducto devuelve "p:<orden>")
+//   100+      producto del catálogo de compras que no es proteína (camarón
+//             fresco, papa gajo…), en el orden en que está escrito el catálogo
+//   9999      lo que no está en ninguna lista: al final, y ahí sí alfabético
+export function ordenDeLista(clave: string): number {
+  const m = /^p:(\d+)$/.exec(clave);
+  if (m) return Number(m[1]);
+  const i = CATALOGO_PRODUCTOS.findIndex((c) => claveProducto(c.nombre) === clave);
+  return i >= 0 ? 100 + i : 9999;
+}

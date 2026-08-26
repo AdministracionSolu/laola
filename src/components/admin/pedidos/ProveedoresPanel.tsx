@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { differenceInCalendarDays, parseISO, format, addDays, subDays, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { claveProducto, etiquetaProducto } from "@/lib/proteinas";
-import { CATALOGO_PRODUCTOS, CATEGORIAS_CATALOGO, CLAVES_CATALOGO, type CatalogoItem } from "@/lib/catalogoProductos";
+import { CATALOGO_PRODUCTOS, CATEGORIAS_CATALOGO, CLAVES_CATALOGO, ordenDeLista, type CatalogoItem } from "@/lib/catalogoProductos";
 import { exportarExcel } from "@/lib/exportar";
 
 const money = (n: number) =>
@@ -93,13 +93,13 @@ export function ProveedoresPanel() {
   const comparativa = useMemo(() => {
     interface Oferta { proveedor: string; producto: string; precio: number | null; unidad: string; }
     const mismoDia = (iso: string) => format(parseISO(iso), "yyyy-MM-dd") === diaSel;
-    const grupos = new Map<string, { label: string; ofertas: Oferta[] }>();
+    const grupos = new Map<string, { clave: string; label: string; ofertas: Oferta[] }>();
     productos.forEach((prod) => {
       if (!prod.activo) return;
       const clave = claveProducto(prod.nombre);
       const provNombre = provById.get(prod.proveedor_id)?.nombre || "—";
       const unidad = prod.unidad || "kg";
-      const g = grupos.get(clave) ?? { label: etiquetaProducto(prod.nombre), ofertas: [] };
+      const g = grupos.get(clave) ?? { clave, label: etiquetaProducto(prod.nombre), ofertas: [] };
       // Solo las filas de precio capturadas EN el día seleccionado.
       const rowsDia = (preciosPorProducto.get(prod.id) || []).filter((r) => mismoDia(r.created_at));
       if (prod.por_gramaje) {
@@ -125,6 +125,7 @@ export function ProveedoresPanel() {
         const conPrecio = g.ofertas.filter((o) => o.precio != null) as (Oferta & { precio: number })[];
         const pendientes = g.ofertas.filter((o) => o.precio == null);
         return {
+          clave: g.clave,
           label: g.label,
           ofertas: conPrecio.sort((a, b) => a.precio - b.precio),
           pendientes,
@@ -132,8 +133,13 @@ export function ProveedoresPanel() {
           numProveedores: g.ofertas.length,
         };
       })
-      // Primero los que se pueden comparar (2+ proveedores), luego alfabético.
-      .sort((a, b) => (b.numProveedores > 1 ? 1 : 0) - (a.numProveedores > 1 ? 1 : 0) || a.label.localeCompare(b.label));
+      // EN EL ORDEN DE LA LISTA, igual que Pedido del día y Dónde comprar
+      // (Diego, 26-ago-2026). Antes salía alfabético y con los comparables
+      // arriba: dos reordenamientos que rompían la lectura de quien revisa
+      // los precios con la lista de insumos en la cabeza.
+      .sort((a, b) =>
+        ordenDeLista(a.clave) - ordenDeLista(b.clave) || a.label.localeCompare(b.label)
+      );
   }, [productos, preciosPorProducto, provById, diaSel]);
 
   // Reporte del día: qué proveedores subieron precio ese día y cuáles no.
