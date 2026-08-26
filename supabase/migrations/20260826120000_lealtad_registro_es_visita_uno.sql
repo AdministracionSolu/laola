@@ -31,9 +31,11 @@
 -- =====================================================================
 -- BLOQUE 1 — Padrón de colaboradores
 --
--- Sustituye al seed del 14-ago (20260814120000, que nunca se corrió):
--- la tabla se llena sola con el corte semanal del grupo, que trae el
--- estado de hoy y no el de hace doce días.
+-- Diego corrió el seed del 14-ago (`20260814120000`) la mañana del 26, así
+-- que la tabla YA EXISTE con esos 77 números y este bloque no hace nada.
+-- Se deja por si la base se levanta desde cero: de aquí en adelante quien
+-- la llena es el corte semanal del grupo, que trae el estado de hoy y no
+-- el de hace doce días.
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS public.lealtad_colaboradores (
   telefono     text PRIMARY KEY,          -- 10 dígitos, mismo formato que lealtad_clientes.telefono
