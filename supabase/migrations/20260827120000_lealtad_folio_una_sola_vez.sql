@@ -1,49 +1,79 @@
 -- ============================================================
--- ⚠️ NUNCA SE CORRIÓ Y YA NO SE DEBE CORRER.
--- Verificado el 27-ago-2026: `lealtad_folio_sospechoso` no existía en la
--- base, o sea que este archivo nunca pasó por el SQL Editor. La reemplaza
--- 20260827120000_lealtad_folio_una_sola_vez.sql, que la incluye completa
--- pero sin la ventana de 180 días (el folio se consume para siempre) y
--- con el candado también en un índice único.
--- Correr este archivo AHORA pisaría lealtad_visita con la versión vieja.
--- Queda sólo como registro.
--- ============================================================
-
--- ============================================================
--- BLINDAJE DEL FOLIO (lealtad v5)
+-- UN TICKET, UNA VISITA — PARA SIEMPRE (lealtad)
 --
--- Dos huecos que tenía la v4:
+-- Lo que estaba pasando: en producción sigue viva la `lealtad_visita`
+-- de la v4 (26-jul), que sólo compara el folio contra las visitas del
+-- MISMO día. Guardar un ticket y teclearlo mañana contaba otra visita.
+-- El front ya decía "Cada ticket cuenta una sola vez" y el panel de
+-- anomalías ya sabía pintar 'folio_repetido' y 'folio_invalido' — la
+-- base era la única que no se había enterado.
 --
---   1. El folio solo era único POR DÍA. Con guardar un ticket y
---      volver a teclear el mismo folio mañana, contaba otra visita.
---      Ahora un folio se consume UNA VEZ por sucursal, con ventana
---      de 180 días (por si el punto de venta reinicia su contador).
+-- (La migración 20260804150000_lealtad_folio_blindaje.sql ya traía esto
+-- a medias pero NUNCA se corrió: `lealtad_folio_sospechoso` no existe en
+-- la base. Esta la reemplaza y la incluye completa. Si algún día se corre
+-- aquélla por error, PISA ésta con la versión de ventana de 180 días.)
 --
---   2. Cualquier cosa pasaba como folio: "1", "AAA", "1234".
---      Ahora tiene que parecer folio: al menos 4 dígitos, y se
---      rechazan los inventados de teclado (todos los dígitos
---      iguales o secuencias corridas tipo 1234 / 4321).
+-- Diferencia con aquélla: aquí el folio se consume PARA SIEMPRE en su
+-- sucursal, sin ventana de días, y el candado también vive en un índice
+-- único — no sólo en la RPC.
 --
--- Todo rechazo queda en lealtad_intentos, que es lo que alimenta la
--- pestaña de Anomalías. Motivos nuevos: 'folio_invalido' y
--- 'folio_repetido'.
+-- Caso que lo destapó: Erick Esquivel (3313508753) tecleó el 25-ago el
+-- folio 198463, que ya había usado el 24. 43 minutos después intentó su
+-- ticket real de ese día (198502) y le rebotó por tope diario. Sí comió
+-- el 25; nomás quedó registrado con el folio equivocado. Bloque 1.
 --
--- Lo que NO resuelve esto: un folio inventado que sí parezca folio
--- (196814 cuando el real era 196813). Para eso hace falta capturar
--- el folio de cierre en el corte y validar contra el rango. Va aparte.
+-- ORDEN: los bloques 1 y 2 van ANTES del 3 o el índice único falla.
 -- ============================================================
 
 
 -- ============================================================
--- BLOQUE 1 — Índice para buscar folios usados por sucursal
+-- BLOQUE 1 — El folio equivocado de Erick (25-ago)
+-- La visita se queda; el folio pasa al real, el que dejó rastro
+-- en lealtad_intentos ese mismo día a las 21:42Z.
 -- ============================================================
+UPDATE public.lealtad_visitas
+SET folio = '198502', folio_norm = '198502'
+WHERE id = 'd79f43c9-aeca-47c8-8b34-61c23514d20f'
+  AND folio_norm = '198463';
+
+
+-- ============================================================
+-- BLOQUE 2 — El folio de prueba '1000' (Diego, 21-jul)
+-- Se usó dos veces cuando se estaba probando el flujo. La visita
+-- se conserva; se le quita el folio para que salga del índice
+-- (que es parcial: WHERE folio_norm IS NOT NULL).
+-- ============================================================
+UPDATE public.lealtad_visitas
+SET folio = NULL, folio_norm = NULL
+WHERE id = '9f6310ea-1d5d-4ff1-91bf-1a7c0dcc7348'
+  AND folio_norm = '1000';
+
+
+-- ============================================================
+-- BLOQUE 3 — El candado en la base
+-- Antes: único por (sucursal, DÍA, folio). Ahora: por (sucursal, folio).
+-- Sigue siendo parcial para que las altas sin folio (origen 'registro')
+-- convivan sin chocar.
+--
+-- Si algún día el punto de venta reinicia su contador de folios, este
+-- índice va a empezar a rechazar tickets legítimos y se van a ver como
+-- 'folio_repetido' en Anomalías. Ese es el momento de meterle el año.
+-- ============================================================
+DROP INDEX IF EXISTS public.lealtad_visitas_folio_uniq;
+
+CREATE UNIQUE INDEX IF NOT EXISTS lealtad_visitas_folio_suc_uniq
+  ON public.lealtad_visitas (COALESCE(sucursal_id::text, ''), folio_norm)
+  WHERE folio_norm IS NOT NULL;
+
+-- Para que la RPC busque folios usados sin escanear la tabla.
 CREATE INDEX IF NOT EXISTS lealtad_visitas_folio_suc_idx
   ON public.lealtad_visitas (sucursal_id, folio_norm, fecha_negocio DESC);
 
 
 -- ============================================================
--- BLOQUE 2 — ¿Esto parece un folio de ticket?
+-- BLOQUE 4 — ¿Esto parece un folio de ticket?
 -- Devuelve NULL si está bien, o el motivo del rechazo.
+-- (Venía de la migración del 4-ago que nunca se corrió.)
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.lealtad_folio_sospechoso(p_folio_norm text)
 RETURNS text
@@ -76,8 +106,16 @@ GRANT EXECUTE ON FUNCTION public.lealtad_folio_sospechoso(text) TO anon, authent
 
 
 -- ============================================================
--- BLOQUE 3 — lealtad_visita v5
--- Igual que v4 salvo las dos validaciones nuevas del folio.
+-- BLOQUE 5 — lealtad_visita v7
+-- Igual que la v4 viva salvo la parte del folio:
+--   · se valida que parezca folio      → status 'folio_invalido'
+--   · se busca en TODA la historia de la sucursal, no sólo hoy:
+--       - mismo cliente, mismo día  → 'ya_hoy' (doble tap, le mostramos
+--         su progreso; no es trampa)
+--       - mismo cliente, otro día   → 'folio_usado' + intento
+--         'folio_repetido' (esto es lo que hacía Erick)
+--       - otro teléfono             → 'folio_usado' + intento
+--         'folio_usado' (esto sí huele a ticket compartido)
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.lealtad_visita(
   p_telefono         text,
@@ -125,7 +163,7 @@ BEGIN
     WHERE upper(prefijo_folio) = upper(trim(p_sucursal_codigo)) LIMIT 1;
   END IF;
 
-  -- NUEVO: ¿tiene forma de folio de ticket?
+  -- ¿Tiene forma de folio de ticket?
   v_mal := lealtad_folio_sospechoso(v_folio_norm);
   IF v_mal IS NOT NULL THEN
     INSERT INTO lealtad_intentos (telefono, folio_norm, sucursal_id, motivo, fecha_negocio)
@@ -133,42 +171,36 @@ BEGIN
     RETURN jsonb_build_object('status', 'folio_invalido');
   END IF;
 
-  -- ¿El folio ya se usó HOY en esta sucursal?
+  SELECT * INTO v_cli FROM lealtad_clientes WHERE telefono = v_tel;
+
+  -- ¿Ese folio ya se consumió alguna vez en esta sucursal?
+  -- Sin filtro de fecha: un ticket vale UNA visita, no una por día.
   SELECT * INTO v_prev FROM lealtad_visitas
   WHERE COALESCE(sucursal_id::text, '') = COALESCE(v_suc_id::text, '')
-    AND fecha_negocio = v_fecha
     AND folio_norm = v_folio_norm
+  ORDER BY fecha_negocio DESC
   LIMIT 1;
 
   IF FOUND THEN
-    -- Mismo cliente el mismo día: es doble tap, le mostramos su progreso.
-    SELECT * INTO v_cli FROM lealtad_clientes WHERE telefono = v_tel;
-    IF FOUND AND v_cli.id = v_prev.cliente_id THEN
+    -- Mismo cliente, mismo día: es doble tap, le mostramos su progreso.
+    IF v_cli.id IS NOT NULL AND v_cli.id = v_prev.cliente_id
+       AND v_prev.fecha_negocio = v_fecha THEN
       RETURN jsonb_build_object('status', 'ya_hoy') || lealtad_perfil_json(v_cli);
     END IF;
+
     INSERT INTO lealtad_intentos (telefono, folio_norm, sucursal_id, motivo, fecha_negocio)
-    VALUES (v_tel, v_folio_norm, v_suc_id, 'folio_usado', v_fecha);
+    VALUES (
+      v_tel, v_folio_norm, v_suc_id,
+      CASE WHEN v_cli.id IS NOT NULL AND v_cli.id = v_prev.cliente_id
+           THEN 'folio_repetido'   -- reusó su propio ticket de otro día
+           ELSE 'folio_usado'      -- otro teléfono con un ticket ya cobrado
+      END,
+      v_fecha);
     RETURN jsonb_build_object('status', 'folio_usado');
   END IF;
-
-  -- NUEVO: ¿ese folio ya se consumió ANTES en esta sucursal?
-  -- Un ticket vale una vez, no una por día. Ventana de 180 días por si
-  -- el punto de venta reinicia su contador.
-  IF EXISTS (
-    SELECT 1 FROM lealtad_visitas
-    WHERE COALESCE(sucursal_id::text, '') = COALESCE(v_suc_id::text, '')
-      AND folio_norm = v_folio_norm
-      AND fecha_negocio >= v_fecha - 180
-  ) THEN
-    INSERT INTO lealtad_intentos (telefono, folio_norm, sucursal_id, motivo, fecha_negocio)
-    VALUES (v_tel, v_folio_norm, v_suc_id, 'folio_repetido', v_fecha);
-    RETURN jsonb_build_object('status', 'folio_usado');
-  END IF;
-
-  SELECT * INTO v_cli FROM lealtad_clientes WHERE telefono = v_tel;
 
   -- ---------- Cliente NUEVO ----------
-  IF NOT FOUND THEN
+  IF v_cli.id IS NULL THEN
     IF NULLIF(trim(COALESCE(p_primer_nombre, '')), '') IS NULL
        OR NULLIF(trim(COALESCE(p_apellido_paterno, '')), '') IS NULL
        OR NULLIF(trim(COALESCE(p_apellido_materno, '')), '') IS NULL THEN
@@ -243,3 +275,35 @@ BEGIN
   RETURN jsonb_build_object('status', 'ok') || lealtad_perfil_json(v_cli);
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.lealtad_visita(text, text, text, text, text, text, text, date, boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.lealtad_visita(text, text, text, text, text, text, text, date, boolean)
+  TO anon, authenticated;
+
+
+-- ============================================================
+-- BLOQUE 6 — Verificación (correr y leer el resultado)
+-- ============================================================
+-- 1) Erick debe quedar con 3 visitas y folios 198463 / 198502 / 198554
+SELECT v.fecha_negocio, v.origen, v.folio
+FROM public.lealtad_visitas v
+JOIN public.lealtad_clientes c ON c.id = v.cliente_id
+WHERE c.telefono = '3313508753'
+ORDER BY v.fecha_negocio;
+
+-- 2) No debe quedar ningún folio repetido por sucursal (0 filas)
+SELECT COALESCE(sucursal_id::text, '') AS suc, folio_norm, count(*)
+FROM public.lealtad_visitas
+WHERE folio_norm IS NOT NULL
+GROUP BY 1, 2 HAVING count(*) > 1;
+
+-- 3) El candado nuevo existe y el viejo ya no
+SELECT indexname FROM pg_indexes
+WHERE tablename = 'lealtad_visitas' AND indexname LIKE '%folio%';
+
+-- 4) La función del folio sospechoso ya existe
+--    ('repetido', 'secuencia', 'muy_corto', NULL)
+SELECT public.lealtad_folio_sospechoso('1111'),
+       public.lealtad_folio_sospechoso('123456'),
+       public.lealtad_folio_sospechoso('12'),
+       public.lealtad_folio_sospechoso('198554');
