@@ -5,10 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Gift, Waves, Trophy, Check, Ticket } from "lucide-react";
+import { Loader2, Gift, Waves, Check, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { recompensaDeCiclo, nivelDePosicion, textoSobre, RECOMPENSA_INICIAL_ID } from "@/lib/lealtad";
+// `nivelDePosicion` y `textoSobre` ya no se usan aquí: el chip de nivel con
+// color salió de la pantalla del cliente. Siguen vivos para el admin y el
+// portal, que sí necesitan pintar los cuatro niveles del ciclo.
+import { recompensaDeCiclo, RECOMPENSA_INICIAL_ID } from "@/lib/lealtad";
 import ActivarWhatsApp from "@/components/ActivarWhatsApp";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 import { telefonoMx10 } from "@/lib/telefono";
@@ -393,45 +396,16 @@ export default function Visita() {
           )}
 
           {/* Nivel = la parada del ciclo hacia la que va, con su color.
-              Con la recompensa ya ganada esta tarjeta no se pinta: el bloque
-              de arriba ya dice parada, color y beneficio, y repetirlo aquí
-              ponía el mismo chip naranja dos veces y "Michelada o limonada"
-              tres. El conteo de visitas se va entonces con los sellos. */}
-          {!tieneRecompensa && (
-            <div className="rounded-2xl border bg-card p-5 shadow-sm text-center">
-              {(() => {
-                // Sin nivel_posicion (base todavía sin la migración v5) se
-                // pinta con el hex que mande la base, como siempre.
-                if (perfil.nivel_posicion == null) {
-                  return (
-                    <div
-                      className="inline-flex items-center gap-2 font-semibold px-4 py-1.5 rounded-md border-2 border-black/10"
-                      style={{ backgroundColor: perfil.nivel_color, color: textoSobre(perfil.nivel_color) }}
-                    >
-                      <Trophy className="h-4 w-4" /> Nivel {perfil.nivel}
-                    </div>
-                  );
-                }
-                const niv = nivelDePosicion(perfil.nivel_posicion);
-                return (
-                  <div
-                    className={`inline-flex items-center gap-2 font-semibold px-4 py-1.5 rounded-md border-2 ${niv.bg} ${niv.texto} ${niv.borde}`}
-                  >
-                    <Trophy className="h-4 w-4" /> Nivel {perfil.nivel}
-                  </div>
-                );
-              })()}
-              {perfil.nivel_beneficio && (
-                <p className="text-sm text-muted-foreground mt-2">{perfil.nivel_beneficio}</p>
-              )}
-              <p className="text-xs text-muted-foreground mt-1">
-                {perfil.visitas_total} {perfil.visitas_total === 1 ? "visita" : "visitas"} en total
-              </p>
-            </div>
-          )}
+              El chip de nivel con el color de la parada ya NO se pinta aquí.
+              El color (naranja = Visita 3) significa una sola cosa: "esto ya
+              es tuyo, mesero". Enseñárselo a quien apenas va en su visita 1
+              hacía que el alta se leyera como si la michelada se pudiera
+              pedir en ese momento — y con el mismo naranja del canje. Ahora
+              el color aparece únicamente con la recompensa ganada; mientras
+              tanto la tarjeta de sellos lo dice en texto tranquilo. */}
 
           {/* Sellos hacia la recompensa */}
-          <div className="rounded-2xl border bg-card p-5 shadow-sm mt-4">
+          <div className="rounded-2xl border bg-card p-5 shadow-sm">
             <div className="flex items-center gap-2 text-accent font-semibold mb-3">
               <Gift className="h-5 w-5" /> Tu tarjeta de sellos
             </div>
@@ -451,16 +425,31 @@ export default function Visita() {
                 </div>
               ))}
             </div>
-            <p className="text-center text-sm text-muted-foreground mt-3">
-              {perfil.recompensas_disponibles > 0
-                ? "¡Completaste tu tarjeta! 🎉"
-                : perfil.recompensa_titulo
-                  ? `Vas por: ${perfil.recompensa_titulo}. Te ${perfil.faltan_recompensa === 1 ? "falta 1 visita" : `faltan ${perfil.faltan_recompensa} visitas`}.`
-                  : `Te faltan ${perfil.faltan_recompensa} ${perfil.faltan_recompensa === 1 ? "visita" : "visitas"} para tu recompensa.`}
-            </p>
-            <p className="text-center text-xs text-muted-foreground mt-1">
-              {tieneRecompensa && <>{perfil.visitas_total} visitas en total · </>}
-              Tus visitas y recompensas cuentan durante {perfil.anio ?? new Date().getFullYear()}.
+            {/* Lo que falta, en texto y sin color: invita a volver sin que
+                parezca que hay algo que pedir hoy. */}
+            {perfil.recompensas_disponibles > 0 ? (
+              <p className="text-center text-sm text-muted-foreground mt-3">
+                ¡Completaste tu tarjeta! 🎉
+              </p>
+            ) : (
+              <div className="text-center mt-3">
+                <p className="text-sm font-medium text-foreground">
+                  {perfil.faltan_recompensa === 1
+                    ? "Sólo 1 visita más"
+                    : `Acumula ${perfil.faltan_recompensa} visitas más`}
+                </p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {/* Emoji neutral: el catálogo no es sólo bebida, también
+                      trae postre. Un 🍹 fijo mentía en esas paradas. */}
+                  {perfil.recompensa_titulo
+                    ? <>y te invitamos: {perfil.recompensa_titulo} 🎁</>
+                    : <>y te toca tu recompensa 🎁</>}
+                </p>
+              </div>
+            )}
+            <p className="text-center text-xs text-muted-foreground mt-3">
+              {perfil.visitas_total} {perfil.visitas_total === 1 ? "visita" : "visitas"} en total ·
+              {" "}Cuentan durante {perfil.anio ?? new Date().getFullYear()}.
             </p>
           </div>
 
