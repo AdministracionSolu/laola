@@ -86,7 +86,7 @@ export default function Visita() {
   const [enviando, setEnviando] = useState(false);
   const [perfil, setPerfil] = useState<Perfil | null>(entrada.perfil ?? null);
   const [canje, setCanje] = useState<Canje | null>(null);
-  const [confirmando, setConfirmando] = useState<"recompensa" | "bienvenida" | null>(null);
+  const [confirmando, setConfirmando] = useState<"recompensa" | null>(null);
   const [canjeando, setCanjeando] = useState(false);
   // Late una vez por segundo mientras hay un canje en pantalla.
   const [ahora, setAhora] = useState(() => Date.now());
@@ -185,13 +185,14 @@ export default function Visita() {
   }, [paso]);
 
   // Canje self-serve: deja registro interno para empatar contra el comandero.
-  const canjear = async (tipo: "recompensa" | "bienvenida") => {
+  // Sólo las del ciclo. La Recompensa inicial ya no se canjea: se entrega en
+  // la mesa el día del alta, así que no tiene botón ni registro que conciliar.
+  const canjear = async () => {
     // La posición se toma del perfil ACTUAL: después del canje ya avanzó
-    // al siguiente escalón del ciclo. La inicial no tiene posición.
-    const posicionCanjeada = tipo === "bienvenida" ? null : perfil?.recompensa_posicion ?? null;
+    // al siguiente escalón del ciclo.
+    const posicionCanjeada = perfil?.recompensa_posicion ?? null;
     setCanjeando(true);
-    const fn = tipo === "bienvenida" ? "lealtad_canjear_bienvenida" : "lealtad_canjear_cliente";
-    const { data, error } = await (supabase.rpc as any)(fn, {
+    const { data, error } = await (supabase.rpc as any)("lealtad_canjear_cliente", {
       p_telefono: telLimpio,
       p_sucursal_codigo: suc || null,
     });
@@ -201,7 +202,6 @@ export default function Visita() {
     if (error) {
       const msg = error.message || "";
       if (msg.includes("SIN_RECOMPENSAS")) toast.error("Aún no tienes recompensa disponible.");
-      else if (msg.includes("YA_CANJEADA")) toast.error("Tu Recompensa inicial ya fue canjeada.");
       else toast.error("No pudimos registrar el canje. Intenta de nuevo.");
       return;
     }
@@ -410,7 +410,7 @@ export default function Visita() {
                 <div className="mt-3 space-y-2">
                   <p className="text-sm font-medium">Canjéalo solo frente a tu mesero. ¿Registrar el canje ahora?</p>
                   <div className="flex gap-2 justify-center">
-                    <Button size="sm" disabled={canjeando} onClick={() => canjear("recompensa")}>
+                    <Button size="sm" disabled={canjeando} onClick={() => canjear()}>
                       {canjeando ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sí, canjear"}
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => setConfirmando(null)}>Todavía no</Button>
@@ -424,37 +424,24 @@ export default function Visita() {
             </div>
           )}
 
-          {/* Recompensa inicial (una sola vez) */}
-          {perfil.bienvenida_disponible && (
+          {/* Recompensa inicial: ya no se canjea, se entrega ahí mismo.
+              Quien llena el formulario está sentado en una mesa, así que el
+              regalo se lo da el mesero en el momento y el alta ya nace con
+              él entregado. Por eso esto es un aviso, no un botón, y sale
+              sólo cuando se viene del registro: en visitas posteriores ya
+              no hay nada que enseñar. */}
+          {desdeRegistro && (
             <div className="rounded-2xl border-2 border-primary/40 bg-primary/5 p-4 mt-4 text-center">
-              <p className="font-semibold text-primary">🥂 Tienes pendiente tu Recompensa inicial</p>
+              <p className="font-semibold text-primary">🥂 Tu Recompensa inicial ya es tuya</p>
               <p className="text-sm text-primary/90 mt-0.5">
                 Un balazo de tu elección + cerveza o refresco
               </p>
               <p className="text-[11px] leading-snug text-muted-foreground/70 mt-1.5">
                 No incluye balazo de callo de hacha ni cerveza premium.
               </p>
-              {confirmando === "bienvenida" ? (
-                <div className="mt-3 space-y-2">
-                  <p className="text-sm font-medium">Canjéalo solo frente a tu mesero. ¿Registrar el canje ahora?</p>
-                  <div className="flex gap-2 justify-center">
-                    <Button size="sm" disabled={canjeando} onClick={() => canjear("bienvenida")}>
-                      {canjeando ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sí, canjear"}
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => setConfirmando(null)}>Todavía no</Button>
-                  </div>
-                </div>
-              ) : (
-                // Recién inscrito no tiene otra recompensa compitiendo: ésta
-                // es LA acción de la pantalla y se ve como tal.
-                <Button
-                  variant={desdeRegistro ? "default" : "outline"}
-                  className="mt-3 font-semibold"
-                  onClick={() => setConfirmando("bienvenida")}
-                >
-                  Canjear mi Recompensa inicial
-                </Button>
-              )}
+              <p className="text-sm font-medium text-primary mt-3">
+                Enséñale esta pantalla a tu mesero.
+              </p>
             </div>
           )}
 
