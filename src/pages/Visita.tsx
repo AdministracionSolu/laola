@@ -393,38 +393,42 @@ export default function Visita() {
           )}
 
           {/* Nivel = la parada del ciclo hacia la que va, con su color.
-              Con la recompensa ya ganada el rótulo cambia: "Nivel Visita 3"
-              junto a "3 visitas en total" se lee como "voy en la 3", no
-              como "ya me la gané". */}
-          <div className="rounded-2xl border bg-card p-5 shadow-sm text-center">
-            {(() => {
-              const rotulo = tieneRecompensa ? "Te toca:" : "Nivel";
-              // Sin nivel_posicion (base todavía sin la migración v5) se
-              // pinta con el hex que mande la base, como siempre.
-              if (perfil.nivel_posicion == null) {
+              Con la recompensa ya ganada esta tarjeta no se pinta: el bloque
+              de arriba ya dice parada, color y beneficio, y repetirlo aquí
+              ponía el mismo chip naranja dos veces y "Michelada o limonada"
+              tres. El conteo de visitas se va entonces con los sellos. */}
+          {!tieneRecompensa && (
+            <div className="rounded-2xl border bg-card p-5 shadow-sm text-center">
+              {(() => {
+                // Sin nivel_posicion (base todavía sin la migración v5) se
+                // pinta con el hex que mande la base, como siempre.
+                if (perfil.nivel_posicion == null) {
+                  return (
+                    <div
+                      className="inline-flex items-center gap-2 font-semibold px-4 py-1.5 rounded-md border-2 border-black/10"
+                      style={{ backgroundColor: perfil.nivel_color, color: textoSobre(perfil.nivel_color) }}
+                    >
+                      <Trophy className="h-4 w-4" /> Nivel {perfil.nivel}
+                    </div>
+                  );
+                }
+                const niv = nivelDePosicion(perfil.nivel_posicion);
                 return (
                   <div
-                    className="inline-flex items-center gap-2 font-semibold px-4 py-1.5 rounded-md border-2 border-black/10"
-                    style={{ backgroundColor: perfil.nivel_color, color: textoSobre(perfil.nivel_color) }}
+                    className={`inline-flex items-center gap-2 font-semibold px-4 py-1.5 rounded-md border-2 ${niv.bg} ${niv.texto} ${niv.borde}`}
                   >
-                    <Trophy className="h-4 w-4" /> {rotulo} {perfil.nivel}
+                    <Trophy className="h-4 w-4" /> Nivel {perfil.nivel}
                   </div>
                 );
-              }
-              const niv = nivelDePosicion(perfil.nivel_posicion);
-              return (
-                <div
-                  className={`inline-flex items-center gap-2 font-semibold px-4 py-1.5 rounded-md border-2 ${niv.bg} ${niv.texto} ${niv.borde}`}
-                >
-                  <Trophy className="h-4 w-4" /> {rotulo} {perfil.nivel}
-                </div>
-              );
-            })()}
-            {perfil.nivel_beneficio && (
-              <p className="text-sm text-muted-foreground mt-2">{perfil.nivel_beneficio}</p>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">{perfil.visitas_total} visitas en total</p>
-          </div>
+              })()}
+              {perfil.nivel_beneficio && (
+                <p className="text-sm text-muted-foreground mt-2">{perfil.nivel_beneficio}</p>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                {perfil.visitas_total} {perfil.visitas_total === 1 ? "visita" : "visitas"} en total
+              </p>
+            </div>
+          )}
 
           {/* Sellos hacia la recompensa */}
           <div className="rounded-2xl border bg-card p-5 shadow-sm mt-4">
@@ -455,6 +459,7 @@ export default function Visita() {
                   : `Te faltan ${perfil.faltan_recompensa} ${perfil.faltan_recompensa === 1 ? "visita" : "visitas"} para tu recompensa.`}
             </p>
             <p className="text-center text-xs text-muted-foreground mt-1">
+              {tieneRecompensa && <>{perfil.visitas_total} visitas en total · </>}
               Tus visitas y recompensas cuentan durante {perfil.anio ?? new Date().getFullYear()}.
             </p>
           </div>
