@@ -324,86 +324,54 @@ export default function Visita() {
     const saludo = perfil.primer_nombre || perfil.nombre.split(" ")[0];
     const titulo = perfil.status === "registrado" ? `¡Bienvenido, ${saludo}!` : `¡Hola, ${saludo}!`;
 
+    // La parada del ciclo que toca, con su color. Se usa en tres lugares
+    // (el bloque de canje, el chip de nivel y los sellos), así que se
+    // calcula una sola vez.
+    const rec = recompensaDeCiclo(perfil.recompensa_posicion);
+
+    // Hay recompensa ganada esperando canje.
+    const tieneRecompensa = perfil.recompensas_disponibles > 0 && !!perfil.recompensa_titulo;
+
+    // La tarjeta de sellos, LLENA cuando la recompensa ya se ganó.
+    //
+    // La RPC devuelve `sellos = visitas_del_anio % meta`, que en la visita
+    // que completa la tarjeta vale 0 (3 % 3). Pintar ese número tal cual
+    // vaciaba la tarjeta justo en el momento de ganarla: tres círculos
+    // grises debajo de "¡Completaste tu tarjeta! 🎉" (canje del 27-ago-2026).
+    const sellosPintados = perfil.recompensas_disponibles > 0 ? meta : sellos;
+
+    // El alta de verdad, no el que vuelve a llenar el formulario de
+    // inscripción estando ya inscrito (`ya_estaba`). De esto cuelgan la
+    // Recompensa inicial y el instructivo del folio: los dos son de
+    // primera vez y a un cliente con visitas se le estaban mostrando otra
+    // vez, ofreciéndole un balazo que ya había cobrado el día de su alta.
+    const esAltaNueva = desdeRegistro && perfil.status === "registrado";
+
     return (
       <div className="min-h-screen bg-gradient-to-b from-primary/10 via-background to-background">
         <div className="max-w-md mx-auto px-4 py-8">
           <Header titulo={titulo} sub={mensaje} />
 
-          {/* Nivel = la parada del ciclo hacia la que va, con su color */}
-          <div className="rounded-2xl border bg-card p-5 shadow-sm text-center">
-            {(() => {
-              // Sin nivel_posicion (base todavía sin la migración v5) se
-              // pinta con el hex que mande la base, como siempre.
-              if (perfil.nivel_posicion == null) {
-                return (
-                  <div
-                    className="inline-flex items-center gap-2 font-semibold px-4 py-1.5 rounded-md border-2 border-black/10"
-                    style={{ backgroundColor: perfil.nivel_color, color: textoSobre(perfil.nivel_color) }}
-                  >
-                    <Trophy className="h-4 w-4" /> Nivel {perfil.nivel}
-                  </div>
-                );
-              }
-              const niv = nivelDePosicion(perfil.nivel_posicion);
-              return (
+          {/* Recompensa ganada: canje self-serve frente al mesero.
+              Va ARRIBA de todo. Cuando estaba de tercera tarjeta, en un
+              celular quedaba abajo del pliegue y el cliente no la veía:
+              en el canje del 27-ago la pantalla se leía como si apenas
+              fuera su primera visita.
+
+              Ya no lleva el candado `!desdeRegistro`. Ese candado existía
+              para que nadie sumara visitas sin ticket, pero canjear no
+              suma nada: consume lo que ya se ganó con tickets. Lo único
+              que lograba era esconderle el botón justo a quien sí tenía
+              su recompensa lista. */}
+          {tieneRecompensa && (
+            <div className="rounded-2xl border-2 border-accent bg-accent/10 p-4 mb-4 text-center">
+              {rec && (
                 <div
-                  className={`inline-flex items-center gap-2 font-semibold px-4 py-1.5 rounded-md border-2 ${niv.bg} ${niv.texto} ${niv.borde}`}
+                  className={`inline-flex items-center gap-2 font-bold px-3 py-1 rounded-md border-2 mb-2 text-sm ${rec.bg} ${rec.texto} ${rec.borde}`}
                 >
-                  <Trophy className="h-4 w-4" /> Nivel {perfil.nivel}
+                  <Gift className="h-3.5 w-3.5" /> {rec.identificador}
                 </div>
-              );
-            })()}
-            {perfil.nivel_beneficio && (
-              <p className="text-sm text-muted-foreground mt-2">{perfil.nivel_beneficio}</p>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">{perfil.visitas_total} visitas en total</p>
-          </div>
-
-          {/* Sellos hacia la recompensa */}
-          <div className="rounded-2xl border bg-card p-5 shadow-sm mt-4">
-            <div className="flex items-center gap-2 text-accent font-semibold mb-3">
-              <Gift className="h-5 w-5" /> Tu tarjeta de sellos
-            </div>
-            <div className="flex flex-wrap gap-2 justify-center">
-              {Array.from({ length: meta }).map((_, i) => (
-                <div key={i}
-                  className={`w-9 h-9 rounded-full border-2 flex items-center justify-center ${
-                    i < sellos ? "bg-primary border-primary text-white" : "border-muted-foreground/30 text-muted-foreground/40"
-                  }`}>
-                  {i < sellos ? <Check className="h-4 w-4" /> : <Waves className="h-4 w-4" />}
-                </div>
-              ))}
-            </div>
-            <p className="text-center text-sm text-muted-foreground mt-3">
-              {perfil.recompensas_disponibles > 0
-                ? "¡Completaste tu tarjeta! 🎉"
-                : perfil.recompensa_titulo
-                  ? `Vas por: ${perfil.recompensa_titulo}. Te ${perfil.faltan_recompensa === 1 ? "falta 1 visita" : `faltan ${perfil.faltan_recompensa} visitas`}.`
-                  : `Te faltan ${perfil.faltan_recompensa} ${perfil.faltan_recompensa === 1 ? "visita" : "visitas"} para tu recompensa.`}
-            </p>
-            <p className="text-center text-xs text-muted-foreground mt-1">
-              Tus visitas y recompensas cuentan durante {perfil.anio ?? new Date().getFullYear()}.
-            </p>
-          </div>
-
-          {/* Recompensa disponible: canje self-serve frente al mesero.
-              Aquí NO cuando se viene del alta: esa pantalla se abre sin
-              folio, y las recompensas del ciclo sí se ganan con tickets.
-              Quien acaba de inscribirse no tiene ninguna todavía; el
-              candado es para el que ya venía sumando y vuelve a llenar el
-              formulario de inscripción. */}
-          {!desdeRegistro && perfil.recompensas_disponibles > 0 && perfil.recompensa_titulo && (
-            <div className="rounded-2xl border-2 border-accent bg-accent/10 p-4 mt-4 text-center">
-              {(() => {
-                const rec = recompensaDeCiclo(perfil.recompensa_posicion);
-                return rec ? (
-                  <div
-                    className={`inline-flex items-center gap-2 font-bold px-3 py-1 rounded-md border-2 mb-2 text-sm ${rec.bg} ${rec.texto} ${rec.borde}`}
-                  >
-                    <Gift className="h-3.5 w-3.5" /> {rec.identificador}
-                  </div>
-                ) : null;
-              })()}
+              )}
               <p className="font-semibold text-accent">🎁 Te toca: {perfil.recompensa_titulo}</p>
               <p className="text-sm text-muted-foreground mt-1">Elige con tu mesero.</p>
               {confirmando === "recompensa" ? (
@@ -424,13 +392,86 @@ export default function Visita() {
             </div>
           )}
 
+          {/* Nivel = la parada del ciclo hacia la que va, con su color.
+              Con la recompensa ya ganada el rótulo cambia: "Nivel Visita 3"
+              junto a "3 visitas en total" se lee como "voy en la 3", no
+              como "ya me la gané". */}
+          <div className="rounded-2xl border bg-card p-5 shadow-sm text-center">
+            {(() => {
+              const rotulo = tieneRecompensa ? "Te toca:" : "Nivel";
+              // Sin nivel_posicion (base todavía sin la migración v5) se
+              // pinta con el hex que mande la base, como siempre.
+              if (perfil.nivel_posicion == null) {
+                return (
+                  <div
+                    className="inline-flex items-center gap-2 font-semibold px-4 py-1.5 rounded-md border-2 border-black/10"
+                    style={{ backgroundColor: perfil.nivel_color, color: textoSobre(perfil.nivel_color) }}
+                  >
+                    <Trophy className="h-4 w-4" /> {rotulo} {perfil.nivel}
+                  </div>
+                );
+              }
+              const niv = nivelDePosicion(perfil.nivel_posicion);
+              return (
+                <div
+                  className={`inline-flex items-center gap-2 font-semibold px-4 py-1.5 rounded-md border-2 ${niv.bg} ${niv.texto} ${niv.borde}`}
+                >
+                  <Trophy className="h-4 w-4" /> {rotulo} {perfil.nivel}
+                </div>
+              );
+            })()}
+            {perfil.nivel_beneficio && (
+              <p className="text-sm text-muted-foreground mt-2">{perfil.nivel_beneficio}</p>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">{perfil.visitas_total} visitas en total</p>
+          </div>
+
+          {/* Sellos hacia la recompensa */}
+          <div className="rounded-2xl border bg-card p-5 shadow-sm mt-4">
+            <div className="flex items-center gap-2 text-accent font-semibold mb-3">
+              <Gift className="h-5 w-5" /> Tu tarjeta de sellos
+            </div>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {Array.from({ length: meta }).map((_, i) => (
+                <div key={i}
+                  className={`w-9 h-9 rounded-full border-2 flex items-center justify-center ${
+                    i >= sellosPintados
+                      ? "border-muted-foreground/30 text-muted-foreground/40"
+                      : rec && perfil.recompensas_disponibles > 0
+                        // Tarjeta completa: se llena en el color de la parada
+                        // que toca, el mismo que el mesero ve en el chip.
+                        ? `${rec.bg} ${rec.texto} ${rec.borde}`
+                        : "bg-primary border-primary text-white"
+                  }`}>
+                  {i < sellosPintados ? <Check className="h-4 w-4" /> : <Waves className="h-4 w-4" />}
+                </div>
+              ))}
+            </div>
+            <p className="text-center text-sm text-muted-foreground mt-3">
+              {perfil.recompensas_disponibles > 0
+                ? "¡Completaste tu tarjeta! 🎉"
+                : perfil.recompensa_titulo
+                  ? `Vas por: ${perfil.recompensa_titulo}. Te ${perfil.faltan_recompensa === 1 ? "falta 1 visita" : `faltan ${perfil.faltan_recompensa} visitas`}.`
+                  : `Te faltan ${perfil.faltan_recompensa} ${perfil.faltan_recompensa === 1 ? "visita" : "visitas"} para tu recompensa.`}
+            </p>
+            <p className="text-center text-xs text-muted-foreground mt-1">
+              Tus visitas y recompensas cuentan durante {perfil.anio ?? new Date().getFullYear()}.
+            </p>
+          </div>
+
           {/* Recompensa inicial: ya no se canjea, se entrega ahí mismo.
               Quien llena el formulario está sentado en una mesa, así que el
               regalo se lo da el mesero en el momento y el alta ya nace con
-              él entregado. Por eso esto es un aviso, no un botón, y sale
-              sólo cuando se viene del registro: en visitas posteriores ya
-              no hay nada que enseñar. */}
-          {desdeRegistro && (
+              él entregado. Por eso esto es un aviso, no un botón.
+
+              Sale sólo en un alta NUEVA (`esAltaNueva`), no cada vez que se
+              viene del formulario: quien ya estaba inscrito y lo vuelve a
+              llenar devuelve `ya_estaba`, y a ese se le estaba ofreciendo
+              de nuevo un balazo con cerveza que ya había cobrado el día de
+              su alta. No sirve colgarlo de `bienvenida_disponible`: desde
+              la migración 20260827140000 la columna nace con DEFAULT now(),
+              así que ese campo es false incluso para el recién inscrito. */}
+          {esAltaNueva && (
             <div className="rounded-2xl border-2 border-primary/40 bg-primary/5 p-4 mt-4 text-center">
               <p className="font-semibold text-primary">🥂 Tu Recompensa inicial ya es tuya</p>
               <p className="text-sm text-primary/90 mt-0.5">
@@ -445,7 +486,9 @@ export default function Visita() {
             </div>
           )}
 
-          {desdeRegistro && (
+          {/* Instructivo de primera vez: al que ya lleva visitas le decía
+              "de la próxima visita en adelante", como si acabara de entrar. */}
+          {esAltaNueva && (
             <div className="mt-4 rounded-xl bg-primary/5 border border-primary/10 p-3 text-sm text-primary text-center font-medium flex items-center justify-center gap-2">
               <Ticket className="h-4 w-4 shrink-0" />
               De la próxima visita en adelante, súmala con el folio de tu ticket.
