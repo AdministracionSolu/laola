@@ -61,52 +61,39 @@ export default function Recepciones() {
   const [renglones, setRenglones] = useState<Renglon[]>([]);
   // Lo que se está capturando AHORA (vacío por defecto).
   const [recibido, setRecibido] = useState<Record<string, number>>({});
-  // Acumulado ya registrado hoy por insumo (no se compara con el pedido).
+  // Acumulado ya registrado HOY por insumo, en esta sucursal.
   const [yaRecibido, setYaRecibido] = useState<Record<string, number>>({});
 
-  // Suma lo ya recibido por insumo: lo ligado a renglones del pedido MÁS lo
-  // registrado HOY por la sucursal (insumos que llegaron sin venir en el
-  // pedido y por eso no tienen renglón que ligar).
-  const cargarYaRecibido = useCallback(
-    async (detalleIds: string[]) => {
-      const ids = detalleIds.filter(Boolean);
-      const { data: recsHoy } = await supabase
-        .from("recepciones")
-        .select("id")
-        .eq("sucursal_id", sucursalId!)
-        .eq("fecha", getFechaCalendario());
-      const recIds = ((recsHoy ?? []) as { id: string }[]).map((r) => r.id);
+  // Lo verde SOLO puede ser lo registrado HOY en esta sucursal.
+  //
+  // Antes esto sumaba además todo lo recibido "de este pedido" sin filtrar por
+  // fecha. Como el pedido de anoche se queda vivo (`recibido_parcial`) mientras
+  // no se manda otro, al día siguiente el contador amanecía con las cantidades
+  // de ayer y lo de hoy se le sumaba encima: el 27-ago Valle vio "Sierra 14.6"
+  // (10.6 de ayer + 4 de hoy). El pedido ya no entra en esta cuenta.
+  const cargarYaRecibido = useCallback(async () => {
+    const { data: recsHoy } = await supabase
+      .from("recepciones")
+      .select("id")
+      .eq("sucursal_id", sucursalId!)
+      .eq("fecha", getFechaCalendario());
+    const recIds = ((recsHoy ?? []) as { id: string }[]).map((r) => r.id);
+    if (recIds.length === 0) {
+      setYaRecibido({});
+      return;
+    }
 
-      type Fila = { id: string; insumo_id: string; cantidad_recibida: number };
-      const vacio = { data: [] as Fila[] };
-      const [porPedido, deHoy] = await Promise.all([
-        ids.length
-          ? supabase
-              .from("recepciones_detalle")
-              .select("id, insumo_id, cantidad_recibida")
-              .in("pedido_detalle_id", ids)
-          : Promise.resolve(vacio),
-        recIds.length
-          ? supabase
-              .from("recepciones_detalle")
-              .select("id, insumo_id, cantidad_recibida")
-              .in("recepcion_id", recIds)
-          : Promise.resolve(vacio),
-      ]);
+    const { data } = await supabase
+      .from("recepciones_detalle")
+      .select("insumo_id, cantidad_recibida")
+      .in("recepcion_id", recIds);
 
-      // Las dos consultas pueden traer la misma fila: se deduplica por id.
-      const filas = new Map<string, Fila>();
-      [...((porPedido.data ?? []) as Fila[]), ...((deHoy.data ?? []) as Fila[])].forEach((f) =>
-        filas.set(f.id, f)
-      );
-      const acc: Record<string, number> = {};
-      filas.forEach((f) => {
-        acc[f.insumo_id] = (acc[f.insumo_id] || 0) + Number(f.cantidad_recibida || 0);
-      });
-      setYaRecibido(acc);
-    },
-    [sucursalId]
-  );
+    const acc: Record<string, number> = {};
+    ((data ?? []) as { insumo_id: string; cantidad_recibida: number }[]).forEach((f) => {
+      acc[f.insumo_id] = (acc[f.insumo_id] || 0) + Number(f.cantidad_recibida || 0);
+    });
+    setYaRecibido(acc);
+  }, [sucursalId]);
 
   useEffect(() => {
     if (!sucursalId) return;
@@ -121,12 +108,17 @@ export default function Recepciones() {
           .select("insumos!inner(id, nombre, categoria_id, unidad)")
           .eq("sucursal_id", sucursalId)
           .eq("activo", true),
-        // Último pedido ENVIADO (o parcial) de la sucursal = la entrega que se recibe.
+        // El pedido DE HOY (o parcial) de la sucursal = la entrega que se recibe.
+        // El filtro por fecha es lo que impide agarrar el pedido de otro día: sin
+        // él, un pedido viejo se quedaba de "último" para siempre (Cervecería y
+        // Las Brisas estuvieron ligando recepciones a uno del 4-jun) y lo que
+        // llegaba hoy se anotaba contra el pedido de ayer.
         // Se ordena por enviado_at (cuándo se mandó), no por created_at (cuándo se abrió el borrador).
         supabase
           .from("pedidos")
           .select("*")
           .eq("sucursal_id", sucursalId)
+          .eq("fecha", getFechaCalendario())
           .in("estado", ["enviado", "recibido_parcial"])
           .order("enviado_at", { ascending: false, nullsFirst: false })
           .limit(1)
@@ -142,28 +134,29 @@ export default function Recepciones() {
       if (catRes.data) setCategorias(catRes.data);
       if (provRes.data) setProveedores(provRes.data as ProveedorOpcion[]);
 
+      // Puede no haber pedido hoy (no se alcanzó a mandar anoche) y la mercancía
+      // llega igual: la pantalla se usa lo mismo, sólo que la recepción no se
+      // liga a ningún renglón. Antes esto bloqueaba la captura del día entero.
       const pedido = pedidoRes.data;
-      if (!pedido) {
-        setPedidoId(null);
-        setRenglones([]);
-        setLoading(false);
-        return;
-      }
-
-      setPedidoId(pedido.id);
+      setPedidoId(pedido?.id ?? null);
 
       // Renglones del pedido: SOLO para ligar la recepción al pedido (no
       // filtran la lista — lo que llega sin haberse pedido también se registra).
-      const { data: det } = await supabase
-        .from("pedidos_detalle")
-        .select("id, insumo_id, insumos!inner(nombre, categoria_id, unidad)")
-        .eq("pedido_id", pedido.id);
-
       type DetRow = {
         id: string;
         insumo_id: string;
         insumos: { nombre: string; categoria_id: string; unidad: string | null };
       };
+      const det = pedido
+        ? (
+            await supabase
+              .from("pedidos_detalle")
+              .select("id, insumo_id, insumos!inner(nombre, categoria_id, unidad)")
+              .eq("pedido_id", pedido.id)
+          ).data
+        : [];
+
+      if (cancelado) return;
       const detRows = (det ?? []) as unknown as DetRow[];
       const detPorInsumo = new Map(detRows.map((d) => [d.insumo_id, d]));
 
@@ -208,7 +201,7 @@ export default function Recepciones() {
       rs.sort((a, b) => a.orden - b.orden);
 
       setRenglones(rs);
-      await cargarYaRecibido(rs.map((r) => r.pedido_detalle_id!).filter(Boolean));
+      await cargarYaRecibido();
       setRecibido({});
       setLoading(false);
     })();
@@ -232,7 +225,7 @@ export default function Recepciones() {
   );
 
   const handleRegistrar = async () => {
-    if (!sucursalId || !pedidoId) return;
+    if (!sucursalId) return;
     if (guardando) return; // guard anti doble-tap
     if (!registradoPor.trim()) {
       toast.error("Escribe quién recibió");
@@ -275,14 +268,16 @@ export default function Recepciones() {
       if (detError) throw detError;
 
       // Marca que ya empezó a recibirse (puede seguir llegando más).
-      await supabase.from("pedidos").update({ estado: "recibido_parcial" }).eq("id", pedidoId);
+      if (pedidoId) {
+        await supabase.from("pedidos").update({ estado: "recibido_parcial" }).eq("id", pedidoId);
+      }
 
       toast.success(`Registrado lo que llegó (${capturados.length}) ✓`);
       setProveedorId("");
       // Limpia para la siguiente entrega (otro proveedor / otro momento).
       setRecibido({});
       setProveedor("");
-      await cargarYaRecibido(renglones.map((r) => r.pedido_detalle_id!).filter(Boolean));
+      await cargarYaRecibido();
     } catch (error) {
       console.error("Error al registrar recepción:", error);
       toast.error("No se pudo registrar. Intenta de nuevo.");
@@ -321,12 +316,12 @@ export default function Recepciones() {
           <div className="flex justify-center py-16">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-        ) : !pedidoId ? (
+        ) : renglones.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center space-y-3">
               <PackageCheck className="h-10 w-10 mx-auto text-muted-foreground/50" />
               <p className="text-sm text-muted-foreground">
-                No hay un pedido enviado todavía. Primero haz el pedido.
+                Esta sucursal todavía no tiene lista de proteínas. Se configura en central.
               </p>
               <Button onClick={() => navigate("/pedidos/hacer")}>Ir a hacer pedido</Button>
             </CardContent>
@@ -335,8 +330,18 @@ export default function Recepciones() {
           <>
             <p className="text-xs text-muted-foreground px-1">
               Pon solo lo que llegó ahora. Puedes registrar varias veces durante el día
-              (cada entrega/proveedor por separado) y se va sumando.
+              (cada entrega/proveedor por separado) y se va sumando. Lo verde es lo que
+              llevas registrado <strong>hoy</strong>; mañana amanece en blanco.
             </p>
+
+            {!pedidoId && (
+              <Card className="border-amber-300 bg-amber-50/60">
+                <CardContent className="p-3 text-xs text-amber-900">
+                  Hoy no hay pedido enviado de esta sucursal. Puedes registrar la
+                  mercancía igual: queda como llegada del día.
+                </CardContent>
+              </Card>
+            )}
 
             <Card className={!registradoPor.trim() || !proveedor.trim() ? "border-amber-300" : ""}>
               <CardContent className="p-4 space-y-3">
@@ -407,7 +412,7 @@ export default function Recepciones() {
                             ¿Cuánto llegó?
                             {(yaRecibido[r.insumo_id] || 0) > 0 && (
                               <span className="text-emerald-600">
-                                · ya recibido de este pedido: {yaRecibido[r.insumo_id]} {r.unidad}
+                                · ya registrado hoy: {yaRecibido[r.insumo_id]} {r.unidad}
                               </span>
                             )}
                           </Label>
@@ -429,7 +434,7 @@ export default function Recepciones() {
       </div>
 
       {/* Barra inferior fija */}
-      {!loading && pedidoId && renglones.length > 0 && (
+      {!loading && renglones.length > 0 && (
         <div className="fixed bottom-0 inset-x-0 bg-background border-t z-20">
           <div className="container mx-auto px-3 py-3 max-w-2xl">
             <Button
