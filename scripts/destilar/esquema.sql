@@ -89,35 +89,55 @@ JOIN respaldos r ON r.respaldo_id = c.respaldo_id
 WHERE c.cancelado = 0 AND c.fecha IS NOT NULL
 GROUP BY r.sucursal, r.respaldo_id, date(c.fecha, '-4 hours');
 
--- El día tal como quedó en el respaldo tomado MÁS CERCA de esa noche: el
--- íntegro. Fuente para cualquier cifra que se publique.
+-- El día en su versión MÁS COMPLETA. Fuente de cualquier cifra que se publique.
+--
+-- Se toma el respaldo con más cuentas, y esa sola regla resuelve los dos casos
+-- opuestos: en Valle el más completo es el nocturno del mismo día (los de
+-- después ya vienen recortados), y en las otras tres es uno posterior, porque
+-- el respaldo tomado a media tarde deja el día a medias. Ordenar por cercanía
+-- de fecha, como se hacía antes, elegía días truncados en Cervecería, Brisas y
+-- Solares.
 CREATE VIEW v_dia_integro AS
 SELECT sucursal, dia, respaldo_id, dia_del_respaldo, cuentas, venta
 FROM (
   SELECT *,
          ROW_NUMBER() OVER (
            PARTITION BY sucursal, dia
-           ORDER BY julianday(dia_del_respaldo) - julianday(dia) ASC
+           ORDER BY cuentas DESC,
+                    julianday(dia_del_respaldo) - julianday(dia) ASC
          ) AS rn
   FROM v_dia_por_respaldo
-  WHERE dia_del_respaldo >= dia
 )
 WHERE rn = 1;
 
--- Cuánto encoge un día entre el respaldo que lo vio primero y los siguientes.
--- Cervecería, Brisas y Solares deben dar 0 aquí. Valle, no.
+-- Reescritura DE VERDAD: un respaldo posterior que reporta MENOS cuentas para
+-- el mismo día que uno anterior. Es decir, el día se encogió después de los
+-- hechos.
+--
+-- OJO con lo que esta vista deliberadamente NO cuenta. Comparar simplemente el
+-- máximo contra el mínimo del día mete un falso positivo grande: el respaldo
+-- tomado durante el propio día trae el día a medias, así que sale "más chico"
+-- sin que nadie haya editado nada. Con ese criterio Brisas y Solares aparecían
+-- encogiendo 17-24 cuentas, contradiciendo que sólo Valle reescribe. Aquí un
+-- día sólo cuenta si lo que vino DESPUÉS trae menos que lo que ya se había
+-- visto.
 CREATE VIEW v_reescritura AS
-SELECT sucursal,
-       dia,
-       COUNT(*)                    AS veces_respaldado,
-       MAX(cuentas)                AS cuentas_max,
-       MIN(cuentas)                AS cuentas_min,
-       MAX(cuentas) - MIN(cuentas) AS cuentas_desaparecidas,
-       ROUND(MAX(venta) - MIN(venta), 2) AS dinero_desaparecido,
-       ROUND(100.0 * (MAX(cuentas) - MIN(cuentas)) / MAX(cuentas), 1) AS pct_perdido
-FROM v_dia_por_respaldo
-GROUP BY sucursal, dia
-HAVING COUNT(*) > 1;
+SELECT antes.sucursal,
+       antes.dia,
+       COUNT(DISTINCT despues.respaldo_id) + 1        AS veces_respaldado,
+       MAX(antes.cuentas)                             AS cuentas_max,
+       MIN(despues.cuentas)                           AS cuentas_min,
+       MAX(antes.cuentas) - MIN(despues.cuentas)      AS cuentas_desaparecidas,
+       ROUND(MAX(antes.venta) - MIN(despues.venta), 2) AS dinero_desaparecido,
+       ROUND(100.0 * (MAX(antes.cuentas) - MIN(despues.cuentas))
+             / MAX(antes.cuentas), 1)                 AS pct_perdido
+FROM v_dia_por_respaldo antes
+JOIN v_dia_por_respaldo despues
+  ON  despues.sucursal = antes.sucursal
+  AND despues.dia      = antes.dia
+  AND despues.dia_del_respaldo > antes.dia_del_respaldo
+  AND despues.cuentas  < antes.cuentas
+GROUP BY antes.sucursal, antes.dia;
 
 -- Qué días tenemos y cuáles faltan por sucursal. Un hueco en Valle no se
 -- recupera pidiendo respaldo nuevo; en las otras tres sí.

@@ -71,8 +71,13 @@ def sh(args, timeout=1800, check=True, silencioso=True):
     return p
 
 
+EN_MAC = sys.platform == "darwin"
+
+
 def gb_libres():
-    st = os.statvfs("/System/Volumes/Data")
+    # En la Mac el volumen de datos va aparte del de sistema; en Linux basta /.
+    ruta = "/System/Volumes/Data" if EN_MAC else "/"
+    st = os.statvfs(ruta)
     return st.f_bavail * st.f_frsize / 1e9
 
 
@@ -108,7 +113,12 @@ def levantar_entorno():
             f"{ESPACIO_MINIMO_GB}.\n  Libera espacio antes de seguir "
             f"(la VM sola pide ~5 GB y cada respaldo restaurado otro tanto).")
 
-    if colima_arriba():
+    # Colima sólo existe en la Mac: es la VM que le da un Linux a Docker. En un
+    # servidor Linux (el droplet del martes) Docker corre nativo y además SQL
+    # Server es amd64 de verdad, sin Rosetta, así que va bastante más rápido.
+    if not EN_MAC:
+        log("Linux: Docker nativo, sin Colima")
+    elif colima_arriba():
         log("Colima ya estaba corriendo")
     else:
         log("levantando Colima (toma 1-3 min)...")
@@ -128,12 +138,15 @@ def levantar_entorno():
             log("SQL Server ya estaba corriendo")
     else:
         log("bajando y arrancando SQL Server 2022 (la primera vez tarda)...")
-        sh(["docker", "run", "-d", "--name", mssql.CONTENEDOR,
-            "--platform", "linux/amd64",
-            "-e", "ACCEPT_EULA=Y",
-            "-e", f"MSSQL_SA_PASSWORD={mssql.SA_PASS}",
-            "-e", "MSSQL_PID=Developer",
-            "-p", "1433:1433", IMAGEN], timeout=1800)
+        args = ["docker", "run", "-d", "--name", mssql.CONTENEDOR]
+        if EN_MAC:
+            # Apple Silicon: la imagen es amd64 y corre bajo Rosetta.
+            args += ["--platform", "linux/amd64"]
+        args += ["-e", "ACCEPT_EULA=Y",
+                 "-e", f"MSSQL_SA_PASSWORD={mssql.SA_PASS}",
+                 "-e", "MSSQL_PID=Developer",
+                 "-p", "1433:1433", IMAGEN]
+        sh(args, timeout=1800)
 
     log("esperando a que SQL Server acepte conexiones...")
     ultimo = ""
@@ -159,6 +172,11 @@ def cerrar_entorno(conservar):
         log("contenedor eliminado")
     except Exception:
         pass
+    if not EN_MAC:
+        # En el droplet no hay VM que borrar: la máquina entera se destruye
+        # al terminar, que es la versión buena de este mismo cuidado.
+        log("Linux: no hay VM local que borrar")
+        return
     sh(["colima", "stop"], check=False, timeout=300)
     sh(["colima", "delete", "-f"], check=False, timeout=300)
     # colima delete deja huérfano el disco de datos: eso fue lo que ocupó 13 GB
@@ -464,9 +482,9 @@ def reporte(conn):
               f"{dr:>6} {df:>7}{alerta}")
 
     reesc = conn.execute(
-        "SELECT sucursal, dia_cubierto, veces_respaldado, cuentas_desaparecidas,"
-        " venta_max - venta_min FROM v_reescritura "
-        "WHERE cuentas_desaparecidas > 0 ORDER BY dia_cubierto DESC LIMIT 12"
+        "SELECT sucursal, dia, veces_respaldado, cuentas_desaparecidas,"
+        " dinero_desaparecido FROM v_reescritura "
+        "WHERE cuentas_desaparecidas > 0 ORDER BY dia DESC LIMIT 12"
     ).fetchall()
     if reesc:
         paso("Días que encogieron entre un respaldo y otro")

@@ -128,11 +128,11 @@ def cobertura(conn):
 def reescritura(conn):
     titulo("Días que encogieron entre un respaldo y el siguiente")
     filas = conn.execute("""
-        SELECT sucursal, dia_cubierto, veces_respaldado,
-               cheques_max, cheques_min, cuentas_desaparecidas,
-               ROUND(venta_max - venta_min, 0)
+        SELECT sucursal, dia, veces_respaldado,
+               cuentas_max, cuentas_min, cuentas_desaparecidas,
+               ROUND(dinero_desaparecido, 0)
         FROM v_reescritura
-        ORDER BY cuentas_desaparecidas DESC, dia_cubierto DESC LIMIT 25
+        ORDER BY cuentas_desaparecidas DESC, dia DESC LIMIT 25
     """).fetchall()
     tabla([(a, b, c, d, e, f, f"{g:,.0f}" if g else "0")
            for a, b, c, d, e, f, g in filas],
