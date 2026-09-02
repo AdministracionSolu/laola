@@ -5,13 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Grid3x3, Loader2, ShoppingCart, Store } from "lucide-react";
+import { ArrowLeft, Grid3x3, Loader2, PackageCheck, ShoppingCart, Store } from "lucide-react";
 import logoLaOla from "@/assets/logo-la-ola.jpeg";
 import { getFechaCalendario } from "@/lib/fecha";
 import { esSucursalReferencia, useAnaliticaPedidos } from "@/hooks/useAnaliticaPedidos";
 import { PedidoDelDiaPanel } from "@/components/admin/pedidos/PedidoDelDiaPanel";
 import { DondeComprarPanel } from "@/components/admin/pedidos/DondeComprarPanel";
 import { ProveedoresPanel } from "@/components/admin/pedidos/ProveedoresPanel";
+import { RecepcionesPanel } from "@/components/admin/pedidos/RecepcionesPanel";
 
 // Vista de operación diaria de pedidos para el admin: el consolidado del día
 // (existencia · pidió · a pedir por sucursal), dónde comprar y proveedores.
@@ -90,6 +91,7 @@ export default function AdminPedidoDia() {
           <Tabs defaultValue="pedido">
             <TabsList className="mb-4">
               <TabsTrigger value="pedido" className="gap-1 text-xs"><Grid3x3 className="h-3.5 w-3.5" />Pedido del día</TabsTrigger>
+              <TabsTrigger value="recepciones" className="gap-1 text-xs"><PackageCheck className="h-3.5 w-3.5" />Recepciones</TabsTrigger>
               <TabsTrigger value="comprar" className="gap-1 text-xs"><ShoppingCart className="h-3.5 w-3.5" />Dónde comprar</TabsTrigger>
               <TabsTrigger value="proveedores" className="gap-1 text-xs"><Store className="h-3.5 w-3.5" />Proveedores</TabsTrigger>
             </TabsList>
@@ -103,6 +105,9 @@ export default function AdminPedidoDia() {
                 hasta={dia}
                 refetch={refetch}
               />
+            </TabsContent>
+            <TabsContent value="recepciones">
+              <RecepcionesPanel dia={dia} sucursales={sucursales} nombreInsumo={nombreInsumo} />
             </TabsContent>
             <TabsContent value="comprar">
               <DondeComprarPanel

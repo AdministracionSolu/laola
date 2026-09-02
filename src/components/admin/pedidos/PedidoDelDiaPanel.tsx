@@ -6,6 +6,7 @@ import { Download, GitCompareArrows, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { exportarExcel } from "@/lib/exportar";
+import { CampoCantidad } from "@/components/operaciones/CampoCantidad";
 import { esSucursalReferencia, type SucursalLite, type PedidoDetLite, type PedidoLite } from "@/hooks/useAnaliticaPedidos";
 
 const num = (n: number) => (Math.round(n * 100) / 100).toString();
@@ -25,6 +26,9 @@ export function PedidoDelDiaPanel({ sucursales, pedidos, pedidosDetalle, insumos
   // "A comprar" capturado en celdas SIN renglón (la sucursal no tocó ese
   // insumo): clave `${pedido_id}|${insumo_id}`, se insertan al guardar.
   const [nuevos, setNuevos] = useState<Record<string, number>>({});
+  // La existencia también se corrige desde aquí: la sucursal a veces la teclea
+  // en gramos (7,600 en vez de 7.6) y quien revisa es el único que lo cacha.
+  const [existenciaEdits, setExistenciaEdits] = useState<Record<string, number>>({});
   const [guardando, setGuardando] = useState(false);
 
   // Pedido del día (fecha = hasta) por sucursal, para poder insertar
@@ -50,6 +54,9 @@ export function PedidoDelDiaPanel({ sucursales, pedidos, pedidosDetalle, insumos
   const setPedido = (detalleId: string, value: number) =>
     setPedidoEdits((prev) => ({ ...prev, [detalleId]: value }));
 
+  const setExistencia = (detalleId: string, value: number) =>
+    setExistenciaEdits((prev) => ({ ...prev, [detalleId]: value }));
+
   const copiarSolicitados = () => {
     const next: Record<string, number> = {};
     pedidosDetalle
@@ -63,10 +70,11 @@ export function PedidoDelDiaPanel({ sucursales, pedidos, pedidosDetalle, insumos
 
   const guardar = async () => {
     const entries = Object.entries(pedidoEdits);
+    const existencias = Object.entries(existenciaEdits);
     // Solo se insertan renglones nuevos con cantidad > 0 (un 0 tecleado y
     // borrado no debe crear renglón).
     const altas = Object.entries(nuevos).filter(([, v]) => v > 0);
-    if (entries.length === 0 && altas.length === 0) {
+    if (entries.length === 0 && altas.length === 0 && existencias.length === 0) {
       toast.error("No hay cambios que guardar");
       return;
     }
@@ -76,10 +84,16 @@ export function PedidoDelDiaPanel({ sucursales, pedidos, pedidosDetalle, insumos
       // cantidad_sugerida null = la sucursal no lo capturó (lo decidió el admin).
       return { pedido_id, insumo_id, existencia: 0, cantidad_pedida: value, cantidad_sugerida: null };
     });
+    // Un renglón puede tener corregidas las dos cosas; se manda un solo update
+    // por id para no pisarse.
+    const ids = new Set([...entries.map(([id]) => id), ...existencias.map(([id]) => id)]);
     const results = await Promise.all([
-      ...entries.map(([id, value]) =>
-        supabase.from("pedidos_detalle").update({ cantidad_pedida: value }).eq("id", id)
-      ),
+      ...Array.from(ids).map((id) => {
+        const campos: Record<string, number> = {};
+        if (id in pedidoEdits) campos.cantidad_pedida = pedidoEdits[id];
+        if (id in existenciaEdits) campos.existencia = existenciaEdits[id];
+        return supabase.from("pedidos_detalle").update(campos).eq("id", id);
+      }),
       ...(inserts.length ? [supabase.from("pedidos_detalle").insert(inserts)] : []),
     ]);
     setGuardando(false);
@@ -90,6 +104,7 @@ export function PedidoDelDiaPanel({ sucursales, pedidos, pedidosDetalle, insumos
     toast.success("Pedido del día guardado ✓");
     setPedidoEdits({});
     setNuevos({});
+    setExistenciaEdits({});
     refetch();
   };
 
@@ -111,7 +126,7 @@ export function PedidoDelDiaPanel({ sucursales, pedidos, pedidosDetalle, insumos
           referencia: idsReferencia.has(s.id),
           detalleId: det?.id ?? null,
           nuevoKey,
-          existencia: det?.existencia ?? 0,
+          existencia: det ? existenciaEdits[det.id] ?? det.existencia ?? 0 : 0,
           procesado: det?.existencia_procesado ?? null,
           noProcesado: det?.existencia_no_procesado ?? null,
           solicitado: det?.cantidad_sugerida ?? 0,
@@ -121,7 +136,7 @@ export function PedidoDelDiaPanel({ sucursales, pedidos, pedidosDetalle, insumos
       const totalPed = celdas.reduce((s, c) => s + (c.referencia ? 0 : c.pedidoReal ?? 0), 0);
       return { insumo_id: ins, nombre: nombreInsumo.get(ins) || ins, celdas, totalPed };
     });
-  }, [hasta, pedidosDetalle, insumosOrden, sucursales, nombreInsumo, pedidoRealDe, idsReferencia, pedidoDeSucursal, nuevos]);
+  }, [hasta, pedidosDetalle, insumosOrden, sucursales, nombreInsumo, pedidoRealDe, idsReferencia, pedidoDeSucursal, nuevos, existenciaEdits]);
 
   // Cuántas existencias capturó cada sucursal (renglones guardados ese día).
   const capturadas = useMemo(() => {
@@ -223,10 +238,17 @@ export function PedidoDelDiaPanel({ sucursales, pedidos, pedidosDetalle, insumos
                   <td className="p-2 sticky left-0 bg-background font-medium">{r.nombre}</td>
                   {r.celdas.map((c) => (
                     <Fragment key={c.sucursal_id}>
-                      <td className={`p-2 text-center tabular-nums border-l ${c.referencia ? "text-muted-foreground/70 bg-muted/30" : ""}`}>
+                      <td className={`p-2 text-center tabular-nums border-l ${c.referencia ? "bg-muted/30" : ""}`}>
                         {c.detalleId ? (
                           <div className="leading-tight">
-                            <div>{num(c.existencia)}</div>
+                            <CampoCantidad
+                              ariaLabel="Existencia"
+                              value={c.existencia}
+                              onChange={(v) => setExistencia(c.detalleId as string, v)}
+                              className={`h-8 w-16 mx-auto text-center ${
+                                c.detalleId in existenciaEdits ? "border-primary font-semibold" : ""
+                              }`}
+                            />
                             {(c.procesado !== null || c.noProcesado !== null) && (
                               // Desglose de los insumos que se cuentan en dos:
                               // P = procesado, S = sin procesar.
@@ -245,16 +267,11 @@ export function PedidoDelDiaPanel({ sucursales, pedidos, pedidosDetalle, insumos
                       <td className={`p-2 text-center ${c.referencia ? "bg-muted/30" : ""}`}>
                         {!c.detalleId && c.nuevoKey && !c.referencia ? (
                           <div className="flex items-center justify-center">
-                            <Input
-                              type="number"
-                              inputMode="decimal"
-                              value={c.pedidoReal === null ? "" : String(c.pedidoReal)}
-                              onChange={(e) =>
-                                setNuevos((prev) => ({
-                                  ...prev,
-                                  [c.nuevoKey as string]:
-                                    e.target.value === "" ? 0 : parseFloat(e.target.value) || 0,
-                                }))
+                            <CampoCantidad
+                              ariaLabel="A comprar"
+                              value={c.pedidoReal ?? 0}
+                              onChange={(v) =>
+                                setNuevos((prev) => ({ ...prev, [c.nuevoKey as string]: v }))
                               }
                               className="h-8 w-16 text-center font-semibold"
                             />
@@ -273,13 +290,10 @@ export function PedidoDelDiaPanel({ sucursales, pedidos, pedidosDetalle, insumos
                             >
                               ←
                             </button>
-                            <Input
-                              type="number"
-                              inputMode="decimal"
-                              value={c.pedidoReal === null ? "" : String(c.pedidoReal)}
-                              onChange={(e) =>
-                                setPedido(c.detalleId as string, e.target.value === "" ? 0 : parseFloat(e.target.value) || 0)
-                              }
+                            <CampoCantidad
+                              ariaLabel="A comprar"
+                              value={c.pedidoReal ?? 0}
+                              onChange={(v) => setPedido(c.detalleId as string, v)}
                               className="h-8 w-16 text-center font-semibold"
                             />
                           </div>

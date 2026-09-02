@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Minus, Plus } from "lucide-react";
+import { MAXIMO, normalizaCantidad } from "@/components/operaciones/CampoCantidad";
 
 interface CantidadStepperProps {
   value: number;
@@ -11,6 +12,8 @@ interface CantidadStepperProps {
   className?: string;
   /** Estilo destacado (ej. campo "Pides"). */
   emphasis?: boolean;
+  /** Tope de captura. Ver MAXIMO. */
+  max?: number;
 }
 
 /** Quita el ruido de coma flotante: 10.299999999 → 10.3 */
@@ -22,6 +25,7 @@ export function CantidadStepper({
   unidad,
   className,
   emphasis,
+  max = MAXIMO,
 }: CantidadStepperProps) {
   // Los botones brincan de medio en kg y de uno en piezas, pero lo que se
   // escribe a mano se respeta tal cual: 10.3 kg de callo es un dato válido.
@@ -39,18 +43,15 @@ export function CantidadStepper({
   }, [value]);
 
   const escribir = (crudo: string) => {
-    // Acepta coma o punto, un solo separador, sin negativos.
-    const soloNumeros = crudo.replace(",", ".").replace(/[^\d.]/g, "");
-    const partes = soloNumeros.split(".");
-    const normalizado =
-      partes.length > 2 ? `${partes[0]}.${partes.slice(1).join("")}` : soloNumeros;
-    setTexto(normalizado);
-    const n = parseFloat(normalizado);
-    onChange(Number.isFinite(n) ? n : 0);
+    // El tope se aplica al teclear, no al guardar: si escribe 7300 queriendo
+    // 7.300, lo ve al momento y lo corrige.
+    const { texto: t, valor } = normalizaCantidad(crudo, max);
+    setTexto(t);
+    onChange(valor);
   };
 
   const mover = (delta: number) => {
-    const n = Math.max(0, limpiaDecimales(value + delta));
+    const n = Math.min(max, Math.max(0, limpiaDecimales(value + delta)));
     setTexto(n ? String(n) : "");
     onChange(n);
   };
@@ -72,6 +73,9 @@ export function CantidadStepper({
         inputMode="decimal"
         value={texto}
         placeholder="0"
+        // 99.999: dos enteros y tres decimales es todo lo que existe aquí.
+        maxLength={6}
+        aria-label={`Cantidad, máximo ${max}`}
         onChange={(e) => escribir(e.target.value)}
         onFocus={(e) => e.target.select()}
         className={`h-12 text-center ${
